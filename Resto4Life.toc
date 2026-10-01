@@ -1,0 +1,33 @@
+## Interface: 120100
+## IconTexture: Interface\Icons\Spell_Nature_HealingTouch
+## Title: |cff00ff96Resto4Life|r
+## Notes: Modernes Heiler- und Gruppenframe Addon für WoW Forever und Retail.
+## Author: Resto4Life Team
+## Version: 0.1.6a_beta
+## SavedVariables: Resto4LifeDB
+## SavedVariablesPerCharacter: Resto4LifeCharDB
+## X-Category: UnitFrames, Healer
+## AddonCompartmentFunc: Resto4Life_OnAddonCompartmentClick
+
+# Core
+Core\Init.lua
+
+# Locales
+Locales\Locales.lua
+Locales\enUS.lua
+Locales\deDE.lua
+
+Core\Config.lua
+Core\ProfileManager.lua
+
+# Engine
+Engine\Sorting.lua
+Engine\AuraTracker.lua
+Engine\ClickCast.lua
+
+# UI
+UI\UnitFrame.lua
+UI\GroupHeader.lua
+UI\MinimapButton.lua
+UI\OptionsUI.lua
+

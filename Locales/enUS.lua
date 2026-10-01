@@ -1,0 +1,107 @@
+--[[
+    Resto4Life - Locales/enUS.lua
+    English Base Locale
+--]]
+
+local _, R4L = ...
+local L = R4L.L
+
+-- Mover & Drag
+L["MOVER_TITLE"] = "Resto4Life (Unlocked)"
+L["MOVER_DRAG"] = "Drag: Move"
+L["MOVER_SCALE_HINT"] = "Mouse wheel / Corner:"
+L["MOVER_SCALE_FMT"] = "Scale (%d%%)"
+L["RESIZER_TOOLTIP_TITLE"] = "Scale"
+L["RESIZER_TOOLTIP_DESC"] = "Drag to freely scale the frame size."
+
+-- Chat Messages
+L["CHAT_FRAME_LOCKED"] = "Frame locked."
+L["CHAT_FRAME_UNLOCKED"] = "Frame unlocked: Move with left-click, scale with mouse wheel or corner grip."
+L["CHAT_SCALE_FMT"] = "Scale: |cff00ff00%d%%|r"
+L["CHAT_SCALE_SAVED_FMT"] = "Scale saved: |cff00ff00%d%%|r"
+L["CHAT_POS_RESET"] = "Position and scale (100%) reset to |cff00ff00screen center|r."
+L["CHAT_SIM_STARTED"] = "5-player group |cff00ff00simulated|r (Test mode active)."
+L["CHAT_SIM_STOPPED"] = "Simulation |cffff5555ended|r. Real group restored."
+L["CHAT_REVERSE_ACTIVE"] = "Reverse Health Mode: |cff00ff00Enabled (Deficit)|r"
+L["CHAT_REVERSE_INACTIVE"] = "Reverse Health Mode: |cffff5555Disabled (Normal)|r"
+L["CHAT_COLOR_CLASS"] = "Color mode selected: |cffff7c0aClass Colors|r"
+L["CHAT_COLOR_MINIMAL"] = "Color mode selected: |cff00ff00Green / Red (Healer)|r"
+L["CHAT_LAYOUT_COL"] = "Layout selected: |cff00ff00Column (Vertical)|r"
+L["CHAT_LAYOUT_ROW"] = "Layout selected: |cff00ff00Row (Horizontal)|r"
+L["CHAT_TEST_DEBUFF_STOP"] = "Test debuff |cffff5555disabled|r."
+L["CHAT_DEFAULTS_RESET"] = "Settings reset to defaults."
+L["LOADED_MSG_FMT"] = "v%s loaded. Type /r4l for options."
+
+-- Options Window: Header & Tabs
+L["CONFIG_TITLE_FMT"] = "|cff00ff96Resto4Life|r - Configuration (v%s)"
+L["TAB_GENERAL"] = "General"
+L["TAB_BINDINGS"] = "Key Bindings"
+L["TAB_HOTS"] = "HoTs & Debuffs"
+L["TAB_PROFILES"] = "Profile / Export"
+
+-- Tab 1: General
+L["UNLOCK_FRAME"] = "Unlock frame (Moving mode)"
+L["POS_RESET"] = "Pos. Reset"
+L["SHOW_NAMES"] = "Show player names"
+L["SHOW_MANA"] = "Show mana / resource bar"
+L["REVERSE_HEALTH"] = "Reverse Health (Bar fills on damage / VuhDo deficit)"
+L["COLOR_MODE"] = "Color Mode:"
+L["CLASS_COLORS"] = "Class Colors"
+L["GREEN_RED_HEALER"] = "Green / Red (Healer)"
+L["LAYOUT"] = "Layout:"
+L["COL_VERTICAL"] = "Column (Vertical)"
+L["ROW_HORIZONTAL"] = "Row (Horizontal)"
+L["SIM_GROUP_BTN"] = "Simulate 5-player group (Test Mode)"
+L["SIM_ACTIVE_BTN"] = "Simulation ACTIVE (Click to stop)"
+L["AUTO_SORT"] = "Auto sorting: Tank -> Melee -> Range -> Heal"
+L["FADE_OUT_OF_RANGE"] = "Fade when out of range"
+L["TARGET_ON_CAST"] = "Target unit when casting a spell"
+L["CHAT_TARGET_ON_CAST_ON"] = "Target on cast: |cff00ff00Enabled|r"
+L["CHAT_TARGET_ON_CAST_OFF"] = "Target on cast: |cffff5555Disabled|r"
+L["SCALE_LABEL"] = "Size / Scaling:"
+L["SCALE_DEFAULT"] = "Default 100%"
+L["SHOW_MINIMAP_CB"] = "Show Minimap Button"
+L["MINIMAP_TOOLTIP_LCLICK"] = "|cff00ff96Left-Click:|r Toggle Options"
+L["MINIMAP_TOOLTIP_RCLICK"] = "|cff00ff96Right-Click:|r Lock / Unlock Frame"
+L["MINIMAP_TOOLTIP_SHIFT"] = "|cff00ff96Shift + Left-Click:|r Reset position to screen center"
+L["MINIMAP_TOOLTIP_DRAG"] = "|cff888888Drag with left mouse button to move|r"
+
+-- Tab 2: Key Bindings
+L["BINDINGS_HEADER"] = "|cffffff00Mouse clicks & key bindings (when hovering over frame):|r"
+L["LEFT_CLICK"] = "Left Click Spell:"
+L["RIGHT_CLICK"] = "Right Click Spell:"
+L["MID_CLICK"] = "Middle Mouse Button:"
+L["WHEEL_UP"] = "Mouse Wheel Up:"
+L["WHEEL_DOWN"] = "Mouse Wheel Down:"
+L["KEY_N_FMT"] = "Key %d:"
+L["SMART_REZ_HEADER"] = "|cffffff00Smart Battle Rez (Automatic resurrection):|r"
+L["SMART_REZ_ENABLE"] = "Enable Smart Battle-Rez (Left click on dead players)"
+L["COMBAT_REZ_SPELL"] = "Combat Rez Spell (In-Combat):"
+L["NORMAL_REZ_SPELL"] = "Normal Rez Spell (Out-of-Combat):"
+
+-- Tab 3: HoTs & Debuffs
+L["SHOW_HOTS_CB"] = "Show ticking HoTs on group members (Icons & duration)"
+L["COLOR_DEBUFFS_CB"] = "Highlight dispellable debuffs on frame (Colored border)"
+L["DISP_ONLY_CB"] = "Only highlight if my class can dispel it"
+L["HIGHLIGHT_CURSE"] = "|cff9900ffCurses|r highlight"
+L["HIGHLIGHT_POISON"] = "|cff00bb00Poisons|r highlight"
+L["HIGHLIGHT_DISEASE"] = "|cff996600Diseases|r highlight"
+L["HIGHLIGHT_MAGIC"] = "|cff3399ffMagic|r highlight"
+L["DEBUFF_TEST_HEADER"] = "|cffffff00Test Mode (Simulate debuff border):|r"
+L["POISON_TEST_BTN"] = "|cff00dd00Poison (Green)|r"
+L["CURSE_TEST_BTN"] = "|cffaa00ffCurse (Purple)|r"
+L["MAGIC_TEST_BTN"] = "|cff00aaffMagic (Blue)|r"
+L["TEST_OFF_BTN"] = "Test Off"
+L["TEST_POISON_CHAT"] = "Test debuff active: |cff00ff00Poison (Green border)|r"
+L["TEST_CURSE_CHAT"] = "Test debuff active: |cffaa00ffCurse (Purple border)|r"
+L["TEST_MAGIC_CHAT"] = "Test debuff active: |cff00aaffMagic (Blue border)|r"
+L["CHAT_TEST_DEBUFF_STOP"] = "Test debuff |cffff5555disabled|r."
+
+-- Tab 4: Profiles
+L["PROFILES_DESC"] = "Profiles are |cff00ff96automatically saved per character|r.\nUse the string below to share or restore settings."
+L["EXPORT_BTN"] = "Export Profile"
+L["IMPORT_BTN"] = "Import Profile"
+L["RESET_DEFAULTS_BTN"] = "Reset to Defaults"
+L["STRING_GENERATED_COPY"] = "|cff00ff00String generated! Press Ctrl+C to copy.|r"
+L["PROFILE_RESET_SUCCESS"] = "|cffffff00Profile reset to defaults.|r"
+
