@@ -127,6 +127,11 @@ function PM:Initialize()
         }
     end
 
+    -- Entwickler-Sprach-Override anwenden, falls gesetzt
+    if Resto4LifeDB.devLocale and R4L.ApplyLocale then
+        R4L:ApplyLocale(Resto4LifeDB.devLocale)
+    end
+
     -- Per Character DB
     local isFirstRun = false
     if not Resto4LifeCharDB or not Resto4LifeCharDB.version then

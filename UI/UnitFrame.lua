@@ -166,14 +166,30 @@ local function UpdateRoleIcon(frame, role)
         return
     end
 
-    if role == "TANK" then
-        frame.roleIcon:SetTexCoord(0, 0.28125, 0.328125, 0.625)
-        frame.roleIcon:Show()
-    elseif role == "HEALER" then
-        frame.roleIcon:SetTexCoord(0.296875, 0.578125, 0.015625, 0.3125)
-        frame.roleIcon:Show()
-    elseif role == "DAMAGER" or role == "DPS" then
-        frame.roleIcon:SetTexCoord(0.296875, 0.578125, 0.328125, 0.625)
+    if role == "DPS" then role = "DAMAGER" end
+
+    if role == "TANK" or role == "HEALER" or role == "DAMAGER" then
+        frame.roleIcon:SetTexture("Interface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES")
+        local coords
+        if GetTexCoordsForRoleSmallCircle then
+            local ok, c1, c2, c3, c4 = pcall(GetTexCoordsForRoleSmallCircle, role)
+            if ok and c1 and c2 and c3 and c4 then
+                coords = { c1, c2, c3, c4 }
+            end
+        end
+
+        if coords then
+            frame.roleIcon:SetTexCoord(unpack(coords))
+        else
+            -- Exakte Koordinaten auf 64x64 UI-LFG-ICON-PORTRAITROLES ohne Rand-Überlappung
+            if role == "TANK" then
+                frame.roleIcon:SetTexCoord(0, 19/64, 22/64, 41/64)
+            elseif role == "HEALER" then
+                frame.roleIcon:SetTexCoord(20/64, 39/64, 1/64, 20/64)
+            elseif role == "DAMAGER" then
+                frame.roleIcon:SetTexCoord(20/64, 39/64, 22/64, 41/64)
+            end
+        end
         frame.roleIcon:Show()
     else
         frame.roleIcon:Hide()
@@ -267,11 +283,13 @@ function UF:CreateUnitFrame(name, parent, unit)
     frame.statusText:SetPoint("BOTTOMRIGHT", frame.healthBar, "BOTTOMRIGHT", -4, 4)
     frame.statusText:SetJustifyH("RIGHT")
 
-    -- Rollen-Icon (Tank, Heiler, DD) oben links
+    -- Rollen-Icon (Tank, Heiler, DD) oben links mit Abstand links und oben
     frame.roleIcon = frame.healthBar:CreateTexture(nil, "OVERLAY", nil, 7)
-    frame.roleIcon:SetSize(14, 14)
-    frame.roleIcon:SetPoint("TOPLEFT", frame.healthBar, "TOPLEFT", 2, -2)
-    frame.roleIcon:SetTexture("Interface\\LFGFrame\\UI-LFG-ICON-ROLES")
+    frame.roleIcon:SetSize(13, 13)
+    frame.roleIcon:SetPoint("TOPLEFT", frame.healthBar, "TOPLEFT", 4, -4)
+    frame.roleIcon:SetTexture("Interface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES")
+    frame.roleIcon:SetHorizTile(false)
+    frame.roleIcon:SetVertTile(false)
     frame.roleIcon:Hide()
 
     -- HoT Icons Container (oben rechts)

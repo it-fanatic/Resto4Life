@@ -4,7 +4,7 @@
 --]]
 
 local _, R4L = ...
-local L = R4L.L
+local L = R4L.Locales.enUS
 
 -- Mover & Drag
 L["MOVER_TITLE"] = "Resto4Life"
@@ -132,5 +132,10 @@ L["ORIENTATION_VERTICAL"] = "Column"
 L["ORIENTATION_HORIZONTAL"] = "Row"
 L["ORIENTATION_RAID_VERTICAL"] = "Columns (8x5)"
 L["ORIENTATION_RAID_HORIZONTAL"] = "Rows (5x8)"
+
+-- Developer Language Switch
+L["DEV_LANG_CHANGED"] = "Language changed to |cff00ff00%s|r. Reloading UI..."
+L["DEV_LANG_RESET"] = "Language reset to client default (|cff00ff00%s|r). Reloading UI..."
+L["DEV_LANG_CURRENT"] = "Current language: |cff00ff00%s|r (Saved: %s). Usage: /r4l lang de | en | auto"
 
 

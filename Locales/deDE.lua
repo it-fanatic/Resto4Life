@@ -4,9 +4,7 @@
 --]]
 
 local _, R4L = ...
-if GetLocale() ~= "deDE" then return end
-
-local L = R4L.L
+local L = R4L.Locales.deDE
 
 -- Mover & Drag
 L["MOVER_TITLE"] = "Resto4Life"
@@ -134,5 +132,13 @@ L["ORIENTATION_VERTICAL"] = "Spalte"
 L["ORIENTATION_HORIZONTAL"] = "Zeile"
 L["ORIENTATION_RAID_VERTICAL"] = "Spalten (8x5)"
 L["ORIENTATION_RAID_HORIZONTAL"] = "Zeilen (5x8)"
+
+-- Entwickler-Sprachumschaltung
+L["DEV_LANG_CHANGED"] = "Sprache auf |cff00ff00%s|r geändert. UI wird neu geladen..."
+L["DEV_LANG_RESET"] = "Sprache auf Client-Standard (|cff00ff00%s|r) zurückgesetzt. UI wird neu geladen..."
+L["DEV_LANG_CURRENT"] = "Aktuelle Sprache: |cff00ff00%s|r (Gespeichert: %s). Nutzung: /r4l lang de | en | auto"
+
+-- Initiales Anwenden der aktiven Sprache
+R4L:ApplyLocale()
 
 

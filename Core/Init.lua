@@ -76,13 +76,44 @@ function R4L:Print(msg, ...)
     print("|cff00ff96[Resto4Life]|r " .. formatted)
 end
 
+function R4L:SetDevLanguage(targetLocale)
+    if not Resto4LifeDB then Resto4LifeDB = {} end
+    local L = self.L
+    if targetLocale == "auto" then
+        Resto4LifeDB.devLocale = nil
+        self:Print(L["DEV_LANG_RESET"] or "Sprache auf Client-Standard (%s) zurückgesetzt. UI wird neu geladen...", GetLocale())
+    else
+        Resto4LifeDB.devLocale = targetLocale
+        self:Print(L["DEV_LANG_CHANGED"] or "Sprache auf %s geändert. UI wird neu geladen...", targetLocale)
+    end
+    if C_UI and C_UI.Reload then
+        C_UI.Reload()
+    else
+        ReloadUI()
+    end
+end
+
 -- Slash Commands
 SLASH_RESTO4LIFE1 = "/r4l"
 SLASH_RESTO4LIFE2 = "/resto4life"
+SLASH_RESTO4LIFE3 = "/resto"
 
 SlashCmdList["RESTO4LIFE"] = function(msg)
     local cmd = string.lower(string.trim(msg or ""))
-    if cmd == "unlock" or cmd == "move" then
+    if cmd:match("^lang") or cmd:match("^devlang") then
+        local sub = string.trim(cmd:gsub("^devlang", ""):gsub("^lang", ""))
+        if sub == "de" or sub == "dede" then
+            R4L:SetDevLanguage("deDE")
+        elseif sub == "en" or sub == "enus" then
+            R4L:SetDevLanguage("enUS")
+        elseif sub == "auto" or sub == "reset" then
+            R4L:SetDevLanguage("auto")
+        else
+            local saved = (Resto4LifeDB and Resto4LifeDB.devLocale) or "Client-Standard"
+            local cur = R4L.currentLocale or GetLocale()
+            R4L:Print(R4L.L["DEV_LANG_CURRENT"] or "Aktuelle Sprache: |cff00ff00%s|r (Gespeichert: %s). Nutzung: /r4l lang de | en | auto", cur, saved)
+        end
+    elseif cmd == "unlock" or cmd == "move" then
         if (IsInRaid() or (R4L.RaidHeader and R4L.RaidHeader.isSimulating)) and R4L.RaidHeader then
             R4L.RaidHeader:ToggleLock(false)
         elseif R4L.GroupHeader then

@@ -74,6 +74,19 @@ function OUI:Initialize()
     title:SetPoint("TOP", frame, "TOP", 0, -14)
     title:SetText(string.format(L["CONFIG_TITLE_FMT"], R4L.version))
 
+    -- Versteckter Entwickler-Klick (Strg + Rechtsklick auf den Titel schaltet Sprache DE <-> EN um)
+    local devLangBtn = CreateFrame("Button", nil, frame)
+    devLangBtn:SetPoint("TOPLEFT", title, "TOPLEFT", -15, 6)
+    devLangBtn:SetPoint("BOTTOMRIGHT", title, "BOTTOMRIGHT", 15, -6)
+    devLangBtn:RegisterForClicks("RightButtonUp")
+    devLangBtn:SetScript("OnClick", function(self, button)
+        if button == "RightButton" and IsControlKeyDown() then
+            local current = (Resto4LifeDB and Resto4LifeDB.devLocale) or GetLocale()
+            local nextLang = (current == "deDE" or current == "de") and "enUS" or "deDE"
+            R4L:SetDevLanguage(nextLang)
+        end
+    end)
+
     -- Schließen Button
     local closeBtn = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
     closeBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -6, -6)
