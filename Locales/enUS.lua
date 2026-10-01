@@ -137,5 +137,7 @@ L["ORIENTATION_RAID_HORIZONTAL"] = "Rows (5x8)"
 L["DEV_LANG_CHANGED"] = "Language changed to |cff00ff00%s|r. Reloading UI..."
 L["DEV_LANG_RESET"] = "Language reset to client default (|cff00ff00%s|r). Reloading UI..."
 L["DEV_LANG_CURRENT"] = "Current language: |cff00ff00%s|r (Saved: %s). Usage: /r4l lang de | en | auto"
+L["MOVER_RCLICK_ORIENTATION"] = "Right-click: Toggle Column / Row"
+L["CHAT_ORIENTATION_CHANGED"] = "%s: Layout changed to |cff00ff00%s|r."
 
 

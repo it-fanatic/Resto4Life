@@ -114,6 +114,68 @@ local function CreateContainerMover(container, titleKey, posKey, onScale)
         RH:SetContainerScale(container, posKey, scale, onScale)
     end)
 
+    -- Rechtsklick: Wechsel zwischen Spalte und Zeile
+    mover:SetScript("OnMouseUp", function(self, button)
+        if button == "RightButton" then
+            local cfg = R4L.ProfileManager:GetConfig()
+            local r = cfg.raid
+            if not r then return end
+
+            local newOrientation = "HORIZONTAL"
+            local containerName = L[titleKey] or titleKey
+
+            if posKey == "tankPos" then
+                local cur = r.tankOrientation or "VERTICAL"
+                newOrientation = (cur == "HORIZONTAL") and "VERTICAL" or "HORIZONTAL"
+                r.tankOrientation = newOrientation
+            elseif posKey == "myGroupPos" then
+                local cur = r.myGroupOrientation or "VERTICAL"
+                newOrientation = (cur == "HORIZONTAL") and "VERTICAL" or "HORIZONTAL"
+                r.myGroupOrientation = newOrientation
+            elseif posKey == "raidPos" then
+                local cur = r.raidOrientation or "VERTICAL"
+                newOrientation = (cur == "HORIZONTAL") and "VERTICAL" or "HORIZONTAL"
+                r.raidOrientation = newOrientation
+            elseif posKey == "petPos" then
+                local cur = r.petOrientation or "VERTICAL"
+                newOrientation = (cur == "HORIZONTAL") and "VERTICAL" or "HORIZONTAL"
+                r.petOrientation = newOrientation
+            end
+
+            RH:UpdateLayout()
+            RH:UpdateMovers()
+
+            if R4L.OptionsUI and R4L.OptionsUI.UpdateOrientationButtons then
+                R4L.OptionsUI.UpdateOrientationButtons()
+            end
+
+            local oText
+            if posKey == "raidPos" then
+                oText = (newOrientation == "HORIZONTAL") and L["ORIENTATION_RAID_HORIZONTAL"] or L["ORIENTATION_RAID_VERTICAL"]
+            else
+                oText = (newOrientation == "HORIZONTAL") and L["ORIENTATION_HORIZONTAL"] or L["ORIENTATION_VERTICAL"]
+            end
+
+            local cleanName = containerName:gsub("\n", " ")
+            R4L:Print(L["CHAT_ORIENTATION_CHANGED"] or "%s: Anordnung geändert auf |cff00ff00%s|r.", cleanName, oText)
+        end
+    end)
+
+    mover:SetScript("OnEnter", function(self)
+        self:SetBackdropColor(0, 0.7, 0.9, 0.6)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine(L[titleKey] or titleKey, 0, 1, 0.6)
+        GameTooltip:AddLine(L["MOVER_DRAG"], 1, 1, 1)
+        GameTooltip:AddLine(L["MOVER_RCLICK_ORIENTATION"] or "Rechts-Klick: Spalte / Zeile wechseln", 0.4, 0.9, 1)
+        GameTooltip:AddLine(L["MOVER_SCALE_HINT"] .. " Skalieren", 0.8, 0.8, 0.8)
+        GameTooltip:Show()
+    end)
+
+    mover:SetScript("OnLeave", function(self)
+        self:SetBackdropColor(0, 0.6, 0.8, 0.45)
+        GameTooltip:Hide()
+    end)
+
     -- Resize Handle (Ziehecke unten rechts)
     local resizer = CreateFrame("Button", container:GetName() .. "Resizer", mover, "BackdropTemplate")
     resizer:SetSize(16, 16)

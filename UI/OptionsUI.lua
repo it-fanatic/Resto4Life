@@ -710,6 +710,7 @@ function OUI:Initialize()
             btnPetRow:SetText(L["ORIENTATION_HORIZONTAL"])
         end
     end
+    OUI.UpdateOrientationButtons = UpdateOrientationButtons
 
     btnTankCol:SetScript("OnClick", function()
         cfg.raid.tankOrientation = "VERTICAL"

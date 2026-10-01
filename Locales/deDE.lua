@@ -137,6 +137,8 @@ L["ORIENTATION_RAID_HORIZONTAL"] = "Zeilen (5x8)"
 L["DEV_LANG_CHANGED"] = "Sprache auf |cff00ff00%s|r geändert. UI wird neu geladen..."
 L["DEV_LANG_RESET"] = "Sprache auf Client-Standard (|cff00ff00%s|r) zurückgesetzt. UI wird neu geladen..."
 L["DEV_LANG_CURRENT"] = "Aktuelle Sprache: |cff00ff00%s|r (Gespeichert: %s). Nutzung: /r4l lang de | en | auto"
+L["MOVER_RCLICK_ORIENTATION"] = "Rechts-Klick: Spalte / Zeile wechseln"
+L["CHAT_ORIENTATION_CHANGED"] = "%s: Anordnung geändert auf |cff00ff00%s|r."
 
 -- Initiales Anwenden der aktiven Sprache
 R4L:ApplyLocale()

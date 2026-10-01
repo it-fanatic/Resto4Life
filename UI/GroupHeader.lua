@@ -85,6 +85,40 @@ function GH:Initialize()
         GH:SetScale(scale)
     end)
 
+    -- Rechtsklick: Wechsel zwischen Spalte und Zeile
+    mover:SetScript("OnMouseUp", function(self, button)
+        if button == "RightButton" then
+            local curDir = cfg.general.growthDirection or "DOWN"
+            local isHorizontal = (curDir == "RIGHT" or curDir == "LEFT")
+            if isHorizontal then
+                cfg.general.growthDirection = "DOWN"
+            else
+                cfg.general.growthDirection = "RIGHT"
+            end
+
+            GH:UpdateLayout()
+            GH:UpdateMoverText()
+
+            local oText = (cfg.general.growthDirection == "RIGHT") and L["ORIENTATION_HORIZONTAL"] or L["ORIENTATION_VERTICAL"]
+            R4L:Print(L["CHAT_ORIENTATION_CHANGED"] or "%s: Anordnung geändert auf |cff00ff00%s|r.", L["MOVER_TITLE"] or "Resto4Life", oText)
+        end
+    end)
+
+    mover:SetScript("OnEnter", function(self)
+        self:SetBackdropColor(0, 0.8, 0.5, 0.55)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine(L["MOVER_TITLE"] or "Resto4Life", 0, 1, 0.6)
+        GameTooltip:AddLine(L["MOVER_DRAG"], 1, 1, 1)
+        GameTooltip:AddLine(L["MOVER_RCLICK_ORIENTATION"] or "Rechts-Klick: Spalte / Zeile wechseln", 0.4, 0.9, 1)
+        GameTooltip:AddLine(L["MOVER_SCALE_HINT"] .. " Skalieren", 0.8, 0.8, 0.8)
+        GameTooltip:Show()
+    end)
+
+    mover:SetScript("OnLeave", function(self)
+        self:SetBackdropColor(0, 0.7, 0.4, 0.4)
+        GameTooltip:Hide()
+    end)
+
     -- Skalierungs-Ecke (Resize Handle) unten rechts am Mover
     local resizer = CreateFrame("Button", "Resto4LifeResizer", mover, "BackdropTemplate")
     resizer:SetSize(16, 16)
