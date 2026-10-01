@@ -447,6 +447,7 @@ function GH:ApplySimulation()
         {
             name = "Thorvald",
             class = "WARRIOR",
+            role = "TANK",
             hp = 92,
             power = 45,
             pr = 0.9, pg = 0.2, pb = 0.2,
@@ -457,6 +458,7 @@ function GH:ApplySimulation()
         {
             name = "Shadowfang",
             class = "ROGUE",
+            role = "DAMAGER",
             hp = 78,
             power = 100,
             pr = 1.0, pg = 0.9, pb = 0.1,
@@ -466,6 +468,7 @@ function GH:ApplySimulation()
         {
             name = "Elysia",
             class = "MAGE",
+            role = "DAMAGER",
             hp = 64,
             power = 85,
             pr = 0.0, pg = 0.5, pb = 1.0,
@@ -479,6 +482,7 @@ function GH:ApplySimulation()
         {
             name = "Valen",
             class = "PRIEST",
+            role = "HEALER",
             hp = 45,
             power = 40,
             pr = 0.0, pg = 0.5, pb = 1.0,
@@ -490,6 +494,7 @@ function GH:ApplySimulation()
         {
             name = playerName,
             class = "DRUID",
+            role = "HEALER",
             hp = 100,
             power = 72,
             pr = 0.0, pg = 0.5, pb = 1.0,
@@ -498,6 +503,7 @@ function GH:ApplySimulation()
             },
         },
     }
+
 
     for i = 1, self.maxMembers do
         local frame = self.frames[i]

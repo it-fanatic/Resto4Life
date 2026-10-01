@@ -247,4 +247,14 @@ function CC:ApplyAllBindings()
             self:ApplyBindingsToFrame(frame)
         end
     end
+    if R4L.RaidHeader and R4L.RaidHeader.containers then
+        for _, container in ipairs(R4L.RaidHeader.containers) do
+            if container.frames then
+                for _, frame in ipairs(container.frames) do
+                    self:ApplyBindingsToFrame(frame)
+                end
+            end
+        end
+    end
 end
+

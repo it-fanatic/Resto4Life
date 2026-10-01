@@ -27,6 +27,7 @@ R4L.Config.Defaults = {
     },
     display = {
         showNames = true,
+        showRoleIcons = true,
         nameFontSize = 12,
         showHealthText = true,
         healthTextFormat = "DEFICIT", -- "DEFICIT", "PERCENT", "CURRENT_MAX"
@@ -36,6 +37,24 @@ R4L.Config.Defaults = {
         fadeOutOfRange = true,
         outOfRangeAlpha = 0.4,
     },
+    raid = {
+        enabled = true,
+        showTanks = true,
+        showMyGroup = true,
+        showRaid = true,
+        showPets = false,
+        tankWidth = 120,
+        tankHeight = 44,
+        raidWidth = 90,
+        raidHeight = 40,
+        petWidth = 80,
+        petHeight = 32,
+        tankPos = { x = 120, y = -260, scale = 1.0 },
+        myGroupPos = { x = 260, y = -260, scale = 1.0 },
+        raidPos = { x = 400, y = -260, scale = 1.0 },
+        petPos = { x = 400, y = -500, scale = 1.0 },
+    },
+
     sorting = {
         enabled = true,
         order = { "TANK", "MELEE", "DAMAGER", "HEALER" },

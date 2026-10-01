@@ -152,6 +152,30 @@ function UF:RegisterUnitEvents(frame, unit)
     frame:RegisterUnitEvent("UNIT_THREAT_SITUATION_UPDATE", unit)
     frame:RegisterUnitEvent("UNIT_THREAT_LIST_UPDATE", unit)
     frame:RegisterEvent("PLAYER_TARGET_CHANGED")
+    frame:RegisterEvent("PLAYER_ROLES_ASSIGNED")
+end
+
+-- Aktualisiert das Rollen-Icon (Tank, Heiler, DD) nach Blizzard-Standard
+local function UpdateRoleIcon(frame, role)
+    if not frame or not frame.roleIcon then return end
+    local cfg = R4L.ProfileManager:GetConfig()
+    if cfg.display and cfg.display.showRoleIcons == false then
+        frame.roleIcon:Hide()
+        return
+    end
+
+    if role == "TANK" then
+        frame.roleIcon:SetTexCoord(0, 0.28125, 0.328125, 0.625)
+        frame.roleIcon:Show()
+    elseif role == "HEALER" then
+        frame.roleIcon:SetTexCoord(0.296875, 0.578125, 0.015625, 0.3125)
+        frame.roleIcon:Show()
+    elseif role == "DAMAGER" or role == "DPS" then
+        frame.roleIcon:SetTexCoord(0.296875, 0.578125, 0.328125, 0.625)
+        frame.roleIcon:Show()
+    else
+        frame.roleIcon:Hide()
+    end
 end
 
 -- Sichere Prozentanzeige für Mana
@@ -240,6 +264,13 @@ function UF:CreateUnitFrame(name, parent, unit)
     frame.statusText = frame.healthBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     frame.statusText:SetPoint("BOTTOMRIGHT", frame.healthBar, "BOTTOMRIGHT", -4, 4)
     frame.statusText:SetJustifyH("RIGHT")
+
+    -- Rollen-Icon (Tank, Heiler, DD) oben links
+    frame.roleIcon = frame.healthBar:CreateTexture(nil, "OVERLAY")
+    frame.roleIcon:SetSize(14, 14)
+    frame.roleIcon:SetPoint("TOPLEFT", frame.healthBar, "TOPLEFT", 2, -2)
+    frame.roleIcon:SetTexture("Interface\\LFGFrame\\UI-LFG-ICON-ROLES")
+    frame.roleIcon:Hide()
 
     -- HoT Icons Container (oben rechts)
     frame.hotContainer = CreateFrame("Frame", nil, frame)
@@ -424,7 +455,11 @@ function UF:_UpdateFrameSimulated(frame)
     else
         frame.border:SetBackdropBorderColor(0, 0, 0, 0.9)
     end
+
+    -- 7. Rollen-Icon (Tank, Heiler, DD)
+    UpdateRoleIcon(frame, sim.role)
 end
+
 
 function UF:_UpdateFrameInternal(frame)
     local unit = frame.unit
@@ -693,4 +728,9 @@ function UF:_UpdateFrameInternal(frame)
             frame.border:SetBackdropBorderColor(0, 0, 0, 0.9) -- Normaler Rahmen
         end
     end
+
+    -- 7. Rollen-Icon (Tank, Heiler, DD)
+    local role = UnitGroupRolesAssigned and UnitGroupRolesAssigned(unit)
+    UpdateRoleIcon(frame, role)
 end
+

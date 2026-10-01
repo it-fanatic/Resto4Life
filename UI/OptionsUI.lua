@@ -53,7 +53,7 @@ function OUI:Initialize()
 
     -- Hauptfenster
     frame = CreateFrame("Frame", "Resto4LifeOptionsFrame", UIParent, "BackdropTemplate")
-    frame:SetSize(580, 530)
+    frame:SetSize(580, 560)
     frame:SetPoint("CENTER")
     frame:SetMovable(true)
     frame:EnableMouse(true)
@@ -81,8 +81,8 @@ function OUI:Initialize()
         frame:Hide()
     end)
 
-    -- Tab-Leiste
-    local tabs = { L["TAB_GENERAL"], L["TAB_BINDINGS"], L["TAB_HOTS"], L["TAB_PROFILES"] }
+    -- Tab-Leiste (5 Tabs inkl. Raid)
+    local tabs = { L["TAB_GENERAL"], L["TAB_BINDINGS"], L["TAB_HOTS"], L["TAB_RAID"], L["TAB_PROFILES"] }
     frame.tabButtons = {}
     frame.tabPanels = {}
 
@@ -100,8 +100,8 @@ function OUI:Initialize()
 
     for i, tabName in ipairs(tabs) do
         local btn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-        btn:SetSize(125, 24)
-        btn:SetPoint("TOPLEFT", frame, "TOPLEFT", 18 + (i - 1) * 132, -42)
+        btn:SetSize(102, 24)
+        btn:SetPoint("TOPLEFT", frame, "TOPLEFT", 18 + (i - 1) * 108, -42)
         btn:SetText(tabName)
         btn:SetScript("OnClick", function()
             OUI:SelectTab(i)
@@ -113,6 +113,7 @@ function OUI:Initialize()
         panel:Hide()
         frame.tabPanels[i] = panel
     end
+
 
     -- =========================================================================
     -- TAB 1: ALLGEMEIN
@@ -137,25 +138,65 @@ function OUI:Initialize()
     local cbNames = CreateCheckbox(p1, L["SHOW_NAMES"], 20, -55, function(val)
         cfg.display.showNames = val
         R4L.GroupHeader:UpdateAllFrames()
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
+    end)
+
+    -- Rollen-Icons anzeigen
+    local cbRole = CreateCheckbox(p1, L["SHOW_ROLE_ICONS"], 20, -90, function(val)
+        cfg.display.showRoleIcons = val
+        R4L.GroupHeader:UpdateAllFrames()
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
     end)
 
     -- Manabalken anzeigen
-    local cbMana = CreateCheckbox(p1, L["SHOW_MANA"], 20, -90, function(val)
+    local cbMana = CreateCheckbox(p1, L["SHOW_MANA"], 20, -125, function(val)
         cfg.display.showManaBar = val
         R4L.GroupHeader:UpdateLayout()
         R4L.GroupHeader:UpdateAllFrames()
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
     end)
 
     -- Reverse Health Bar (Defizitanzeige)
-    local cbReverse = CreateCheckbox(p1, L["REVERSE_HEALTH"], 20, -125, function(val)
+    local cbReverse = CreateCheckbox(p1, L["REVERSE_HEALTH"], 20, -160, function(val)
         cfg.display.healthOrientation = val and "REVERSE" or "NORMAL"
         R4L:Print(val and L["CHAT_REVERSE_ACTIVE"] or L["CHAT_REVERSE_INACTIVE"])
         R4L.GroupHeader:UpdateAllFrames()
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
+    end)
+
+    -- Rechte Spalte Checkboxen (ab x = 280)
+    -- Automatische Sortierung
+    local cbSort = CreateCheckbox(p1, L["AUTO_SORT"], 280, -55, function(val)
+        cfg.sorting.enabled = val
+        R4L.GroupHeader:UpdateRoster()
+    end)
+
+    -- Reichweiten-Verblassen
+    local cbRange = CreateCheckbox(p1, L["FADE_OUT_OF_RANGE"], 280, -90, function(val)
+        cfg.display.fadeOutOfRange = val
+        R4L.GroupHeader:UpdateAllFrames()
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
+    end)
+
+    -- Ziel bei Zauber ins Target nehmen
+    local cbTargetOnCast = CreateCheckbox(p1, L["TARGET_ON_CAST"], 280, -125, function(val)
+        cfg.general.targetOnCast = val
+        R4L:Print(val and L["CHAT_TARGET_ON_CAST_ON"] or L["CHAT_TARGET_ON_CAST_OFF"])
+        R4L.ClickCast:ApplyAllBindings()
+    end)
+
+    -- Minimap-Button anzeigen
+    local cbMinimap = CreateCheckbox(p1, L["SHOW_MINIMAP_CB"], 280, -160, function(val)
+        if not cfg.minimap then cfg.minimap = {} end
+        cfg.minimap.show = val
+        if R4L.MinimapButton then
+            R4L.MinimapButton:SetShown(val)
+        end
     end)
 
     -- Farbmodus Label & Buttons
     local colorLabel = p1:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    colorLabel:SetPoint("TOPLEFT", p1, "TOPLEFT", 20, -162)
+    colorLabel:SetPoint("TOPLEFT", p1, "TOPLEFT", 20, -202)
     colorLabel:SetText(L["COLOR_MODE"])
 
     local btnClassColor = CreateFrame("Button", nil, p1, "UIPanelButtonTemplate")
@@ -183,6 +224,7 @@ function OUI:Initialize()
         UpdateColorButtons()
         R4L:Print(L["CHAT_COLOR_CLASS"])
         R4L.GroupHeader:UpdateAllFrames()
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
     end)
 
     btnMinimalColor:SetScript("OnClick", function()
@@ -190,11 +232,12 @@ function OUI:Initialize()
         UpdateColorButtons()
         R4L:Print(L["CHAT_COLOR_MINIMAL"])
         R4L.GroupHeader:UpdateAllFrames()
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
     end)
 
     -- Ausrichtung / Anordnung (Spalte vs Zeile)
     local layoutLabel = p1:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    layoutLabel:SetPoint("TOPLEFT", p1, "TOPLEFT", 20, -198)
+    layoutLabel:SetPoint("TOPLEFT", p1, "TOPLEFT", 20, -238)
     layoutLabel:SetText(L["LAYOUT"])
 
     local btnColLayout = CreateFrame("Button", nil, p1, "UIPanelButtonTemplate")
@@ -234,7 +277,7 @@ function OUI:Initialize()
     -- 5er-Gruppe Simulation / Test-Modus Button
     local btnSim = CreateFrame("Button", nil, p1, "UIPanelButtonTemplate")
     btnSim:SetSize(295, 26)
-    btnSim:SetPoint("TOPLEFT", p1, "TOPLEFT", 20, -236)
+    btnSim:SetPoint("TOPLEFT", p1, "TOPLEFT", 20, -276)
 
     local function UpdateSimButton()
         if R4L.GroupHeader and R4L.GroupHeader.isSimulating then
@@ -251,37 +294,9 @@ function OUI:Initialize()
         end
     end)
 
-    -- Automatische Sortierung
-    local cbSort = CreateCheckbox(p1, L["AUTO_SORT"], 20, -270, function(val)
-        cfg.sorting.enabled = val
-        R4L.GroupHeader:UpdateRoster()
-    end)
-
-    -- Reichweiten-Verblassen
-    local cbRange = CreateCheckbox(p1, L["FADE_OUT_OF_RANGE"], 20, -300, function(val)
-        cfg.display.fadeOutOfRange = val
-        R4L.GroupHeader:UpdateAllFrames()
-    end)
-
-    -- Ziel bei Zauber ins Target nehmen
-    local cbTargetOnCast = CreateCheckbox(p1, L["TARGET_ON_CAST"], 20, -330, function(val)
-        cfg.general.targetOnCast = val
-        R4L:Print(val and L["CHAT_TARGET_ON_CAST_ON"] or L["CHAT_TARGET_ON_CAST_OFF"])
-        R4L.ClickCast:ApplyAllBindings()
-    end)
-
-    -- Minimap-Button anzeigen
-    local cbMinimap = CreateCheckbox(p1, L["SHOW_MINIMAP_CB"], 20, -365, function(val)
-        if not cfg.minimap then cfg.minimap = {} end
-        cfg.minimap.show = val
-        if R4L.MinimapButton then
-            R4L.MinimapButton:SetShown(val)
-        end
-    end)
-
     -- Skalierung (Größe)
     local scaleLabel = p1:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    scaleLabel:SetPoint("TOPLEFT", p1, "TOPLEFT", 20, -404)
+    scaleLabel:SetPoint("TOPLEFT", p1, "TOPLEFT", 20, -316)
     scaleLabel:SetText(L["SCALE_LABEL"])
 
     local btnScaleMinus = CreateFrame("Button", nil, p1, "UIPanelButtonTemplate")
@@ -330,6 +345,7 @@ function OUI:Initialize()
     p1:SetScript("OnShow", function()
         cbLock:SetChecked(not cfg.general.locked)
         cbNames:SetChecked(cfg.display.showNames)
+        cbRole:SetChecked(cfg.display.showRoleIcons ~= false)
         cbMana:SetChecked(cfg.display.showManaBar)
         cbReverse:SetChecked(cfg.display.healthOrientation == "REVERSE")
         UpdateColorButtons()
@@ -341,6 +357,7 @@ function OUI:Initialize()
         cbMinimap:SetChecked(cfg.minimap and cfg.minimap.show ~= false)
         OUI:UpdateScaleDisplay()
     end)
+
 
 
 
@@ -536,17 +553,128 @@ function OUI:Initialize()
     end)
 
     -- =========================================================================
-    -- TAB 4: PROFIL / IM- UND EXPORT
+    -- TAB 4: RAID-OPTIONEN
     -- =========================================================================
     local p4 = frame.tabPanels[4]
 
-    local p4Desc = p4:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    p4Desc:SetPoint("TOPLEFT", p4, "TOPLEFT", 20, -15)
-    p4Desc:SetText(L["PROFILES_DESC"])
+    local cbRaidEnable = CreateCheckbox(p4, L["RAID_ENABLE"], 20, -15, function(val)
+        cfg.raid.enabled = val
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateRoster() end
+    end)
+
+    local cbTanks = CreateCheckbox(p4, L["RAID_SHOW_TANKS"], 20, -50, function(val)
+        cfg.raid.showTanks = val
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateRoster() end
+    end)
+
+    local cbMyGroup = CreateCheckbox(p4, L["RAID_SHOW_MYGROUP"], 20, -85, function(val)
+        cfg.raid.showMyGroup = val
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateRoster() end
+    end)
+
+    local cbRaidRem = CreateCheckbox(p4, L["RAID_SHOW_REMAINING"], 20, -120, function(val)
+        cfg.raid.showRaid = val
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateRoster() end
+    end)
+
+    local cbPets = CreateCheckbox(p4, L["RAID_SHOW_PETS"], 20, -155, function(val)
+        cfg.raid.showPets = val
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateRoster() end
+    end)
+
+    -- Mover Sektion
+    local moverHeader = p4:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    moverHeader:SetPoint("TOPLEFT", p4, "TOPLEFT", 20, -195)
+    moverHeader:SetText(L["RAID_MOVERS_HEADER"])
+
+    local btnUnlockRaid = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    btnUnlockRaid:SetSize(160, 24)
+    btnUnlockRaid:SetPoint("TOPLEFT", moverHeader, "BOTTOMLEFT", 0, -8)
+    btnUnlockRaid:SetText(L["RAID_UNLOCK_ALL"])
+
+    local function UpdateRaidLockBtn()
+        if R4L.RaidHeader and not R4L.RaidHeader.isLocked then
+            btnUnlockRaid:SetText(L["RAID_LOCK_ALL"])
+        else
+            btnUnlockRaid:SetText(L["RAID_UNLOCK_ALL"])
+        end
+    end
+
+    btnUnlockRaid:SetScript("OnClick", function()
+        if R4L.RaidHeader then
+            R4L.RaidHeader:ToggleLock()
+            UpdateRaidLockBtn()
+        end
+    end)
+
+    local btnResetRaid = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    btnResetRaid:SetSize(180, 24)
+    btnResetRaid:SetPoint("LEFT", btnUnlockRaid, "RIGHT", 12, 0)
+    btnResetRaid:SetText(L["RAID_RESET_POS"])
+    btnResetRaid:SetScript("OnClick", function()
+        if R4L.RaidHeader then
+            R4L.RaidHeader:ResetPositions()
+        end
+    end)
+
+    -- Simulations Sektion
+    local simHeader = p4:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    simHeader:SetPoint("TOPLEFT", p4, "TOPLEFT", 20, -260)
+    simHeader:SetText(L["RAID_SIM_HEADER"])
+
+    local btnSim10 = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    btnSim10:SetSize(115, 24)
+    btnSim10:SetPoint("TOPLEFT", simHeader, "BOTTOMLEFT", 0, -8)
+    btnSim10:SetText(L["RAID_SIM_10"])
+    btnSim10:SetScript("OnClick", function()
+        if R4L.RaidHeader then R4L.RaidHeader:ToggleSimulation("10") end
+    end)
+
+    local btnSim25 = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    btnSim25:SetSize(115, 24)
+    btnSim25:SetPoint("LEFT", btnSim10, "RIGHT", 8, 0)
+    btnSim25:SetText(L["RAID_SIM_25"])
+    btnSim25:SetScript("OnClick", function()
+        if R4L.RaidHeader then R4L.RaidHeader:ToggleSimulation("25") end
+    end)
+
+    local btnSim40 = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    btnSim40:SetSize(115, 24)
+    btnSim40:SetPoint("LEFT", btnSim25, "RIGHT", 8, 0)
+    btnSim40:SetText(L["RAID_SIM_40"])
+    btnSim40:SetScript("OnClick", function()
+        if R4L.RaidHeader then R4L.RaidHeader:ToggleSimulation("40") end
+    end)
+
+    local btnSimStop = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    btnSimStop:SetSize(140, 24)
+    btnSimStop:SetPoint("TOPLEFT", btnSim10, "BOTTOMLEFT", 0, -10)
+    btnSimStop:SetText(L["RAID_SIM_STOP"])
+    btnSimStop:SetScript("OnClick", function()
+        if R4L.RaidHeader then R4L.RaidHeader:ToggleSimulation(nil) end
+    end)
+
+    p4:SetScript("OnShow", function()
+        cbRaidEnable:SetChecked(cfg.raid.enabled)
+        cbTanks:SetChecked(cfg.raid.showTanks)
+        cbMyGroup:SetChecked(cfg.raid.showMyGroup)
+        cbRaidRem:SetChecked(cfg.raid.showRaid)
+        cbPets:SetChecked(cfg.raid.showPets)
+        UpdateRaidLockBtn()
+    end)
+
+    -- =========================================================================
+    -- TAB 5: PROFIL / IM- UND EXPORT
+    -- =========================================================================
+    local p5 = frame.tabPanels[5]
+
+    local p5Desc = p5:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    p5Desc:SetPoint("TOPLEFT", p5, "TOPLEFT", 20, -15)
+    p5Desc:SetText(L["PROFILES_DESC"])
 
     -- ScrollFrame für Im- / Export String
-    local scrollFrame = CreateFrame("ScrollFrame", nil, p4, "UIPanelScrollFrameTemplate")
-    scrollFrame:SetPoint("TOPLEFT", p4, "TOPLEFT", 20, -60)
+    local scrollFrame = CreateFrame("ScrollFrame", nil, p5, "UIPanelScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT", p5, "TOPLEFT", 20, -60)
     scrollFrame:SetSize(490, 160)
 
     local exportBox = CreateFrame("EditBox", nil, scrollFrame)
@@ -556,12 +684,12 @@ function OUI:Initialize()
     exportBox:SetAutoFocus(false)
     scrollFrame:SetScrollChild(exportBox)
 
-    local statusMsg = p4:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    local statusMsg = p5:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     statusMsg:SetPoint("TOPLEFT", scrollFrame, "BOTTOMLEFT", 0, -15)
     statusMsg:SetText("")
 
     -- Export Button
-    local btnExport = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    local btnExport = CreateFrame("Button", nil, p5, "UIPanelButtonTemplate")
     btnExport:SetSize(130, 26)
     btnExport:SetPoint("TOPLEFT", statusMsg, "BOTTOMLEFT", 0, -15)
     btnExport:SetText(L["EXPORT_BTN"])
@@ -574,7 +702,7 @@ function OUI:Initialize()
     end)
 
     -- Import Button
-    local btnImport = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    local btnImport = CreateFrame("Button", nil, p5, "UIPanelButtonTemplate")
     btnImport:SetSize(130, 26)
     btnImport:SetPoint("LEFT", btnExport, "RIGHT", 15, 0)
     btnImport:SetText(L["IMPORT_BTN"])
@@ -589,7 +717,7 @@ function OUI:Initialize()
     end)
 
     -- Reset Button
-    local btnReset = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    local btnReset = CreateFrame("Button", nil, p5, "UIPanelButtonTemplate")
     btnReset:SetSize(150, 26)
     btnReset:SetPoint("LEFT", btnImport, "RIGHT", 15, 0)
     btnReset:SetText(L["RESET_DEFAULTS_BTN"])
@@ -597,6 +725,7 @@ function OUI:Initialize()
         R4L.ProfileManager:ResetToDefaults()
         statusMsg:SetText(L["PROFILE_RESET_SUCCESS"])
     end)
+
 
     OUI:SelectTab(1)
     frame:Hide()

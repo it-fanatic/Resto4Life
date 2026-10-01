@@ -16,6 +16,7 @@ Diese Dokumentation listet alle aktuellen Funktionen, Mechaniken und Einstellmö
 9. [Befehle (Slash Commands)](#9-befehle-slash-commands)
 10. [Lokalisierung & Mehrsprachigkeit](#10-lokalisierung--mehrsprachigkeit)
 11. [Minimap-Button & Addon Compartment](#11-minimap-button--addon-compartment)
+12. [Raid-Heiler System](#12-raid-heiler-system)
 
 ---
 
@@ -160,5 +161,29 @@ Diese Dokumentation listet alle aktuellen Funktionen, Mechaniken und Einstellmö
   * **Ein-/Ausblendbar:** Über die Checkbox *„Minimap-Button anzeigen“* im Menü unter *Allgemein*.
 * **Offizielle Blizzard Addon-Compartment-Unterstützung:**
   * Direkter Eintrag im modernen Menü des Addon-Fachs von WoW Retail.
+
+---
+
+## 12. Raid-Heiler System
+* **Automatische Erkennung & Umschaltung:**
+  * Schaltet im Schlachtzug automatisch auf die optimierten Raid-Frames um und blendet das 5er-Gruppenframe aus.
+* **Modulare Multi-Container Architektur:**
+  1. **Markierte Tanks (Main Tanks):** Eigener separater Frame für bis zu 4 zugewiesene Tanks.
+  2. **Eigene Gruppe:** Zeigt die 5 Spieler der eigenen Subgruppe separat an.
+  3. **Restlicher Raid:** Zeigt alle übrigen Raid-Mitglieder mit automatischer Deduplizierung (keine doppelten Spieler).
+  4. **Große Raidanzeige (Fallback):** Sind Tank- und Eigene-Gruppe-Frames deaktiviert, schaltet Resto4Life automatisch in ein großes, zusammenhängendes 10er/25er/40er Gesamtraster um.
+  5. **Begleiter (Pet-Frames):** Optional aktivierbar für Jäger- und Hexenmeister-Begleiter.
+* **Offizielle Blizzard Rollen-Icons:**
+  * Zeigt oben links auf jedem UnitFrame das offizielle Blizzard-Icon für **Tank (Schild)**, **Heiler (Grünes Kreuz)** oder **Schadensausteiler (Schwert)** an.
+  * In den Einstellungen unter *Allgemein* jederzeit ein- und ausschaltbar.
+* **Individuelle Mover & Skalierung:**
+  * Jeder aktive Container (Tanks, Eigene Gruppe, Rest-Raid, Pets) besitzt beim Entsperren einen eigenen Mover und kann unabhängig platziert und per Mausrad oder Ziehecke skaliert werden.
+* **Umfassende Raid-Simulationen:**
+  * Dedizierte Test-Buttons im Menü-Reiter *Raid*:
+    * **10er-Raid simulieren**
+    * **25er-Raid simulieren**
+    * **40er-Raid simulieren**
+    * Inklusive realistischer Rollenverteilung, HP-Defiziten, HoTs, Aggro und Debuffs.
+
 
 

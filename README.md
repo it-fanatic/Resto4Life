@@ -1,6 +1,6 @@
-# Resto4Life - World of Warcraft Heiler-Addon (v0.1.6a_beta)
+# Resto4Life - World of Warcraft Heiler-Addon (v0.2.0a_beta)
 
-**Resto4Life** ist ein modernes, leichtgewichtiges und hochgradig anpassbares Heiler- und Gruppenframe-Addon für **WoW Retail** (The War Within 11.x / Midnight 12.x) und **WoW Forever**.
+**Resto4Life** ist ein modernes, leichtgewichtiges und hochgradig anpassbares Heiler-, Gruppen- und Raidframe-Addon für **WoW Retail** (The War Within 11.x / Midnight 12.x) und **WoW Forever**.
 
 Eine vollständige Liste aller Funktionen und Details findest du in der [FEATURES.md](file:///f:/Documents/Projekte/Resto4Life/FEATURES.md).
 
@@ -8,9 +8,17 @@ Eine vollständige Liste aller Funktionen und Details findest du in der [FEATURE
 
 ## 🌟 Hauptfunktionen
 
+* **Modularer Raid-Heiler (v2):**
+  * Entwickelt für 10er-, 25er- und 40er-Schlachtzüge.
+  * **Modulare Frames:** Separate, frei verschiebbare und skalierbare Container für **Haupt-Tanks**, **Eigene Gruppe**, **Restlicher Raid** und **Begleiter (Pets)**.
+  * **Deduplizierung:** Spieler werden nie doppelt angezeigt (Tanks/Gruppe werden automatisch aus der Rest-Raid-Anzeige herausgerechnet).
+  * **Fallback-Vollansicht:** Bei deaktivierten Spezial-Frames nahtloser Übergang in ein vollständiges Raid-Grid.
+  * **Simulation:** Realistische Testläufe für 10-, 25- und 40-Spieler-Raids direkt im Konfigurationsmenü.
+* **Blizzard Rollen-Icons:**
+  * Originalgetreue Rollen-Symbole (Schild für Tank, Kreuz für Heiler, Schwert für Schadensausteiler) oben links auf jedem Frame.
 * **Kompakter 5-Spieler-Gruppenframe (v1):**
-  * Entwickelt für 5er-Dungeons / Mythisch+ und Gruppen-Content.
-  * Zukunftsfähig für Raid-Frames vorbereitet (Priorisierung und Kennzeichnung der eigenen Gruppe).
+  * Optimiert für 5er-Dungeons / Mythisch+ und Open-World-Content.
+  * Automatische Umschaltung zwischen Party- und Raid-Modus.
 * **Minimap-Button & Addon Compartment:**
   * Ruckelfreier, frei positionierbarer Minimap-Button mit Standard-Tracking-Border.
   * Linksklick öffnet Optionen, Rechtsklick entsperrt Frames, Shift-Linksklick zentriert die Position.

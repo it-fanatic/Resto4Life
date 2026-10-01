@@ -3,7 +3,7 @@
 ## Title: |cff00ff96Resto4Life|r
 ## Notes: Modernes Heiler- und Gruppenframe Addon für WoW Forever und Retail.
 ## Author: Resto4Life Team
-## Version: 0.1.6a_beta
+## Version: 0.2.0a_beta
 ## SavedVariables: Resto4LifeDB
 ## SavedVariablesPerCharacter: Resto4LifeCharDB
 ## X-Category: UnitFrames, Healer
@@ -28,6 +28,8 @@ Engine\ClickCast.lua
 # UI
 UI\UnitFrame.lua
 UI\GroupHeader.lua
+UI\RaidHeader.lua
 UI\MinimapButton.lua
 UI\OptionsUI.lua
+
 

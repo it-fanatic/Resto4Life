@@ -119,7 +119,9 @@ function MB:Initialize()
         if self.isDragging then return end
         if btn == "LeftButton" then
             if IsShiftKeyDown() then
-                if R4L.GroupHeader then
+                if (IsInRaid() or (R4L.RaidHeader and R4L.RaidHeader.isSimulating)) and R4L.RaidHeader then
+                    R4L.RaidHeader:ResetPositions()
+                elseif R4L.GroupHeader then
                     R4L.GroupHeader:ResetPosition()
                 end
             else
@@ -128,10 +130,13 @@ function MB:Initialize()
                 end
             end
         elseif btn == "RightButton" then
-            if R4L.GroupHeader then
+            if (IsInRaid() or (R4L.RaidHeader and R4L.RaidHeader.isSimulating)) and R4L.RaidHeader then
+                R4L.RaidHeader:ToggleLock()
+            elseif R4L.GroupHeader then
                 R4L.GroupHeader:ToggleLock()
             end
         end
+
     end)
 
     -- Tooltip mit Anleitung

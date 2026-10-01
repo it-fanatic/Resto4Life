@@ -187,10 +187,15 @@ function PM:ResetToDefaults()
         R4L.GroupHeader:UpdateLayout()
         R4L.GroupHeader:UpdateAllFrames()
     end
+    if R4L.RaidHeader then
+        R4L.RaidHeader:UpdateLayout()
+        R4L.RaidHeader:UpdateAllFrames()
+    end
     if R4L.ClickCast then
         R4L.ClickCast:ApplyAllBindings()
     end
 end
+
 
 -- Exportiert die Einstellungen als Zeichenfolge
 function PM:ExportProfileString()
@@ -239,11 +244,16 @@ function PM:ImportProfileString(str)
         R4L.GroupHeader:UpdateLayout()
         R4L.GroupHeader:UpdateAllFrames()
     end
+    if R4L.RaidHeader then
+        R4L.RaidHeader:UpdateLayout()
+        R4L.RaidHeader:UpdateAllFrames()
+    end
     if R4L.ClickCast then
         R4L.ClickCast:ApplyAllBindings()
     end
 
     return true, L["PROFILE_IMPORTED"]
+
 end
 
 R4L:RegisterEvent("ADDON_LOADED", function(event, loadedAddon)
