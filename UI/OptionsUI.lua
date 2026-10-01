@@ -371,35 +371,35 @@ function OUI:Initialize()
     p2Desc:SetText(L["BINDINGS_HEADER"])
 
     -- Linksklick
-    local ebLeft = CreateEditBox(p2, L["LEFT_CLICK"], 20, -40, 180, function(val)
+    local ebLeft = CreateEditBox(p2, L["LEFT_CLICK"], 20, -40, 250, function(val)
         cfg.bindings["1"].action = "spell"
         cfg.bindings["1"].spell = val
         R4L.ClickCast:ApplyAllBindings()
     end)
 
     -- Rechtsklick
-    local ebRight = CreateEditBox(p2, L["RIGHT_CLICK"], 220, -40, 180, function(val)
+    local ebRight = CreateEditBox(p2, L["RIGHT_CLICK"], 350, -40, 250, function(val)
         cfg.bindings["2"].action = "spell"
         cfg.bindings["2"].spell = val
         R4L.ClickCast:ApplyAllBindings()
     end)
 
     -- Mittlere Maustaste
-    local ebMid = CreateEditBox(p2, L["MID_CLICK"], 20, -85, 180, function(val)
+    local ebMid = CreateEditBox(p2, L["MID_CLICK"], 20, -85, 250, function(val)
         cfg.bindings["3"].action = "spell"
         cfg.bindings["3"].spell = val
         R4L.ClickCast:ApplyAllBindings()
     end)
 
     -- Mausrad Hoch
-    local ebWheelUp = CreateEditBox(p2, L["WHEEL_UP"], 220, -85, 180, function(val)
+    local ebWheelUp = CreateEditBox(p2, L["WHEEL_UP"], 350, -85, 250, function(val)
         cfg.bindings["WheelUp"].action = "spell"
         cfg.bindings["WheelUp"].spell = val
         R4L.ClickCast:ApplyAllBindings()
     end)
 
     -- Mausrad Runter
-    local ebWheelDown = CreateEditBox(p2, L["WHEEL_DOWN"], 20, -130, 180, function(val)
+    local ebWheelDown = CreateEditBox(p2, L["WHEEL_DOWN"], 20, -130, 250, function(val)
         cfg.bindings["WheelDown"].action = "spell"
         cfg.bindings["WheelDown"].spell = val
         R4L.ClickCast:ApplyAllBindings()
@@ -410,10 +410,10 @@ function OUI:Initialize()
     for i = 1, 6 do
         local col = (i <= 3) and 1 or 2
         local row = (i <= 3) and i or (i - 3)
-        local posX = (col == 1) and 20 or 220
+        local posX = (col == 1) and 20 or 350
         local posY = -175 - (row - 1) * 45
 
-        local eb = CreateEditBox(p2, string.format(L["KEY_N_FMT"], i), posX, posY, 180, function(val)
+        local eb = CreateEditBox(p2, string.format(L["KEY_N_FMT"], i), posX, posY, 250, function(val)
             local k = "KEY_" .. i
             cfg.bindings[k].action = "spell"
             cfg.bindings[k].spell = val
@@ -422,18 +422,22 @@ function OUI:Initialize()
         ebKeys[i] = eb
     end
 
-    -- Smart Battle Rez Sektion (unten)
-    local cbSmartRez = CreateCheckbox(p2, L["SMART_REZ_ENABLE"], 20, -320, function(val)
+    -- Smart Battle Rez Sektion (unten mit farbiger Überschrift)
+    local rezHeader = p2:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    rezHeader:SetPoint("TOPLEFT", p2, "TOPLEFT", 20, -315)
+    rezHeader:SetText(L["SMART_REZ_HEADER"])
+
+    local cbSmartRez = CreateCheckbox(p2, L["SMART_REZ_ENABLE"], 20, -335, function(val)
         cfg.smartRez.enabled = val
         R4L.ClickCast:ApplyAllBindings()
     end)
 
-    local ebBattleRez = CreateEditBox(p2, L["COMBAT_REZ_SPELL"], 20, -355, 180, function(val)
+    local ebBattleRez = CreateEditBox(p2, L["COMBAT_REZ_SPELL"], 20, -370, 250, function(val)
         cfg.smartRez.combatRezSpell = val
         R4L.ClickCast:ApplyAllBindings()
     end)
 
-    local ebNormalRez = CreateEditBox(p2, L["NORMAL_REZ_SPELL"], 220, -355, 180, function(val)
+    local ebNormalRez = CreateEditBox(p2, L["NORMAL_REZ_SPELL"], 350, -370, 250, function(val)
         cfg.smartRez.normalRezSpell = val
         R4L.ClickCast:ApplyAllBindings()
     end)
@@ -493,53 +497,83 @@ function OUI:Initialize()
         R4L.GroupHeader:UpdateAllFrames()
     end)
 
-    -- Test-Modus für Debuffs
+    -- Test-Modus für Debuffs (Klick aktiviert, erneuter Klick deaktiviert)
     local testHeader = p3:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     testHeader:SetPoint("TOPLEFT", p3, "TOPLEFT", 20, -280)
     testHeader:SetText(L["DEBUFF_TEST_HEADER"])
 
     local btnTestPoison = CreateFrame("Button", nil, p3, "UIPanelButtonTemplate")
-    btnTestPoison:SetSize(110, 24)
+    btnTestPoison:SetSize(130, 24)
     btnTestPoison:SetPoint("TOPLEFT", testHeader, "BOTTOMLEFT", 0, -8)
     btnTestPoison:SetText(L["POISON_TEST_BTN"])
 
     local btnTestCurse = CreateFrame("Button", nil, p3, "UIPanelButtonTemplate")
-    btnTestCurse:SetSize(110, 24)
-    btnTestCurse:SetPoint("LEFT", btnTestPoison, "RIGHT", 8, 0)
+    btnTestCurse:SetSize(130, 24)
+    btnTestCurse:SetPoint("LEFT", btnTestPoison, "RIGHT", 12, 0)
     btnTestCurse:SetText(L["CURSE_TEST_BTN"])
 
     local btnTestMagic = CreateFrame("Button", nil, p3, "UIPanelButtonTemplate")
-    btnTestMagic:SetSize(110, 24)
-    btnTestMagic:SetPoint("LEFT", btnTestCurse, "RIGHT", 8, 0)
+    btnTestMagic:SetSize(130, 24)
+    btnTestMagic:SetPoint("LEFT", btnTestCurse, "RIGHT", 12, 0)
     btnTestMagic:SetText(L["MAGIC_TEST_BTN"])
 
-    local btnTestOff = CreateFrame("Button", nil, p3, "UIPanelButtonTemplate")
-    btnTestOff:SetSize(90, 24)
-    btnTestOff:SetPoint("LEFT", btnTestMagic, "RIGHT", 8, 0)
-    btnTestOff:SetText(L["TEST_OFF_BTN"])
+    local function UpdateDebuffTestButtons()
+        if R4L.testDebuff == "Poison" then
+            btnTestPoison:SetText("[" .. L["POISON_TEST_BTN"] .. "]")
+        else
+            btnTestPoison:SetText(L["POISON_TEST_BTN"])
+        end
+
+        if R4L.testDebuff == "Curse" then
+            btnTestCurse:SetText("[" .. L["CURSE_TEST_BTN"] .. "]")
+        else
+            btnTestCurse:SetText(L["CURSE_TEST_BTN"])
+        end
+
+        if R4L.testDebuff == "Magic" then
+            btnTestMagic:SetText("[" .. L["MAGIC_TEST_BTN"] .. "]")
+        else
+            btnTestMagic:SetText(L["MAGIC_TEST_BTN"])
+        end
+    end
 
     btnTestPoison:SetScript("OnClick", function()
-        R4L.testDebuff = "Poison"
-        R4L:Print(L["TEST_POISON_CHAT"])
+        if R4L.testDebuff == "Poison" then
+            R4L.testDebuff = nil
+            R4L:Print(L["CHAT_TEST_DEBUFF_STOP"])
+        else
+            R4L.testDebuff = "Poison"
+            R4L:Print(L["TEST_POISON_CHAT"])
+        end
+        UpdateDebuffTestButtons()
         R4L.GroupHeader:UpdateAllFrames()
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
     end)
 
     btnTestCurse:SetScript("OnClick", function()
-        R4L.testDebuff = "Curse"
-        R4L:Print(L["TEST_CURSE_CHAT"])
+        if R4L.testDebuff == "Curse" then
+            R4L.testDebuff = nil
+            R4L:Print(L["CHAT_TEST_DEBUFF_STOP"])
+        else
+            R4L.testDebuff = "Curse"
+            R4L:Print(L["TEST_CURSE_CHAT"])
+        end
+        UpdateDebuffTestButtons()
         R4L.GroupHeader:UpdateAllFrames()
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
     end)
 
     btnTestMagic:SetScript("OnClick", function()
-        R4L.testDebuff = "Magic"
-        R4L:Print(L["TEST_MAGIC_CHAT"])
+        if R4L.testDebuff == "Magic" then
+            R4L.testDebuff = nil
+            R4L:Print(L["CHAT_TEST_DEBUFF_STOP"])
+        else
+            R4L.testDebuff = "Magic"
+            R4L:Print(L["TEST_MAGIC_CHAT"])
+        end
+        UpdateDebuffTestButtons()
         R4L.GroupHeader:UpdateAllFrames()
-    end)
-
-    btnTestOff:SetScript("OnClick", function()
-        R4L.testDebuff = nil
-        R4L:Print(L["CHAT_TEST_DEBUFF_STOP"])
-        R4L.GroupHeader:UpdateAllFrames()
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
     end)
 
     p3:SetScript("OnShow", function()
@@ -550,6 +584,7 @@ function OUI:Initialize()
         cbPoison:SetChecked(cfg.auras.showPoison)
         cbDisease:SetChecked(cfg.auras.showDisease)
         cbMagic:SetChecked(cfg.auras.showMagic)
+        UpdateDebuffTestButtons()
     end)
 
     -- =========================================================================

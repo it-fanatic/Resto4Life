@@ -20,6 +20,42 @@ RH.simMode = nil -- "10", "25", "40"
 RH.containers = {}
 RH.isLocked = true
 
+-- Skaliert einen Container und hält die TOPLEFT-Position pixelgenau auf dem Bildschirm (kein Springen!)
+function RH:SetContainerScale(container, posKey, newScale, onScale)
+    local cfg = R4L.ProfileManager:GetConfig()
+    if not cfg.raid[posKey] then cfg.raid[posKey] = {} end
+
+    newScale = math.max(0.5, math.min(2.0, newScale))
+    newScale = math.floor(newScale * 100 + 0.5) / 100
+
+    local cScale = container:GetEffectiveScale()
+    local uScale = UIParent:GetEffectiveScale()
+    local left = container:GetLeft()
+    local top = container:GetTop()
+    local uTop = UIParent:GetTop() or 768
+
+    container:SetScale(newScale)
+
+    if left and top and cScale and uScale and cScale > 0 then
+        local screenLeft = left * cScale
+        local screenTop = top * cScale
+        local newCScale = uScale * newScale
+        local parentTop = uTop * uScale
+
+        cfg.raid[posKey].x = math.floor(screenLeft / newCScale)
+        cfg.raid[posKey].y = math.floor((screenTop - parentTop) / newCScale)
+    end
+
+    cfg.raid[posKey].scale = newScale
+    container:ClearAllPoints()
+    container:SetPoint("TOPLEFT", UIParent, "TOPLEFT", cfg.raid[posKey].x, cfg.raid[posKey].y)
+
+    if container.mover then
+        container.mover:UpdateText()
+    end
+    if onScale then onScale(newScale) end
+end
+
 -- Hilfsfunktion: Mover für einen Container erstellen
 local function CreateContainerMover(container, titleKey, posKey, onScale)
     local mover = CreateFrame("Frame", container:GetName() .. "Mover", container, "BackdropTemplate")
@@ -67,23 +103,18 @@ local function CreateContainerMover(container, titleKey, posKey, onScale)
 
     mover:SetScript("OnMouseWheel", function(self, delta)
         local cfg = R4L.ProfileManager:GetConfig()
-        if not cfg.raid[posKey] then cfg.raid[posKey] = {} end
-        local scale = cfg.raid[posKey].scale or 1.0
+        local scale = (cfg.raid[posKey] and cfg.raid[posKey].scale) or 1.0
         if delta > 0 then
             scale = math.min(2.0, scale + 0.05)
         else
             scale = math.max(0.5, scale - 0.05)
         end
-        scale = math.floor(scale * 100 + 0.5) / 100
-        cfg.raid[posKey].scale = scale
-        container:SetScale(scale)
-        if onScale then onScale(scale) end
-        mover:UpdateText()
+        RH:SetContainerScale(container, posKey, scale, onScale)
     end)
 
     -- Resize Handle (Ziehecke unten rechts)
     local resizer = CreateFrame("Button", container:GetName() .. "Resizer", mover, "BackdropTemplate")
-    resizer:SetSize(14, 14)
+    resizer:SetSize(16, 16)
     resizer:SetPoint("BOTTOMRIGHT", mover, "BOTTOMRIGHT", -1, 1)
     resizer:EnableMouse(true)
     resizer:SetFrameLevel(mover:GetFrameLevel() + 5)
@@ -92,18 +123,18 @@ local function CreateContainerMover(container, titleKey, posKey, onScale)
         edgeFile = "Interface\\Buttons\\WHITE8x8",
         edgeSize = 1,
     })
-    resizer:SetBackdropColor(0, 0.8, 1.0, 0.7)
+    resizer:SetBackdropColor(0, 1, 0.6, 0.7)
     resizer:SetBackdropBorderColor(1, 1, 1, 0.9)
 
     resizer:SetScript("OnEnter", function(self)
         self:SetBackdropColor(0, 1.0, 1.0, 1.0)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:AddLine(L["RESIZER_TOOLTIP_TITLE"], 0, 0.8, 1.0)
+        GameTooltip:AddLine(L["RESIZER_TOOLTIP_TITLE"], 0, 1, 0.6)
         GameTooltip:AddLine(L["RESIZER_TOOLTIP_DESC"], 1, 1, 1)
         GameTooltip:Show()
     end)
     resizer:SetScript("OnLeave", function(self)
-        self:SetBackdropColor(0, 0.8, 1.0, 0.7)
+        self:SetBackdropColor(0, 1, 0.6, 0.7)
         GameTooltip:Hide()
     end)
 
@@ -128,22 +159,25 @@ local function CreateContainerMover(container, titleKey, posKey, onScale)
             local dx = cX - self.startX
             local dy = self.startY - cY
             local delta = (dx + dy) / 2
-            local newScale = self.startScale + (delta / 160)
+            local newScale = self.startScale + (delta / 180)
             newScale = math.max(0.5, math.min(2.0, newScale))
             newScale = math.floor(newScale * 100 + 0.5) / 100
+
             local cfg = R4L.ProfileManager:GetConfig()
-            if not cfg.raid[posKey] then cfg.raid[posKey] = {} end
-            if newScale ~= cfg.raid[posKey].scale then
-                cfg.raid[posKey].scale = newScale
-                container:SetScale(newScale)
-                if onScale then onScale(newScale) end
-                mover:UpdateText()
+            local curScale = (cfg.raid[posKey] and cfg.raid[posKey].scale) or 1.0
+            if newScale ~= curScale then
+                RH:SetContainerScale(container, posKey, newScale, onScale)
             end
         end
     end)
 
     resizer:SetScript("OnMouseUp", function(self)
-        self.isScaling = false
+        if self.isScaling then
+            self.isScaling = false
+            local cfg = R4L.ProfileManager:GetConfig()
+            local s = (cfg.raid[posKey] and cfg.raid[posKey].scale) or 1.0
+            R4L:Print(L["CHAT_SCALE_SAVED_FMT"], math.floor(s * 100))
+        end
     end)
 
     function mover:UpdateText()

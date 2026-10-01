@@ -9,7 +9,7 @@ if GetLocale() ~= "deDE" then return end
 local L = R4L.L
 
 -- Mover & Drag
-L["MOVER_TITLE"] = "Resto4Life (Entsperrt)"
+L["MOVER_TITLE"] = "Resto4Life"
 L["MOVER_DRAG"] = "Ziehen: Verschieben"
 L["MOVER_SCALE_HINT"] = "Mausrad / Ziehecke:"
 L["MOVER_SCALE_FMT"] = "Skalieren (%d%%)"
@@ -58,7 +58,7 @@ L["COL_VERTICAL"] = "Spalte (Vertikal)"
 L["ROW_HORIZONTAL"] = "Zeile (Horizontal)"
 L["SIM_GROUP_BTN"] = "5er-Gruppe simulieren (Test-Modus)"
 L["SIM_ACTIVE_BTN"] = "Simulation AKTIV (Klick zum Beenden)"
-L["AUTO_SORT"] = "Auto-Sortierung: Tank -> Melee -> Range -> Heal"
+L["AUTO_SORT"] = "Auto-Sortierung (Tank, DD, Heal)"
 L["FADE_OUT_OF_RANGE"] = "Außer Reichweite verblassen"
 L["TARGET_ON_CAST"] = "Ziel bei Zauber automatisch anvisieren"
 L["CHAT_TARGET_ON_CAST_ON"] = "Zielwechsel beim Zaubern: |cff00ff00Aktiviert|r"
@@ -114,7 +114,7 @@ L["PROFILE_RESET_SUCCESS"] = "|cffffff00Profil auf Standardwerte zurückgesetzt.
 L["RAID_ENABLE"] = "Raid-Frames aktivieren (automatisch im Schlachtzug)"
 L["RAID_SHOW_TANKS"] = "Markierte Tanks in separatem Frame anzeigen"
 L["RAID_SHOW_MYGROUP"] = "Eigene Gruppe in separatem Frame anzeigen"
-L["RAID_SHOW_REMAINING"] = "Restlichen Raid anzeigen (oder Gesamtraid wenn Tanks/Gruppe inaktiv)"
+L["RAID_SHOW_REMAINING"] = "Restlichen Raid anzeigen"
 L["RAID_SHOW_PETS"] = "Begleiter-Frames anzeigen (Jäger-/Hexer-Pets)"
 L["RAID_MOVERS_HEADER"] = "|cffffff00Raid-Frames verschieben & positionieren:|r"
 L["RAID_UNLOCK_ALL"] = "Raid-Frames entsperren"

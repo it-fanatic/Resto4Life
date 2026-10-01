@@ -153,6 +153,8 @@ function UF:RegisterUnitEvents(frame, unit)
     frame:RegisterUnitEvent("UNIT_THREAT_LIST_UPDATE", unit)
     frame:RegisterEvent("PLAYER_TARGET_CHANGED")
     frame:RegisterEvent("PLAYER_ROLES_ASSIGNED")
+    frame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
+    frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 end
 
 -- Aktualisiert das Rollen-Icon (Tank, Heiler, DD) nach Blizzard-Standard
@@ -266,7 +268,7 @@ function UF:CreateUnitFrame(name, parent, unit)
     frame.statusText:SetJustifyH("RIGHT")
 
     -- Rollen-Icon (Tank, Heiler, DD) oben links
-    frame.roleIcon = frame.healthBar:CreateTexture(nil, "OVERLAY")
+    frame.roleIcon = frame.healthBar:CreateTexture(nil, "OVERLAY", nil, 7)
     frame.roleIcon:SetSize(14, 14)
     frame.roleIcon:SetPoint("TOPLEFT", frame.healthBar, "TOPLEFT", 2, -2)
     frame.roleIcon:SetTexture("Interface\\LFGFrame\\UI-LFG-ICON-ROLES")
@@ -731,6 +733,19 @@ function UF:_UpdateFrameInternal(frame)
 
     -- 7. Rollen-Icon (Tank, Heiler, DD)
     local role = UnitGroupRolesAssigned and UnitGroupRolesAssigned(unit)
+    if (not role or role == "NONE") then
+        if unit == "player" or UnitIsUnit(unit, "player") then
+            local spec = GetSpecialization and GetSpecialization()
+            if spec then
+                role = GetSpecializationRole(spec)
+            end
+        end
+    end
+    if (not role or role == "NONE") and UnitExists(unit) then
+        if GetPartyAssignment and GetPartyAssignment("MAINTANK", unit) then
+            role = "TANK"
+        end
+    end
     UpdateRoleIcon(frame, role)
 end
 
