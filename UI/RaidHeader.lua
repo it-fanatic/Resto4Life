@@ -75,6 +75,8 @@ local function CreateContainerMover(container, titleKey, posKey, onScale)
 
     local moverText = mover:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     moverText:SetPoint("CENTER")
+    moverText:SetJustifyH("CENTER")
+    moverText:SetWordWrap(true)
     mover.text = moverText
 
     mover:SetScript("OnDragStart", function(self)
@@ -184,6 +186,10 @@ local function CreateContainerMover(container, titleKey, posKey, onScale)
         local cfg = R4L.ProfileManager:GetConfig()
         local s = (cfg.raid[posKey] and cfg.raid[posKey].scale) or 1.0
         local pct = math.floor(s * 100 + 0.5)
+        local w = container:GetWidth()
+        if w and w > 10 then
+            moverText:SetWidth(math.max(60, w - 4))
+        end
         moverText:SetText(string.format("%s\n%s\n(%d%%)", L[titleKey] or titleKey, L["MOVER_DRAG"], pct))
     end
 
@@ -344,15 +350,9 @@ function RH:Initialize()
     self:UpdateRoster()
 end
 
--- Sperren / Entsperren aller Raid-Frames
-function RH:ToggleLock(locked)
+-- Aktualisiert Sichtbarkeit und Text aller Mover passend zu Lock-Status und aktiven Modulen
+function RH:UpdateMovers()
     local cfg = R4L.ProfileManager:GetConfig()
-    if locked == nil then
-        self.isLocked = not self.isLocked
-    else
-        self.isLocked = locked
-    end
-
     local inRaid = IsInRaid()
 
     for _, c in ipairs(self.containers) do
@@ -370,6 +370,9 @@ function RH:ToggleLock(locked)
                     c.mover:Show()
                 else
                     c.mover:Hide()
+                    if not inRaid and not self.isSimulating then
+                        c:Hide()
+                    end
                 end
             else
                 c.mover:Hide()
@@ -379,6 +382,16 @@ function RH:ToggleLock(locked)
             end
         end
     end
+end
+
+-- Sperren / Entsperren aller Raid-Frames
+function RH:ToggleLock(locked)
+    if locked == nil then
+        self.isLocked = not self.isLocked
+    else
+        self.isLocked = locked
+    end
+    self:UpdateMovers()
 end
 
 -- Positionen aller Raid-Frames in Standard-Anordnung zurücksetzen
@@ -591,6 +604,7 @@ function RH:UpdateRoster()
         end
     end
     self.petContainer:SetShown(cfg.raid.showPets and #petUnits > 0)
+    self:UpdateMovers()
 end
 
 function RH:UpdateAllFrames()
@@ -771,6 +785,7 @@ function RH:ApplySimulation()
         end
     end
     self.petContainer:SetShown(showPets)
+    self:UpdateMovers()
 end
 
 -- Automatische Initialisierung

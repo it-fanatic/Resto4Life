@@ -594,13 +594,19 @@ function OUI:Initialize()
 
     local cbRaidEnable = CreateCheckbox(p4, L["RAID_ENABLE"], 20, -15, function(val)
         cfg.raid.enabled = val
-        if R4L.RaidHeader then R4L.RaidHeader:UpdateRoster() end
+        if R4L.RaidHeader then
+            R4L.RaidHeader:UpdateRoster()
+            R4L.RaidHeader:UpdateMovers()
+        end
     end)
 
     -- Tanks
     local cbTanks = CreateCheckbox(p4, L["RAID_SHOW_TANKS"], 20, -50, function(val)
         cfg.raid.showTanks = val
-        if R4L.RaidHeader then R4L.RaidHeader:UpdateRoster() end
+        if R4L.RaidHeader then
+            R4L.RaidHeader:UpdateRoster()
+            R4L.RaidHeader:UpdateMovers()
+        end
     end)
     local btnTankCol = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
     btnTankCol:SetSize(75, 22)
@@ -612,7 +618,10 @@ function OUI:Initialize()
     -- Eigene Gruppe
     local cbMyGroup = CreateCheckbox(p4, L["RAID_SHOW_MYGROUP"], 20, -85, function(val)
         cfg.raid.showMyGroup = val
-        if R4L.RaidHeader then R4L.RaidHeader:UpdateRoster() end
+        if R4L.RaidHeader then
+            R4L.RaidHeader:UpdateRoster()
+            R4L.RaidHeader:UpdateMovers()
+        end
     end)
     local btnGroupCol = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
     btnGroupCol:SetSize(75, 22)
@@ -624,7 +633,10 @@ function OUI:Initialize()
     -- Restlicher Raid
     local cbRaidRem = CreateCheckbox(p4, L["RAID_SHOW_REMAINING"], 20, -120, function(val)
         cfg.raid.showRaid = val
-        if R4L.RaidHeader then R4L.RaidHeader:UpdateRoster() end
+        if R4L.RaidHeader then
+            R4L.RaidHeader:UpdateRoster()
+            R4L.RaidHeader:UpdateMovers()
+        end
     end)
     local btnRaidCol = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
     btnRaidCol:SetSize(105, 22)
@@ -636,7 +648,10 @@ function OUI:Initialize()
     -- Begleiter (Pets)
     local cbPets = CreateCheckbox(p4, L["RAID_SHOW_PETS"], 20, -155, function(val)
         cfg.raid.showPets = val
-        if R4L.RaidHeader then R4L.RaidHeader:UpdateRoster() end
+        if R4L.RaidHeader then
+            R4L.RaidHeader:UpdateRoster()
+            R4L.RaidHeader:UpdateMovers()
+        end
     end)
     local btnPetCol = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
     btnPetCol:SetSize(75, 22)
@@ -686,45 +701,69 @@ function OUI:Initialize()
     btnTankCol:SetScript("OnClick", function()
         cfg.raid.tankOrientation = "VERTICAL"
         UpdateOrientationButtons()
-        if R4L.RaidHeader then R4L.RaidHeader:UpdateLayout() end
+        if R4L.RaidHeader then
+            R4L.RaidHeader:UpdateLayout()
+            R4L.RaidHeader:UpdateMovers()
+        end
     end)
     btnTankRow:SetScript("OnClick", function()
         cfg.raid.tankOrientation = "HORIZONTAL"
         UpdateOrientationButtons()
-        if R4L.RaidHeader then R4L.RaidHeader:UpdateLayout() end
+        if R4L.RaidHeader then
+            R4L.RaidHeader:UpdateLayout()
+            R4L.RaidHeader:UpdateMovers()
+        end
     end)
 
     btnGroupCol:SetScript("OnClick", function()
         cfg.raid.myGroupOrientation = "VERTICAL"
         UpdateOrientationButtons()
-        if R4L.RaidHeader then R4L.RaidHeader:UpdateLayout() end
+        if R4L.RaidHeader then
+            R4L.RaidHeader:UpdateLayout()
+            R4L.RaidHeader:UpdateMovers()
+        end
     end)
     btnGroupRow:SetScript("OnClick", function()
         cfg.raid.myGroupOrientation = "HORIZONTAL"
         UpdateOrientationButtons()
-        if R4L.RaidHeader then R4L.RaidHeader:UpdateLayout() end
+        if R4L.RaidHeader then
+            R4L.RaidHeader:UpdateLayout()
+            R4L.RaidHeader:UpdateMovers()
+        end
     end)
 
     btnRaidCol:SetScript("OnClick", function()
         cfg.raid.raidOrientation = "VERTICAL"
         UpdateOrientationButtons()
-        if R4L.RaidHeader then R4L.RaidHeader:UpdateLayout() end
+        if R4L.RaidHeader then
+            R4L.RaidHeader:UpdateLayout()
+            R4L.RaidHeader:UpdateMovers()
+        end
     end)
     btnRaidRow:SetScript("OnClick", function()
         cfg.raid.raidOrientation = "HORIZONTAL"
         UpdateOrientationButtons()
-        if R4L.RaidHeader then R4L.RaidHeader:UpdateLayout() end
+        if R4L.RaidHeader then
+            R4L.RaidHeader:UpdateLayout()
+            R4L.RaidHeader:UpdateMovers()
+        end
     end)
 
     btnPetCol:SetScript("OnClick", function()
         cfg.raid.petOrientation = "VERTICAL"
         UpdateOrientationButtons()
-        if R4L.RaidHeader then R4L.RaidHeader:UpdateLayout() end
+        if R4L.RaidHeader then
+            R4L.RaidHeader:UpdateLayout()
+            R4L.RaidHeader:UpdateMovers()
+        end
     end)
     btnPetRow:SetScript("OnClick", function()
         cfg.raid.petOrientation = "HORIZONTAL"
         UpdateOrientationButtons()
-        if R4L.RaidHeader then R4L.RaidHeader:UpdateLayout() end
+        if R4L.RaidHeader then
+            R4L.RaidHeader:UpdateLayout()
+            R4L.RaidHeader:UpdateMovers()
+        end
     end)
 
     -- Mover Sektion
@@ -762,41 +801,80 @@ function OUI:Initialize()
         end
     end)
 
-    -- Simulations Sektion
+    -- Simulations Sektion (Umschaltung per Klick / erneuter Klick beendet)
     local simHeader = p4:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     simHeader:SetPoint("TOPLEFT", p4, "TOPLEFT", 20, -260)
     simHeader:SetText(L["RAID_SIM_HEADER"])
 
     local btnSim10 = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
-    btnSim10:SetSize(150, 24)
+    btnSim10:SetSize(190, 24)
     btnSim10:SetPoint("TOPLEFT", simHeader, "BOTTOMLEFT", 0, -8)
     btnSim10:SetText(L["RAID_SIM_10"])
-    btnSim10:SetScript("OnClick", function()
-        if R4L.RaidHeader then R4L.RaidHeader:ToggleSimulation("10") end
-    end)
 
     local btnSim25 = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
-    btnSim25:SetSize(150, 24)
-    btnSim25:SetPoint("LEFT", btnSim10, "RIGHT", 10, 0)
+    btnSim25:SetSize(190, 24)
+    btnSim25:SetPoint("LEFT", btnSim10, "RIGHT", 20, 0)
     btnSim25:SetText(L["RAID_SIM_25"])
-    btnSim25:SetScript("OnClick", function()
-        if R4L.RaidHeader then R4L.RaidHeader:ToggleSimulation("25") end
-    end)
 
     local btnSim40 = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
-    btnSim40:SetSize(150, 24)
-    btnSim40:SetPoint("LEFT", btnSim25, "RIGHT", 10, 0)
+    btnSim40:SetSize(190, 24)
+    btnSim40:SetPoint("LEFT", btnSim25, "RIGHT", 20, 0)
     btnSim40:SetText(L["RAID_SIM_40"])
-    btnSim40:SetScript("OnClick", function()
-        if R4L.RaidHeader then R4L.RaidHeader:ToggleSimulation("40") end
+
+    local function UpdateSimButtons()
+        local isSim = R4L.RaidHeader and R4L.RaidHeader.isSimulating
+        local mode = isSim and R4L.RaidHeader.simMode or nil
+
+        if mode == "10" then
+            btnSim10:SetText("|cffffd100[" .. L["RAID_SIM_10"] .. "]|r")
+        else
+            btnSim10:SetText(L["RAID_SIM_10"])
+        end
+
+        if mode == "25" then
+            btnSim25:SetText("|cffffd100[" .. L["RAID_SIM_25"] .. "]|r")
+        else
+            btnSim25:SetText(L["RAID_SIM_25"])
+        end
+
+        if mode == "40" then
+            btnSim40:SetText("|cffffd100[" .. L["RAID_SIM_40"] .. "]|r")
+        else
+            btnSim40:SetText(L["RAID_SIM_40"])
+        end
+    end
+
+    btnSim10:SetScript("OnClick", function()
+        if R4L.RaidHeader then
+            if R4L.RaidHeader.isSimulating and R4L.RaidHeader.simMode == "10" then
+                R4L.RaidHeader:ToggleSimulation(nil)
+            else
+                R4L.RaidHeader:ToggleSimulation("10")
+            end
+            UpdateSimButtons()
+        end
     end)
 
-    local btnSimStop = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
-    btnSimStop:SetSize(160, 24)
-    btnSimStop:SetPoint("LEFT", btnSim40, "RIGHT", 10, 0)
-    btnSimStop:SetText(L["RAID_SIM_STOP"])
-    btnSimStop:SetScript("OnClick", function()
-        if R4L.RaidHeader then R4L.RaidHeader:ToggleSimulation(nil) end
+    btnSim25:SetScript("OnClick", function()
+        if R4L.RaidHeader then
+            if R4L.RaidHeader.isSimulating and R4L.RaidHeader.simMode == "25" then
+                R4L.RaidHeader:ToggleSimulation(nil)
+            else
+                R4L.RaidHeader:ToggleSimulation("25")
+            end
+            UpdateSimButtons()
+        end
+    end)
+
+    btnSim40:SetScript("OnClick", function()
+        if R4L.RaidHeader then
+            if R4L.RaidHeader.isSimulating and R4L.RaidHeader.simMode == "40" then
+                R4L.RaidHeader:ToggleSimulation(nil)
+            else
+                R4L.RaidHeader:ToggleSimulation("40")
+            end
+            UpdateSimButtons()
+        end
     end)
 
     p4:SetScript("OnShow", function()
@@ -807,6 +885,7 @@ function OUI:Initialize()
         cbPets:SetChecked(cfg.raid.showPets)
         UpdateRaidLockBtn()
         UpdateOrientationButtons()
+        UpdateSimButtons()
     end)
 
     -- =========================================================================
