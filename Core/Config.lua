@@ -49,6 +49,10 @@ R4L.Config.Defaults = {
         raidHeight = 40,
         petWidth = 80,
         petHeight = 32,
+        tankOrientation = "VERTICAL",    -- "VERTICAL" (Spalte) oder "HORIZONTAL" (Zeile)
+        myGroupOrientation = "VERTICAL", -- "VERTICAL" (Spalte) oder "HORIZONTAL" (Zeile)
+        raidOrientation = "VERTICAL",    -- "VERTICAL" (Spalten: 8x5) oder "HORIZONTAL" (Zeilen: 5x8)
+        petOrientation = "VERTICAL",     -- "VERTICAL" (Spalten) oder "HORIZONTAL" (Zeilen)
         tankPos = { x = 120, y = -260, scale = 1.0 },
         myGroupPos = { x = 260, y = -260, scale = 1.0 },
         raidPos = { x = 400, y = -260, scale = 1.0 },

@@ -53,7 +53,7 @@ function OUI:Initialize()
 
     -- Hauptfenster
     frame = CreateFrame("Frame", "Resto4LifeOptionsFrame", UIParent, "BackdropTemplate")
-    frame:SetSize(580, 560)
+    frame:SetSize(700, 560)
     frame:SetPoint("CENTER")
     frame:SetMovable(true)
     frame:EnableMouse(true)
@@ -76,7 +76,7 @@ function OUI:Initialize()
 
     -- Schließen Button
     local closeBtn = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
-    closeBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -8)
+    closeBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -6, -6)
     closeBtn:SetScript("OnClick", function()
         frame:Hide()
     end)
@@ -100,8 +100,8 @@ function OUI:Initialize()
 
     for i, tabName in ipairs(tabs) do
         local btn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-        btn:SetSize(102, 24)
-        btn:SetPoint("TOPLEFT", frame, "TOPLEFT", 18 + (i - 1) * 108, -42)
+        btn:SetSize(126, 24)
+        btn:SetPoint("TOPLEFT", frame, "TOPLEFT", 18 + (i - 1) * 132, -42)
         btn:SetText(tabName)
         btn:SetScript("OnClick", function()
             OUI:SelectTab(i)
@@ -125,10 +125,10 @@ function OUI:Initialize()
         R4L.GroupHeader:ToggleLock(not val)
     end)
 
-    -- In Bildschirm-Mitte zentrieren Button (kleiner Button)
+    -- In Bildschirm-Mitte zentrieren Button (Rechte Spalte)
     local btnCenter = CreateFrame("Button", nil, p1, "UIPanelButtonTemplate")
-    btnCenter:SetSize(85, 22)
-    btnCenter:SetPoint("LEFT", cbLock.text, "RIGHT", 15, 0)
+    btnCenter:SetSize(110, 22)
+    btnCenter:SetPoint("TOPLEFT", p1, "TOPLEFT", 360, -20)
     btnCenter:SetText(L["POS_RESET"])
     btnCenter:SetScript("OnClick", function()
         R4L.GroupHeader:ResetPosition()
@@ -164,29 +164,29 @@ function OUI:Initialize()
         if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
     end)
 
-    -- Rechte Spalte Checkboxen (ab x = 280)
+    -- Rechte Spalte Checkboxen (ab x = 360)
     -- Automatische Sortierung
-    local cbSort = CreateCheckbox(p1, L["AUTO_SORT"], 280, -55, function(val)
+    local cbSort = CreateCheckbox(p1, L["AUTO_SORT"], 360, -55, function(val)
         cfg.sorting.enabled = val
         R4L.GroupHeader:UpdateRoster()
     end)
 
     -- Reichweiten-Verblassen
-    local cbRange = CreateCheckbox(p1, L["FADE_OUT_OF_RANGE"], 280, -90, function(val)
+    local cbRange = CreateCheckbox(p1, L["FADE_OUT_OF_RANGE"], 360, -90, function(val)
         cfg.display.fadeOutOfRange = val
         R4L.GroupHeader:UpdateAllFrames()
         if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
     end)
 
     -- Ziel bei Zauber ins Target nehmen
-    local cbTargetOnCast = CreateCheckbox(p1, L["TARGET_ON_CAST"], 280, -125, function(val)
+    local cbTargetOnCast = CreateCheckbox(p1, L["TARGET_ON_CAST"], 360, -125, function(val)
         cfg.general.targetOnCast = val
         R4L:Print(val and L["CHAT_TARGET_ON_CAST_ON"] or L["CHAT_TARGET_ON_CAST_OFF"])
         R4L.ClickCast:ApplyAllBindings()
     end)
 
     -- Minimap-Button anzeigen
-    local cbMinimap = CreateCheckbox(p1, L["SHOW_MINIMAP_CB"], 280, -160, function(val)
+    local cbMinimap = CreateCheckbox(p1, L["SHOW_MINIMAP_CB"], 360, -160, function(val)
         if not cfg.minimap then cfg.minimap = {} end
         cfg.minimap.show = val
         if R4L.MinimapButton then
@@ -562,24 +562,134 @@ function OUI:Initialize()
         if R4L.RaidHeader then R4L.RaidHeader:UpdateRoster() end
     end)
 
+    -- Tanks
     local cbTanks = CreateCheckbox(p4, L["RAID_SHOW_TANKS"], 20, -50, function(val)
         cfg.raid.showTanks = val
         if R4L.RaidHeader then R4L.RaidHeader:UpdateRoster() end
     end)
+    local btnTankCol = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    btnTankCol:SetSize(75, 22)
+    btnTankCol:SetPoint("TOPLEFT", p4, "TOPLEFT", 440, -52)
+    local btnTankRow = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    btnTankRow:SetSize(75, 22)
+    btnTankRow:SetPoint("LEFT", btnTankCol, "RIGHT", 10, 0)
 
+    -- Eigene Gruppe
     local cbMyGroup = CreateCheckbox(p4, L["RAID_SHOW_MYGROUP"], 20, -85, function(val)
         cfg.raid.showMyGroup = val
         if R4L.RaidHeader then R4L.RaidHeader:UpdateRoster() end
     end)
+    local btnGroupCol = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    btnGroupCol:SetSize(75, 22)
+    btnGroupCol:SetPoint("TOPLEFT", p4, "TOPLEFT", 440, -87)
+    local btnGroupRow = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    btnGroupRow:SetSize(75, 22)
+    btnGroupRow:SetPoint("LEFT", btnGroupCol, "RIGHT", 10, 0)
 
+    -- Restlicher Raid
     local cbRaidRem = CreateCheckbox(p4, L["RAID_SHOW_REMAINING"], 20, -120, function(val)
         cfg.raid.showRaid = val
         if R4L.RaidHeader then R4L.RaidHeader:UpdateRoster() end
     end)
+    local btnRaidCol = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    btnRaidCol:SetSize(105, 22)
+    btnRaidCol:SetPoint("TOPLEFT", p4, "TOPLEFT", 440, -122)
+    local btnRaidRow = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    btnRaidRow:SetSize(105, 22)
+    btnRaidRow:SetPoint("LEFT", btnRaidCol, "RIGHT", 10, 0)
 
+    -- Begleiter (Pets)
     local cbPets = CreateCheckbox(p4, L["RAID_SHOW_PETS"], 20, -155, function(val)
         cfg.raid.showPets = val
         if R4L.RaidHeader then R4L.RaidHeader:UpdateRoster() end
+    end)
+    local btnPetCol = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    btnPetCol:SetSize(75, 22)
+    btnPetCol:SetPoint("TOPLEFT", p4, "TOPLEFT", 440, -157)
+    local btnPetRow = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    btnPetRow:SetSize(75, 22)
+    btnPetRow:SetPoint("LEFT", btnPetCol, "RIGHT", 10, 0)
+
+    -- Aktualisierung der Orientierungs-Buttons
+    local function UpdateOrientationButtons()
+        local r = cfg.raid
+        if not r then return end
+
+        if r.tankOrientation == "HORIZONTAL" then
+            btnTankRow:SetText("|cffffd100[" .. L["ORIENTATION_HORIZONTAL"] .. "]|r")
+            btnTankCol:SetText(L["ORIENTATION_VERTICAL"])
+        else
+            btnTankCol:SetText("|cffffd100[" .. L["ORIENTATION_VERTICAL"] .. "]|r")
+            btnTankRow:SetText(L["ORIENTATION_HORIZONTAL"])
+        end
+
+        if r.myGroupOrientation == "HORIZONTAL" then
+            btnGroupRow:SetText("|cffffd100[" .. L["ORIENTATION_HORIZONTAL"] .. "]|r")
+            btnGroupCol:SetText(L["ORIENTATION_VERTICAL"])
+        else
+            btnGroupCol:SetText("|cffffd100[" .. L["ORIENTATION_VERTICAL"] .. "]|r")
+            btnGroupRow:SetText(L["ORIENTATION_HORIZONTAL"])
+        end
+
+        if r.raidOrientation == "HORIZONTAL" then
+            btnRaidRow:SetText("|cffffd100[" .. L["ORIENTATION_RAID_HORIZONTAL"] .. "]|r")
+            btnRaidCol:SetText(L["ORIENTATION_RAID_VERTICAL"])
+        else
+            btnRaidCol:SetText("|cffffd100[" .. L["ORIENTATION_RAID_VERTICAL"] .. "]|r")
+            btnRaidRow:SetText(L["ORIENTATION_RAID_HORIZONTAL"])
+        end
+
+        if r.petOrientation == "HORIZONTAL" then
+            btnPetRow:SetText("|cffffd100[" .. L["ORIENTATION_HORIZONTAL"] .. "]|r")
+            btnPetCol:SetText(L["ORIENTATION_VERTICAL"])
+        else
+            btnPetCol:SetText("|cffffd100[" .. L["ORIENTATION_VERTICAL"] .. "]|r")
+            btnPetRow:SetText(L["ORIENTATION_HORIZONTAL"])
+        end
+    end
+
+    btnTankCol:SetScript("OnClick", function()
+        cfg.raid.tankOrientation = "VERTICAL"
+        UpdateOrientationButtons()
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateLayout() end
+    end)
+    btnTankRow:SetScript("OnClick", function()
+        cfg.raid.tankOrientation = "HORIZONTAL"
+        UpdateOrientationButtons()
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateLayout() end
+    end)
+
+    btnGroupCol:SetScript("OnClick", function()
+        cfg.raid.myGroupOrientation = "VERTICAL"
+        UpdateOrientationButtons()
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateLayout() end
+    end)
+    btnGroupRow:SetScript("OnClick", function()
+        cfg.raid.myGroupOrientation = "HORIZONTAL"
+        UpdateOrientationButtons()
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateLayout() end
+    end)
+
+    btnRaidCol:SetScript("OnClick", function()
+        cfg.raid.raidOrientation = "VERTICAL"
+        UpdateOrientationButtons()
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateLayout() end
+    end)
+    btnRaidRow:SetScript("OnClick", function()
+        cfg.raid.raidOrientation = "HORIZONTAL"
+        UpdateOrientationButtons()
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateLayout() end
+    end)
+
+    btnPetCol:SetScript("OnClick", function()
+        cfg.raid.petOrientation = "VERTICAL"
+        UpdateOrientationButtons()
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateLayout() end
+    end)
+    btnPetRow:SetScript("OnClick", function()
+        cfg.raid.petOrientation = "HORIZONTAL"
+        UpdateOrientationButtons()
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateLayout() end
     end)
 
     -- Mover Sektion
@@ -588,7 +698,7 @@ function OUI:Initialize()
     moverHeader:SetText(L["RAID_MOVERS_HEADER"])
 
     local btnUnlockRaid = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
-    btnUnlockRaid:SetSize(160, 24)
+    btnUnlockRaid:SetSize(180, 24)
     btnUnlockRaid:SetPoint("TOPLEFT", moverHeader, "BOTTOMLEFT", 0, -8)
     btnUnlockRaid:SetText(L["RAID_UNLOCK_ALL"])
 
@@ -608,8 +718,8 @@ function OUI:Initialize()
     end)
 
     local btnResetRaid = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
-    btnResetRaid:SetSize(180, 24)
-    btnResetRaid:SetPoint("LEFT", btnUnlockRaid, "RIGHT", 12, 0)
+    btnResetRaid:SetSize(210, 24)
+    btnResetRaid:SetPoint("LEFT", btnUnlockRaid, "RIGHT", 15, 0)
     btnResetRaid:SetText(L["RAID_RESET_POS"])
     btnResetRaid:SetScript("OnClick", function()
         if R4L.RaidHeader then
@@ -623,7 +733,7 @@ function OUI:Initialize()
     simHeader:SetText(L["RAID_SIM_HEADER"])
 
     local btnSim10 = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
-    btnSim10:SetSize(115, 24)
+    btnSim10:SetSize(150, 24)
     btnSim10:SetPoint("TOPLEFT", simHeader, "BOTTOMLEFT", 0, -8)
     btnSim10:SetText(L["RAID_SIM_10"])
     btnSim10:SetScript("OnClick", function()
@@ -631,24 +741,24 @@ function OUI:Initialize()
     end)
 
     local btnSim25 = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
-    btnSim25:SetSize(115, 24)
-    btnSim25:SetPoint("LEFT", btnSim10, "RIGHT", 8, 0)
+    btnSim25:SetSize(150, 24)
+    btnSim25:SetPoint("LEFT", btnSim10, "RIGHT", 10, 0)
     btnSim25:SetText(L["RAID_SIM_25"])
     btnSim25:SetScript("OnClick", function()
         if R4L.RaidHeader then R4L.RaidHeader:ToggleSimulation("25") end
     end)
 
     local btnSim40 = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
-    btnSim40:SetSize(115, 24)
-    btnSim40:SetPoint("LEFT", btnSim25, "RIGHT", 8, 0)
+    btnSim40:SetSize(150, 24)
+    btnSim40:SetPoint("LEFT", btnSim25, "RIGHT", 10, 0)
     btnSim40:SetText(L["RAID_SIM_40"])
     btnSim40:SetScript("OnClick", function()
         if R4L.RaidHeader then R4L.RaidHeader:ToggleSimulation("40") end
     end)
 
     local btnSimStop = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
-    btnSimStop:SetSize(140, 24)
-    btnSimStop:SetPoint("TOPLEFT", btnSim10, "BOTTOMLEFT", 0, -10)
+    btnSimStop:SetSize(160, 24)
+    btnSimStop:SetPoint("LEFT", btnSim40, "RIGHT", 10, 0)
     btnSimStop:SetText(L["RAID_SIM_STOP"])
     btnSimStop:SetScript("OnClick", function()
         if R4L.RaidHeader then R4L.RaidHeader:ToggleSimulation(nil) end
@@ -661,6 +771,7 @@ function OUI:Initialize()
         cbRaidRem:SetChecked(cfg.raid.showRaid)
         cbPets:SetChecked(cfg.raid.showPets)
         UpdateRaidLockBtn()
+        UpdateOrientationButtons()
     end)
 
     -- =========================================================================
@@ -675,11 +786,11 @@ function OUI:Initialize()
     -- ScrollFrame für Im- / Export String
     local scrollFrame = CreateFrame("ScrollFrame", nil, p5, "UIPanelScrollFrameTemplate")
     scrollFrame:SetPoint("TOPLEFT", p5, "TOPLEFT", 20, -60)
-    scrollFrame:SetSize(490, 160)
+    scrollFrame:SetSize(620, 160)
 
     local exportBox = CreateFrame("EditBox", nil, scrollFrame)
     exportBox:SetMultiLine(true)
-    exportBox:SetSize(470, 160)
+    exportBox:SetSize(600, 160)
     exportBox:SetFontObject("GameFontHighlightSmall")
     exportBox:SetAutoFocus(false)
     scrollFrame:SetScrollChild(exportBox)

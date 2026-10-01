@@ -18,6 +18,7 @@ local RH = R4L.RaidHeader
 RH.isSimulating = false
 RH.simMode = nil -- "10", "25", "40"
 RH.containers = {}
+RH.isLocked = true
 
 -- Hilfsfunktion: Mover für einen Container erstellen
 local function CreateContainerMover(container, titleKey, posKey, onScale)
@@ -183,9 +184,11 @@ local function CreateSubContainer(name, count, titleKey, posKey, defaultWidth, d
 
     CreateContainerMover(container, titleKey, posKey)
 
-    -- Ordnet die Frames im Container bündig (0px spacing) an
-    function container:LayoutFrames(w, h, maxRows)
-        local r = maxRows or 5
+    -- Ordnet die Frames im Container bündig (0px spacing) an (Spalte / Zeile)
+    function container:LayoutFrames(w, h, unitsPerGroup, orientation)
+        local upg = unitsPerGroup or 5
+        local isHorizontal = (orientation == "HORIZONTAL")
+
         for i = 1, self.maxFrames do
             local f = self.frames[i]
             f:SetSize(w, h)
@@ -200,13 +203,26 @@ local function CreateSubContainer(name, count, titleKey, posKey, defaultWidth, d
             end
 
             f:ClearAllPoints()
-            local col = math.floor((i - 1) / r)
-            local row = (i - 1) % r
-            f:SetPoint("TOPLEFT", self, "TOPLEFT", col * w, -(row * h))
+            if isHorizontal then
+                -- Zeile (Horizontal): Einheiten laufen nebeneinander, Gruppen untereinander
+                local row = math.floor((i - 1) / upg)
+                local col = (i - 1) % upg
+                f:SetPoint("TOPLEFT", self, "TOPLEFT", col * w, -(row * h))
+            else
+                -- Spalte (Vertikal): Einheiten laufen untereinander, Gruppen nebeneinander
+                local col = math.floor((i - 1) / upg)
+                local row = (i - 1) % upg
+                f:SetPoint("TOPLEFT", self, "TOPLEFT", col * w, -(row * h))
+            end
         end
 
-        local totalCols = math.ceil(self.maxFrames / r)
-        self:SetSize(totalCols * w, r * h)
+        if isHorizontal then
+            local totalRows = math.ceil(self.maxFrames / upg)
+            self:SetSize(upg * w, totalRows * h)
+        else
+            local totalCols = math.ceil(self.maxFrames / upg)
+            self:SetSize(totalCols * w, upg * h)
+        end
     end
 
     container:Hide()
@@ -231,7 +247,6 @@ function RH:Initialize()
         1,
         4
     )
-    self.tankContainer:LayoutFrames(rCfg.tankWidth or 120, rCfg.tankHeight or 44, 4)
 
     -- 2. Eigene Gruppe Container (5 Spieler)
     self.myGroupContainer = CreateSubContainer(
@@ -244,9 +259,8 @@ function RH:Initialize()
         1,
         5
     )
-    self.myGroupContainer:LayoutFrames(rCfg.raidWidth or 90, rCfg.raidHeight or 40, 5)
 
-    -- 3. Restlicher Raid Container (bis zu 40 Spieler in 8 Spalten à 5)
+    -- 3. Restlicher Raid Container (bis zu 40 Spieler)
     self.raidContainer = CreateSubContainer(
         "Resto4LifeRaidHeader",
         40,
@@ -257,9 +271,8 @@ function RH:Initialize()
         8,
         5
     )
-    self.raidContainer:LayoutFrames(rCfg.raidWidth or 90, rCfg.raidHeight or 40, 5)
 
-    -- 4. Pet Container (bis zu 10 Begleiter in 2 Spalten à 5)
+    -- 4. Pet Container (bis zu 10 Begleiter)
     self.petContainer = CreateSubContainer(
         "Resto4LifePetHeader",
         10,
@@ -270,7 +283,8 @@ function RH:Initialize()
         2,
         5
     )
-    self.petContainer:LayoutFrames(rCfg.petWidth or 80, rCfg.petHeight or 32, 5)
+
+    self:UpdateLayout()
 
     self.containers = {
         self.tankContainer,
@@ -305,13 +319,29 @@ function RH:ToggleLock(locked)
         self.isLocked = locked
     end
 
+    local inRaid = IsInRaid()
+
     for _, c in ipairs(self.containers) do
         if c.mover then
-            if not self.isLocked and c:IsShown() then
-                c.mover:UpdateText()
-                c.mover:Show()
+            if not self.isLocked then
+                local shouldShow = cfg.raid and cfg.raid.enabled
+                if c == self.tankContainer and not cfg.raid.showTanks then shouldShow = false end
+                if c == self.myGroupContainer and not cfg.raid.showMyGroup then shouldShow = false end
+                if c == self.raidContainer and not cfg.raid.showRaid then shouldShow = false end
+                if c == self.petContainer and not cfg.raid.showPets then shouldShow = false end
+
+                if shouldShow then
+                    c:Show()
+                    c.mover:UpdateText()
+                    c.mover:Show()
+                else
+                    c.mover:Hide()
+                end
             else
                 c.mover:Hide()
+                if not inRaid and not self.isSimulating then
+                    c:Hide()
+                end
             end
         end
     end
@@ -344,22 +374,22 @@ function RH:ResetPositions()
     R4L:Print(L["RAID_RESET_POS"] .. ": Standard-Layout wiederhergestellt.")
 end
 
--- Aktualisiert Größen & Abstände
+-- Aktualisiert Größen, Abstände & Orientierung (Spalte / Zeile)
 function RH:UpdateLayout()
     local cfg = R4L.ProfileManager:GetConfig()
     local r = cfg.raid
 
     if self.tankContainer then
-        self.tankContainer:LayoutFrames(r.tankWidth or 120, r.tankHeight or 44, 4)
+        self.tankContainer:LayoutFrames(r.tankWidth or 120, r.tankHeight or 44, 4, r.tankOrientation or "VERTICAL")
     end
     if self.myGroupContainer then
-        self.myGroupContainer:LayoutFrames(r.raidWidth or 90, r.raidHeight or 40, 5)
+        self.myGroupContainer:LayoutFrames(r.raidWidth or 90, r.raidHeight or 40, 5, r.myGroupOrientation or "VERTICAL")
     end
     if self.raidContainer then
-        self.raidContainer:LayoutFrames(r.raidWidth or 90, r.raidHeight or 40, 5)
+        self.raidContainer:LayoutFrames(r.raidWidth or 90, r.raidHeight or 40, 5, r.raidOrientation or "VERTICAL")
     end
     if self.petContainer then
-        self.petContainer:LayoutFrames(r.petWidth or 80, r.petHeight or 32, 5)
+        self.petContainer:LayoutFrames(r.petWidth or 80, r.petHeight or 32, 5, r.petOrientation or "VERTICAL")
     end
 end
 

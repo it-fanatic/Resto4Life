@@ -178,6 +178,11 @@ Diese Dokumentation listet alle aktuellen Funktionen, Mechaniken und Einstellmö
   * In den Einstellungen unter *Allgemein* jederzeit ein- und ausschaltbar.
 * **Individuelle Mover & Skalierung:**
   * Jeder aktive Container (Tanks, Eigene Gruppe, Rest-Raid, Pets) besitzt beim Entsperren einen eigenen Mover und kann unabhängig platziert und per Mausrad oder Ziehecke skaliert werden.
+  * Korrekte Initialisierung des Entsperr-Status (beim Reload immer gesperrt, sofortiges Entsperren mit einem Klick).
+* **Freie Anordnung pro Raid-Frame (Spalte / Zeile):**
+  * Für jeden modularen Frame (**Tanks**, **Eigene Gruppe**, **Restlicher Raid**, **Begleiter**) kann im Menü unabhängig gewählt werden zwischen:
+    * **Spalte (Vertikal):** Einheiten wachsen von oben nach unten (z.B. klassische 5er-Spalte oder 8 Spalten à 5 Spieler).
+    * **Zeile (Horizontal):** Einheiten wachsen von links nach rechts (z.B. waagerechte Leiste oder 8 Zeilen à 5 Spieler).
 * **Umfassende Raid-Simulationen:**
   * Dedizierte Test-Buttons im Menü-Reiter *Raid*:
     * **10er-Raid simulieren**
