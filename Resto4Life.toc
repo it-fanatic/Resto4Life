@@ -1,4 +1,4 @@
-## Interface: 120100
+## Interface: 110007, 110100, 110200, 120100
 ## IconTexture: Interface\Icons\Spell_Nature_HealingTouch
 ## Title: |cff00ff96Resto4Life|r
 ## Notes: Modernes Heiler- und Gruppenframe Addon für WoW Forever und Retail.

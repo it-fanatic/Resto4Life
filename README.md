@@ -64,7 +64,19 @@ Eine vollständige Liste aller Funktionen und Details findest du in der [FEATURE
 
 ## ⚙️ Befehle & Bedienung
 
-* `/r4l` oder `/resto4life` – Öffnet das grafische Konfigurationsmenü.
-* `/r4l unlock` – Entsperrt das Gruppenframe, sodass es mit der Maus an jede beliebige Bildschirmposition gezogen werden kann.
-* `/r4l lock` – Sperrt die Position wieder.
-* `/r4l reset` – Setzt die Einstellungen auf die Klassenvorlagen zurück.
+* `/r4l`, `/resto` oder `/resto4life` – Öffnet das grafische Konfigurationsmenü.
+* `/r4l unlock` (oder `/r4l move`) – Entsperrt alle Frames (Gruppe & Raid), um sie frei auf dem Bildschirm zu verschieben und zu skalieren.
+* `/r4l lock` – Sperrt alle Positionen wieder.
+* `/r4l reset` (oder `/r4l center`) – Setzt die Positionen und Skalierung in die Bildschirmmitte bzw. Standardanordnung zurück.
+* `/r4l resetall` – Setzt die Konfiguration auf die Klassenvorlagen zurück.
+* `/r4l lang [de | en | auto]` – Schaltet die Sprache (Deutsch, Englisch oder Spielclient-Standard) um.
+
+### 💡 Schnelle Bedienung am Frame:
+* **Entsperrt:** 
+  * **Linksklick & Ziehen:** Frame an gewünschte Position verschieben.
+  * **Mausrad / Ziehecke unten rechts:** Frame stufenlos skalieren (50% – 200%).
+  * **Rechtsklick auf den Rahmen:** Schaltet direkt zwischen **Spalte** und **Zeile** um!
+* **Minimap-Button:**
+  * **Linksklick:** Konfiguration öffnen.
+  * **Rechtsklick:** Rahmen schnell sperren / entsperren.
+  * **Shift + Linksklick:** Positionen zentrieren / zurücksetzen.
