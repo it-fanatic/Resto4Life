@@ -1,0 +1,11 @@
+# Release build output
+release/
+*.zip
+
+# OS and Editor junk
+.DS_Store
+Thumbs.db
+*.bak
+*.tmp
+.vscode/
+.idea/
