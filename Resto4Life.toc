@@ -7,6 +7,7 @@
 ## SavedVariables: Resto4LifeDB
 ## SavedVariablesPerCharacter: Resto4LifeCharDB
 ## X-Category: UnitFrames, Healer
+## X-License: GNU General Public License v3.0 (GPL-3.0)
 ## AddonCompartmentFunc: Resto4Life_OnAddonCompartmentClick
 
 # Core

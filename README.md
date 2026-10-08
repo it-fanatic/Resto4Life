@@ -82,3 +82,10 @@ Eine vollständige Liste aller Funktionen und Details findest du in der [FEATURE
   * **Linksklick:** Konfiguration öffnen.
   * **Rechtsklick:** Rahmen schnell sperren / entsperren.
   * **Shift + Linksklick:** Positionen zentrieren / zurücksetzen.
+
+---
+
+## 📄 Lizenz
+
+Dieses Projekt steht unter der **[GNU General Public License v3.0 (GPL-3.0)](file:///f:/Documents/Projekte/Resto4Life/LICENSE)**.  
+Copyright (C) 2026 it-fanatic

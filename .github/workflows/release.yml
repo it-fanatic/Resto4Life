@@ -19,7 +19,7 @@ jobs:
       - name: Package Addon
         run: |
           mkdir -p build/Resto4Life
-          cp -r Core Engine Locales Media UI Resto4Life.toc README.md FEATURES.md build/Resto4Life/
+          cp -r Core Engine Locales Media UI Resto4Life.toc README.md FEATURES.md LICENSE build/Resto4Life/
           cd build
           zip -r ../Resto4Life-${{ github.ref_name }}.zip Resto4Life
           cd ..
