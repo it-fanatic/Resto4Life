@@ -81,20 +81,50 @@ R4L.Config.Defaults = {
         normalRezSpell = "",  -- e.g. "Revive" (Druid), "Redemption" (Paladin), "Resurrection" (Priest), "Ancestral Spirit" (Shaman)
     },
     bindings = {
-        -- Maustasten (1 = Links, 2 = Rechts, 3 = Mitte, 4 = Maus4, 5 = Maus5)
+        -- Standard: Maustasten (1 = Links, 2 = Rechts, 3 = Mitte, 4 = Daumen hinten, 5 = Daumen vorne)
         ["1"] = { action = "target", spell = "" },
         ["2"] = { action = "menu", spell = "" },
         ["3"] = { action = "spell", spell = "" },
-        -- Mausrad
+        ["4"] = { action = "spell", spell = "" },
+        ["5"] = { action = "spell", spell = "" },
+        -- STRG + Maustasten
+        ["CTRL_1"] = { action = "spell", spell = "" },
+        ["CTRL_2"] = { action = "spell", spell = "" },
+        ["CTRL_3"] = { action = "spell", spell = "" },
+        ["CTRL_4"] = { action = "spell", spell = "" },
+        ["CTRL_5"] = { action = "spell", spell = "" },
+        -- ALT + Maustasten
+        ["ALT_1"] = { action = "spell", spell = "" },
+        ["ALT_2"] = { action = "spell", spell = "" },
+        ["ALT_3"] = { action = "spell", spell = "" },
+        ["ALT_4"] = { action = "spell", spell = "" },
+        ["ALT_5"] = { action = "spell", spell = "" },
+        -- Mausrad (Standard, STRG, ALT)
         ["WheelUp"] = { action = "spell", spell = "" },
         ["WheelDown"] = { action = "spell", spell = "" },
-        -- Tasten 1 - 6 (beim Überfahren des Rahmens)
+        ["CTRL_WheelUp"] = { action = "spell", spell = "" },
+        ["CTRL_WheelDown"] = { action = "spell", spell = "" },
+        ["ALT_WheelUp"] = { action = "spell", spell = "" },
+        ["ALT_WheelDown"] = { action = "spell", spell = "" },
+        -- Tasten 1 - 6 (Standard, STRG, ALT)
         ["KEY_1"] = { action = "spell", spell = "" },
         ["KEY_2"] = { action = "spell", spell = "" },
         ["KEY_3"] = { action = "spell", spell = "" },
         ["KEY_4"] = { action = "spell", spell = "" },
         ["KEY_5"] = { action = "spell", spell = "" },
         ["KEY_6"] = { action = "spell", spell = "" },
+        ["CTRL_KEY_1"] = { action = "spell", spell = "" },
+        ["CTRL_KEY_2"] = { action = "spell", spell = "" },
+        ["CTRL_KEY_3"] = { action = "spell", spell = "" },
+        ["CTRL_KEY_4"] = { action = "spell", spell = "" },
+        ["CTRL_KEY_5"] = { action = "spell", spell = "" },
+        ["CTRL_KEY_6"] = { action = "spell", spell = "" },
+        ["ALT_KEY_1"] = { action = "spell", spell = "" },
+        ["ALT_KEY_2"] = { action = "spell", spell = "" },
+        ["ALT_KEY_3"] = { action = "spell", spell = "" },
+        ["ALT_KEY_4"] = { action = "spell", spell = "" },
+        ["ALT_KEY_5"] = { action = "spell", spell = "" },
+        ["ALT_KEY_6"] = { action = "spell", spell = "" },
     }
 }
 

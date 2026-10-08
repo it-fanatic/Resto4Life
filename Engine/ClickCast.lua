@@ -56,28 +56,63 @@ function CC:BuildMacroText(unit, actionType, spellName, isLeftClick)
 end
 
 
--- Erstellt dedizierte SecureActionButton-Kinder für Mausrad & Tasten 1-6
+-- Erstellt dedizierte SecureActionButton-Kinder für Mausrad & Tasten 1-6 (Standard, STRG, ALT)
 function CC:SetupChildButtons(frame)
-    if frame.wheelUpBtn then return end
+    if frame._childButtonsDone then return end
+    frame._childButtonsDone = true
 
     local name = frame:GetName()
-    frame.wheelUpBtn = CreateFrame("Button", name .. "_WheelUp", frame, "SecureActionButtonTemplate")
-    frame.wheelUpBtn:SetSize(1, 1)
-    frame.wheelUpBtn:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-    frame.wheelUpBtn:RegisterForClicks("AnyUp", "AnyDown")
+    frame.wheelBtns = {
+        NONE = {
+            UP = CreateFrame("Button", name .. "_WheelUp", frame, "SecureActionButtonTemplate"),
+            DOWN = CreateFrame("Button", name .. "_WheelDown", frame, "SecureActionButtonTemplate"),
+        },
+        CTRL = {
+            UP = CreateFrame("Button", name .. "_WheelUp_Ctrl", frame, "SecureActionButtonTemplate"),
+            DOWN = CreateFrame("Button", name .. "_WheelDown_Ctrl", frame, "SecureActionButtonTemplate"),
+        },
+        ALT = {
+            UP = CreateFrame("Button", name .. "_WheelUp_Alt", frame, "SecureActionButtonTemplate"),
+            DOWN = CreateFrame("Button", name .. "_WheelDown_Alt", frame, "SecureActionButtonTemplate"),
+        },
+    }
 
-    frame.wheelDownBtn = CreateFrame("Button", name .. "_WheelDown", frame, "SecureActionButtonTemplate")
-    frame.wheelDownBtn:SetSize(1, 1)
-    frame.wheelDownBtn:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-    frame.wheelDownBtn:RegisterForClicks("AnyUp", "AnyDown")
+    for _, modTable in pairs(frame.wheelBtns) do
+        modTable.UP:SetSize(1, 1)
+        modTable.UP:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+        modTable.UP:RegisterForClicks("AnyUp", "AnyDown")
+        modTable.DOWN:SetSize(1, 1)
+        modTable.DOWN:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+        modTable.DOWN:RegisterForClicks("AnyUp", "AnyDown")
+    end
 
-    frame.keyBtns = {}
+    frame.wheelUpBtn = frame.wheelBtns.NONE.UP
+    frame.wheelDownBtn = frame.wheelBtns.NONE.DOWN
+
+    frame.keyBtns = {
+        NONE = {},
+        CTRL = {},
+        ALT = {},
+    }
+
     for i = 1, 6 do
-        local kBtn = CreateFrame("Button", name .. "_Key" .. i, frame, "SecureActionButtonTemplate")
-        kBtn:SetSize(1, 1)
-        kBtn:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-        kBtn:RegisterForClicks("AnyUp", "AnyDown")
-        frame.keyBtns[i] = kBtn
+        local btnNone = CreateFrame("Button", name .. "_Key" .. i, frame, "SecureActionButtonTemplate")
+        btnNone:SetSize(1, 1)
+        btnNone:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+        btnNone:RegisterForClicks("AnyUp", "AnyDown")
+        frame.keyBtns.NONE[i] = btnNone
+
+        local btnCtrl = CreateFrame("Button", name .. "_Key" .. i .. "_Ctrl", frame, "SecureActionButtonTemplate")
+        btnCtrl:SetSize(1, 1)
+        btnCtrl:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+        btnCtrl:RegisterForClicks("AnyUp", "AnyDown")
+        frame.keyBtns.CTRL[i] = btnCtrl
+
+        local btnAlt = CreateFrame("Button", name .. "_Key" .. i .. "_Alt", frame, "SecureActionButtonTemplate")
+        btnAlt:SetSize(1, 1)
+        btnAlt:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+        btnAlt:RegisterForClicks("AnyUp", "AnyDown")
+        frame.keyBtns.ALT[i] = btnAlt
     end
 end
 
@@ -99,110 +134,120 @@ function CC:ApplyBindingsToFrame(frame)
 
     frame:RegisterForClicks("AnyUp", "AnyDown")
 
-    -- 1. Maustasten 1 bis 5 direkt auf dem Hauptframe
-    local mouseButtons = {
-        ["1"] = "1",
-        ["2"] = "2",
-        ["3"] = "3",
-        ["4"] = "4",
-        ["5"] = "5",
-    }
-
-    for bKey, bId in pairs(mouseButtons) do
-        local bConfig = bindings[bKey]
-        if bConfig then
-            if bConfig.action == "target" then
-                frame:SetAttribute("*type" .. bId, "target")
-                frame:SetAttribute("*unit" .. bId, unit)
-                frame:SetAttribute("type" .. bId, "target")
-                frame:SetAttribute("unit" .. bId, unit)
-            elseif bConfig.action == "menu" then
-                frame:SetAttribute("*type" .. bId, "togglemenu")
-                frame:SetAttribute("*unit" .. bId, unit)
-                frame:SetAttribute("type" .. bId, "togglemenu")
-                frame:SetAttribute("unit" .. bId, unit)
-            elseif bConfig.action == "spell" and bConfig.spell ~= "" then
-                local macro = self:BuildMacroText(unit, "spell", bConfig.spell, (bId == "1"))
-                frame:SetAttribute("*type" .. bId, "macro")
-                frame:SetAttribute("*macrotext" .. bId, macro)
-                frame:SetAttribute("type" .. bId, "macro")
-                frame:SetAttribute("macrotext" .. bId, macro)
-            else
-                frame:SetAttribute("*type" .. bId, nil)
-                frame:SetAttribute("*macrotext" .. bId, nil)
-                frame:SetAttribute("type" .. bId, nil)
-                frame:SetAttribute("macrotext" .. bId, nil)
-            end
+    -- Hilfsfunktion für Child-Buttons (Mausrad & Tasten 1-6)
+    local function ConfigureButton(btn, spell)
+        if not btn then return end
+        if spell and spell ~= "" then
+            local macro = self:BuildMacroText(unit, "spell", spell, false)
+            btn:SetAttribute("*type1", "macro")
+            btn:SetAttribute("*macrotext1", macro)
+            btn:SetAttribute("type1", "macro")
+            btn:SetAttribute("macrotext1", macro)
+            btn:SetAttribute("*type", "macro")
+            btn:SetAttribute("*macrotext", macro)
+            btn:SetAttribute("type", "macro")
+            btn:SetAttribute("macrotext", macro)
+        else
+            btn:SetAttribute("*type1", nil)
+            btn:SetAttribute("*macrotext1", nil)
+            btn:SetAttribute("type1", nil)
+            btn:SetAttribute("macrotext1", nil)
+            btn:SetAttribute("*type", nil)
+            btn:SetAttribute("*macrotext", nil)
+            btn:SetAttribute("type", nil)
+            btn:SetAttribute("macrotext", nil)
         end
     end
 
-    -- 2. Mausrad (WheelUp, WheelDown) auf Child-Buttons
-    if bindings["WheelUp"] and bindings["WheelUp"].spell ~= "" then
-        local macro = self:BuildMacroText(unit, "spell", bindings["WheelUp"].spell, false)
-        frame.wheelUpBtn:SetAttribute("*type1", "macro")
-        frame.wheelUpBtn:SetAttribute("*macrotext1", macro)
-        frame.wheelUpBtn:SetAttribute("type1", "macro")
-        frame.wheelUpBtn:SetAttribute("macrotext1", macro)
-        frame.wheelUpBtn:SetAttribute("*type", "macro")
-        frame.wheelUpBtn:SetAttribute("*macrotext", macro)
-        frame.wheelUpBtn:SetAttribute("type", "macro")
-        frame.wheelUpBtn:SetAttribute("macrotext", macro)
-    else
-        frame.wheelUpBtn:SetAttribute("*type1", nil)
-        frame.wheelUpBtn:SetAttribute("*macrotext1", nil)
-        frame.wheelUpBtn:SetAttribute("type1", nil)
-        frame.wheelUpBtn:SetAttribute("macrotext1", nil)
-        frame.wheelUpBtn:SetAttribute("*type", nil)
-        frame.wheelUpBtn:SetAttribute("*macrotext", nil)
-        frame.wheelUpBtn:SetAttribute("type", nil)
-        frame.wheelUpBtn:SetAttribute("macrotext", nil)
-    end
+    -- 1. Maustasten 1 bis 5 (Standard, STRG, ALT) direkt auf dem Hauptframe
+    local mouseButtons = { "1", "2", "3", "4", "5" }
+    local modifiers = {
+        { prefix = "",      cfgPrefix = "",     isMod = false },
+        { prefix = "ctrl-", cfgPrefix = "CTRL_", isMod = true },
+        { prefix = "alt-",  cfgPrefix = "ALT_",  isMod = true },
+    }
 
-    if bindings["WheelDown"] and bindings["WheelDown"].spell ~= "" then
-        local macro = self:BuildMacroText(unit, "spell", bindings["WheelDown"].spell, false)
-        frame.wheelDownBtn:SetAttribute("*type1", "macro")
-        frame.wheelDownBtn:SetAttribute("*macrotext1", macro)
-        frame.wheelDownBtn:SetAttribute("type1", "macro")
-        frame.wheelDownBtn:SetAttribute("macrotext1", macro)
-        frame.wheelDownBtn:SetAttribute("*type", "macro")
-        frame.wheelDownBtn:SetAttribute("*macrotext", macro)
-        frame.wheelDownBtn:SetAttribute("type", "macro")
-        frame.wheelDownBtn:SetAttribute("macrotext", macro)
-    else
-        frame.wheelDownBtn:SetAttribute("*type1", nil)
-        frame.wheelDownBtn:SetAttribute("*macrotext1", nil)
-        frame.wheelDownBtn:SetAttribute("type1", nil)
-        frame.wheelDownBtn:SetAttribute("macrotext1", nil)
-        frame.wheelDownBtn:SetAttribute("*type", nil)
-        frame.wheelDownBtn:SetAttribute("*macrotext", nil)
-        frame.wheelDownBtn:SetAttribute("type", nil)
-        frame.wheelDownBtn:SetAttribute("macrotext", nil)
-    end
+    for _, bId in ipairs(mouseButtons) do
+        for _, mod in ipairs(modifiers) do
+            local cfgKey = mod.cfgPrefix .. bId
+            local bConfig = bindings[cfgKey]
+            local attrType = mod.prefix .. "type" .. bId
+            local attrMacro = mod.prefix .. "macrotext" .. bId
+            local attrUnit = mod.prefix .. "unit" .. bId
 
-    -- 3. Tasten 1 bis 6 auf Child-Buttons
-    for i = 1, 6 do
-        local kKey = "KEY_" .. i
-        local bConfig = bindings[kKey]
-        local kBtn = frame.keyBtns[i]
-        if bConfig and bConfig.spell and bConfig.spell ~= "" then
-            local macro = self:BuildMacroText(unit, "spell", bConfig.spell, false)
-            kBtn:SetAttribute("*type1", "macro")
-            kBtn:SetAttribute("*macrotext1", macro)
-            kBtn:SetAttribute("type1", "macro")
-            kBtn:SetAttribute("macrotext1", macro)
-            kBtn:SetAttribute("*type", "macro")
-            kBtn:SetAttribute("*macrotext", macro)
-            kBtn:SetAttribute("type", "macro")
-            kBtn:SetAttribute("macrotext", macro)
+            if bConfig then
+                if bConfig.action == "target" then
+                    frame:SetAttribute(attrType, "target")
+                    frame:SetAttribute(attrUnit, unit)
+                    frame:SetAttribute(attrMacro, nil)
+                elseif bConfig.action == "menu" then
+                    frame:SetAttribute(attrType, "togglemenu")
+                    frame:SetAttribute(attrUnit, unit)
+                    frame:SetAttribute(attrMacro, nil)
+                elseif bConfig.action == "spell" and bConfig.spell and bConfig.spell ~= "" then
+                    local isSmartRez = (bId == "1" and not mod.isMod)
+                    local macro = self:BuildMacroText(unit, "spell", bConfig.spell, isSmartRez)
+                    frame:SetAttribute(attrType, "macro")
+                    frame:SetAttribute(attrMacro, macro)
+                    frame:SetAttribute(attrUnit, nil)
+                else
+                    frame:SetAttribute(attrType, nil)
+                    frame:SetAttribute(attrMacro, nil)
+                    frame:SetAttribute(attrUnit, nil)
+                end
+            else
+                frame:SetAttribute(attrType, nil)
+                frame:SetAttribute(attrMacro, nil)
+                frame:SetAttribute(attrUnit, nil)
+            end
+        end
+
+        -- Für Standard ohne Modifikator auch Wildcard *type als sicheren Fallback setzen
+        local stdConfig = bindings[bId]
+        if stdConfig then
+            if stdConfig.action == "target" then
+                frame:SetAttribute("*type" .. bId, "target")
+                frame:SetAttribute("*unit" .. bId, unit)
+                frame:SetAttribute("*macrotext" .. bId, nil)
+            elseif stdConfig.action == "menu" then
+                frame:SetAttribute("*type" .. bId, "togglemenu")
+                frame:SetAttribute("*unit" .. bId, unit)
+                frame:SetAttribute("*macrotext" .. bId, nil)
+            elseif stdConfig.action == "spell" and stdConfig.spell and stdConfig.spell ~= "" then
+                local macro = self:BuildMacroText(unit, "spell", stdConfig.spell, (bId == "1"))
+                frame:SetAttribute("*type" .. bId, "macro")
+                frame:SetAttribute("*macrotext" .. bId, macro)
+                frame:SetAttribute("*unit" .. bId, nil)
+            else
+                frame:SetAttribute("*type" .. bId, nil)
+                frame:SetAttribute("*macrotext" .. bId, nil)
+                frame:SetAttribute("*unit" .. bId, nil)
+            end
         else
-            kBtn:SetAttribute("*type1", nil)
-            kBtn:SetAttribute("*macrotext1", nil)
-            kBtn:SetAttribute("type1", nil)
-            kBtn:SetAttribute("macrotext1", nil)
-            kBtn:SetAttribute("*type", nil)
-            kBtn:SetAttribute("*macrotext", nil)
-            kBtn:SetAttribute("type", nil)
-            kBtn:SetAttribute("macrotext", nil)
+            frame:SetAttribute("*type" .. bId, nil)
+            frame:SetAttribute("*macrotext" .. bId, nil)
+            frame:SetAttribute("*unit" .. bId, nil)
+        end
+    end
+
+    -- 2. Mausrad (WheelUp, WheelDown) auf Child-Buttons (Standard, STRG, ALT)
+    if frame.wheelBtns then
+        ConfigureButton(frame.wheelBtns.NONE.UP, bindings["WheelUp"] and bindings["WheelUp"].spell)
+        ConfigureButton(frame.wheelBtns.NONE.DOWN, bindings["WheelDown"] and bindings["WheelDown"].spell)
+
+        ConfigureButton(frame.wheelBtns.CTRL.UP, bindings["CTRL_WheelUp"] and bindings["CTRL_WheelUp"].spell)
+        ConfigureButton(frame.wheelBtns.CTRL.DOWN, bindings["CTRL_WheelDown"] and bindings["CTRL_WheelDown"].spell)
+
+        ConfigureButton(frame.wheelBtns.ALT.UP, bindings["ALT_WheelUp"] and bindings["ALT_WheelUp"].spell)
+        ConfigureButton(frame.wheelBtns.ALT.DOWN, bindings["ALT_WheelDown"] and bindings["ALT_WheelDown"].spell)
+    end
+
+    -- 3. Tasten 1 bis 6 auf Child-Buttons (Standard, STRG, ALT)
+    if frame.keyBtns then
+        for i = 1, 6 do
+            ConfigureButton(frame.keyBtns.NONE[i], bindings["KEY_" .. i] and bindings["KEY_" .. i].spell)
+            ConfigureButton(frame.keyBtns.CTRL[i], bindings["CTRL_KEY_" .. i] and bindings["CTRL_KEY_" .. i].spell)
+            ConfigureButton(frame.keyBtns.ALT[i], bindings["ALT_KEY_" .. i] and bindings["ALT_KEY_" .. i].spell)
         end
     end
 
@@ -218,16 +263,29 @@ function CC:SetupSecureHover(frame)
     -- Hardware-Bindings beim Berühren des Rahmens
     frame:HookScript("OnEnter", function(self)
         if not InCombatLockdown() then
-            if self.wheelUpBtn then
-                SetOverrideBindingClick(self, true, "MOUSEWHEELUP", self.wheelUpBtn:GetName())
+            -- Mausrad (Standard, STRG, ALT)
+            if self.wheelBtns then
+                SetOverrideBindingClick(self, true, "MOUSEWHEELUP", self.wheelBtns.NONE.UP:GetName())
+                SetOverrideBindingClick(self, true, "MOUSEWHEELDOWN", self.wheelBtns.NONE.DOWN:GetName())
+
+                SetOverrideBindingClick(self, true, "CTRL-MOUSEWHEELUP", self.wheelBtns.CTRL.UP:GetName())
+                SetOverrideBindingClick(self, true, "CTRL-MOUSEWHEELDOWN", self.wheelBtns.CTRL.DOWN:GetName())
+
+                SetOverrideBindingClick(self, true, "ALT-MOUSEWHEELUP", self.wheelBtns.ALT.UP:GetName())
+                SetOverrideBindingClick(self, true, "ALT-MOUSEWHEELDOWN", self.wheelBtns.ALT.DOWN:GetName())
             end
-            if self.wheelDownBtn then
-                SetOverrideBindingClick(self, true, "MOUSEWHEELDOWN", self.wheelDownBtn:GetName())
-            end
+
+            -- Tasten 1 bis 6 (Standard, STRG, ALT)
             if self.keyBtns then
                 for i = 1, 6 do
-                    if self.keyBtns[i] then
-                        SetOverrideBindingClick(self, true, tostring(i), self.keyBtns[i]:GetName())
+                    if self.keyBtns.NONE[i] then
+                        SetOverrideBindingClick(self, true, tostring(i), self.keyBtns.NONE[i]:GetName())
+                    end
+                    if self.keyBtns.CTRL[i] then
+                        SetOverrideBindingClick(self, true, "CTRL-" .. i, self.keyBtns.CTRL[i]:GetName())
+                    end
+                    if self.keyBtns.ALT[i] then
+                        SetOverrideBindingClick(self, true, "ALT-" .. i, self.keyBtns.ALT[i]:GetName())
                     end
                 end
             end

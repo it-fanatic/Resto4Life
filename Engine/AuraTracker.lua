@@ -56,11 +56,11 @@ function AT:GetDispelCapabilities()
     return dispels
 end
 
--- Universeller Aura-Zugriff für moderne Retail / Forever API
+-- Universeller Aura-Zugriff für moderne Retail / Forever API (abgesichert gegen Secret Auras & Taint)
 local function GetUnitAuraByIndex(unit, index, filter)
     if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
-        local data = C_UnitAuras.GetAuraDataByIndex(unit, index, filter)
-        if data then
+        local ok, data = pcall(C_UnitAuras.GetAuraDataByIndex, unit, index, filter)
+        if ok and data and type(data) == "table" then
             return {
                 name = data.name,
                 icon = data.iconFileID or data.icon,
@@ -69,14 +69,15 @@ local function GetUnitAuraByIndex(unit, index, filter)
                 duration = data.duration or 0,
                 expirationTime = data.expirationTime or 0,
                 sourceUnit = data.sourceUnit,
+                sourceGUID = data.sourceGUID,
                 spellId = data.spellId,
                 isFromPlayerOrPlayerPet = data.isFromPlayerOrPlayerPet,
             }
         end
         return nil
     elseif UnitAura then
-        local name, icon, count, dispelType, duration, expirationTime, sourceUnit, _, _, spellId = UnitAura(unit, index, filter)
-        if name then
+        local ok, name, icon, count, dispelType, duration, expirationTime, sourceUnit, _, _, spellId = pcall(UnitAura, unit, index, filter)
+        if ok and name then
             return {
                 name = name,
                 icon = icon,
@@ -94,16 +95,29 @@ local function GetUnitAuraByIndex(unit, index, filter)
     return nil
 end
 
--- Prüft, ob eine Aura vom Spieler stammt
-local function IsPlayerAura(aura, unit)
+-- Prüft, ob eine Aura vom Spieler stammt (strikte Caster-Prüfung)
+local function IsPlayerAura(aura)
     if not aura then return false end
-    if aura.isFromPlayerOrPlayerPet then return true end
-    if aura.sourceUnit and (aura.sourceUnit == "player" or UnitIsUnit(aura.sourceUnit, "player")) then
+
+    -- 1. sourceUnit Prüfung (höchste Priorität: "player" oder pet)
+    if aura.sourceUnit and aura.sourceUnit ~= "" then
+        return (aura.sourceUnit == "player" or UnitIsUnit(aura.sourceUnit, "player") or UnitIsUnit(aura.sourceUnit, "pet"))
+    end
+
+    -- 2. GUID-Prüfung (eindeutiger Caster-GUID)
+    if aura.sourceGUID and aura.sourceGUID ~= "" then
+        local pGUID = UnitGUID("player")
+        if pGUID and aura.sourceGUID == pGUID then
+            return true
+        end
+        return false
+    end
+
+    -- 3. isFromPlayerOrPlayerPet als Fallback
+    if aura.isFromPlayerOrPlayerPet == true then
         return true
     end
-    if unit and UnitIsUnit(unit, "player") then
-        return true
-    end
+
     return false
 end
 
@@ -123,17 +137,21 @@ local KNOWN_HOTS = {
     [157982] = true, -- Gelassenheit (Tranquility)
     [391888] = true, -- Überfluss (Abundance)
     [392356] = true, -- Wuchernde Wurzeln
+    [22842] = true,  -- Rasende Regeneration
     -- Priester
     [139] = true,    -- Erneuerung (Renew)
     [77489] = true,  -- Echo des Lichts (Echo of Light)
     [41635] = true,  -- Gebet der Besserung (Prayer of Mending)
     [17] = true,     -- Machtwort: Schild (Power Word: Shield)
     [194384] = true, -- Abbitte (Atonement)
+    [47788] = true,  -- Schutzgeist (Guardian Spirit)
+    [33206] = true,  -- Schmerzunterdrückung (Pain Suppression)
     -- Schamane
     [61295] = true,  -- Springflut (Riptide)
     [974] = true,    -- Erdschild (Earth Shield)
     [52073] = true,  -- Totem des heilenden Flusses
     [383648] = true, -- Urzeitliche Welle
+    [382024] = true, -- Waffe der Lebensgeister
     -- Mönch
     [124682] = true, -- Einhüllender Nebel (Enveloping Mist)
     [119611] = true, -- Erneuernder Nebel (Renewing Mist)
@@ -142,15 +160,20 @@ local KNOWN_HOTS = {
     -- Paladin
     [53563] = true,  -- Flamme des Glaubens (Beacon of Light)
     [156910] = true, -- Flamme der Zuversicht (Beacon of Faith)
+    [200025] = true, -- Flamme der Tugend (Beacon of Virtue)
     [223306] = true, -- Zuversicht verleihen (Bestow Faith)
     [156322] = true, -- Ewige Flamme (Eternal Flame)
     -- Rufer
     [364343] = true, -- Echo
     [366155] = true, -- Zurückspulen / Reversion
     [359816] = true, -- Traumflug (Dream Flight)
+    [376788] = true, -- Traumatem (Dream Breath)
+    [367364] = true, -- Geistblüte (Spiritbloom)
+    [370960] = true, -- Zeitdilatation (Time Dilation)
 }
 
 local KNOWN_HOT_NAMES = {
+    -- Druide
     ["Verjüngung"] = true,
     ["Rejuvenation"] = true,
     ["Keimung"] = true,
@@ -171,18 +194,102 @@ local KNOWN_HOT_NAMES = {
     ["Adaptive Swarm"] = true,
     ["Gelassenheit"] = true,
     ["Tranquility"] = true,
+    ["Rasende Regeneration"] = true,
+    ["Frenzied Regeneration"] = true,
+    -- Priester
+    ["Erneuerung"] = true,
+    ["Renew"] = true,
+    ["Echo des Lichts"] = true,
+    ["Echo of Light"] = true,
+    ["Gebet der Besserung"] = true,
+    ["Prayer of Mending"] = true,
+    ["Machtwort: Schild"] = true,
+    ["Power Word: Shield"] = true,
+    ["Abbitte"] = true,
+    ["Atonement"] = true,
+    ["Schutzgeist"] = true,
+    ["Guardian Spirit"] = true,
+    ["Schmerzunterdrückung"] = true,
+    ["Pain Suppression"] = true,
+    -- Schamane
+    ["Springflut"] = true,
+    ["Riptide"] = true,
+    ["Erdschild"] = true,
+    ["Earth Shield"] = true,
+    ["Totem des heilenden Flusses"] = true,
+    ["Healing Stream Totem"] = true,
+    ["Urzeitliche Welle"] = true,
+    ["Primordial Wave"] = true,
+    ["Waffe der Lebensgeister"] = true,
+    ["Earthliving Weapon"] = true,
+    -- Mönch
+    ["Einhüllender Nebel"] = true,
+    ["Enveloping Mist"] = true,
+    ["Erneuernder Nebel"] = true,
+    ["Renewing Mist"] = true,
+    ["Beruhigender Nebel"] = true,
+    ["Soothing Mist"] = true,
+    ["Essenzborn"] = true,
+    ["Essence Font"] = true,
+    -- Paladin
+    ["Flamme des Glaubens"] = true,
+    ["Beacon of Light"] = true,
+    ["Flamme der Zuversicht"] = true,
+    ["Beacon of Faith"] = true,
+    ["Flamme der Tugend"] = true,
+    ["Beacon of Virtue"] = true,
+    ["Zuversicht verleihen"] = true,
+    ["Bestow Faith"] = true,
+    ["Ewige Flamme"] = true,
+    ["Eternal Flame"] = true,
+    -- Rufer
+    ["Echo"] = true,
+    ["Zurückspulen"] = true,
+    ["Reversion"] = true,
+    ["Traumflug"] = true,
+    ["Dream Flight"] = true,
+    ["Traumatem"] = true,
+    ["Dream Breath"] = true,
+    ["Geistblüte"] = true,
+    ["Spiritbloom"] = true,
+    ["Zeitdilatation"] = true,
+    ["Time Dilation"] = true,
 }
+
+-- Bereinigt Zaubernamen von Rang-Zusätzen (z.B. "Verjüngung (Rang 4)" -> "Verjüngung")
+local function GetCleanSpellName(name)
+    if not name then return "" end
+    local base = name:match("^(.-)%s*%(")
+    if base and base ~= "" then
+        return base
+    end
+    return name
+end
 
 -- Prüft, ob eine Aura ein HoT (Heal over Time) ist
 local function IsHotAura(name, spellId, duration)
     if spellId and KNOWN_HOTS[spellId] then
         return true
     end
+    local cleanName = GetCleanSpellName(name)
+    if cleanName and KNOWN_HOT_NAMES[cleanName] then
+        return true
+    end
     if name and KNOWN_HOT_NAMES[name] then
         return true
     end
-    -- Typische HoTs haben eine Laufzeit zwischen 3 und 90 Sekunden
-    if duration and type(duration) == "number" and duration > 0 and duration <= 90 then
+    -- Klassen-spezifische HoTs aus Config
+    local _, pClass = UnitClass("player")
+    if pClass and R4L.Config and R4L.Config.ClassDefaults and R4L.Config.ClassDefaults[pClass] then
+        local cDef = R4L.Config.ClassDefaults[pClass]
+        if cDef.trackedHots then
+            for _, id in ipairs(cDef.trackedHots) do
+                if spellId == id then return true end
+            end
+        end
+    end
+    -- Fallback für aktive HoTs mit typischer Laufzeit (2 bis 45 Sekunden)
+    if duration and type(duration) == "number" and duration >= 2 and duration <= 45 then
         return true
     end
     return false
@@ -203,49 +310,51 @@ function AT:GetPlayerHots(unit)
 
     local seenSpells = {}
 
-    -- Methode 1: C_UnitAuras.GetUnitAuras (VuhDo Standard in modern Retail)
+    local function TryAddAura(aura)
+        if not aura or not IsPlayerAura(aura) then return false end
+        local name = aura.name
+        local icon = aura.icon or aura.iconFileID
+        local count = aura.applications or aura.count or 0
+        local duration = aura.duration or 0
+        local expirationTime = aura.expirationTime or 0
+        local spellId = aura.spellId
+
+        if icon and IsHotAura(name, spellId, duration) then
+            local key = spellId or name or icon
+            if not seenSpells[key] then
+                seenSpells[key] = true
+                table.insert(hots, {
+                    name = name,
+                    icon = icon,
+                    count = count,
+                    duration = duration,
+                    expirationTime = expirationTime,
+                    spellId = spellId,
+                })
+                return #hots >= maxHots
+            end
+        end
+        return false
+    end
+
+    -- Methode 1: C_UnitAuras.GetUnitAuras
     if C_UnitAuras and C_UnitAuras.GetUnitAuras then
         local auras = nil
-        local ok, res = pcall(C_UnitAuras.GetUnitAuras, unit, "HELPFUL", 40, 0, 0)
-        if ok and res then
+        local ok, res = pcall(C_UnitAuras.GetUnitAuras, unit, "HELPFUL")
+        if ok and res and type(res) == "table" and #res > 0 then
             auras = res
-        else
-            local ok2, res2 = pcall(C_UnitAuras.GetUnitAuras, unit, "HELPFUL")
-            if ok2 and res2 then auras = res2 end
         end
-
         if auras then
             for _, aura in pairs(auras) do
-                if type(aura) == "table" and IsPlayerAura(aura, unit) then
-                    local name = aura.name
-                    local icon = aura.icon or aura.iconFileID
-                    local count = aura.applications or aura.count or 0
-                    local duration = aura.duration or 0
-                    local expirationTime = aura.expirationTime or 0
-                    local spellId = aura.spellId
-
-                    if icon and IsHotAura(name, spellId, duration) then
-                        local key = spellId or name or icon
-                        if not seenSpells[key] then
-                            seenSpells[key] = true
-                            table.insert(hots, {
-                                name = name,
-                                icon = icon,
-                                count = count,
-                                duration = duration,
-                                expirationTime = expirationTime,
-                                spellId = spellId,
-                            })
-                            if #hots >= maxHots then return hots end
-                        end
-                    end
+                if type(aura) == "table" then
+                    if TryAddAura(aura) then return hots end
                 end
             end
             if #hots > 0 then return hots end
         end
     end
 
-    -- Methode 2: AuraUtil.ForEachAura (FrameXML Standard)
+    -- Methode 2: AuraUtil.ForEachAura
     if AuraUtil and AuraUtil.ForEachAura then
         pcall(AuraUtil.ForEachAura, unit, "HELPFUL", 40, function(arg1, arg2, arg3, arg4, arg5, arg6, arg7, ...)
             local aura = {}
@@ -261,31 +370,7 @@ function AT:GetPlayerHots(unit)
                 aura.spellId = select(3, ...)
                 aura.isFromPlayerOrPlayerPet = (arg7 and (arg7 == "player" or UnitIsUnit(arg7, "player")))
             end
-
-            if IsPlayerAura(aura, unit) then
-                local name = aura.name
-                local icon = aura.icon or aura.iconFileID
-                local count = aura.applications or aura.count or 0
-                local duration = aura.duration or 0
-                local expirationTime = aura.expirationTime or 0
-                local spellId = aura.spellId
-
-                if icon and IsHotAura(name, spellId, duration) then
-                    local key = spellId or name or icon
-                    if not seenSpells[key] then
-                        seenSpells[key] = true
-                        table.insert(hots, {
-                            name = name,
-                            icon = icon,
-                            count = count,
-                            duration = duration,
-                            expirationTime = expirationTime,
-                            spellId = spellId,
-                        })
-                        if #hots >= maxHots then return true end
-                    end
-                end
-            end
+            return TryAddAura(aura)
         end)
         if #hots > 0 then return hots end
     end
@@ -299,25 +384,8 @@ function AT:GetPlayerHots(unit)
                 local slots = { s1, s2, s3, s4, s5, s6, s7, s8, s9, s10 }
                 token = table.remove(slots, 1)
                 for _, slot in ipairs(slots) do
-                    local aura = C_UnitAuras.GetAuraDataBySlot(unit, slot)
-                    if aura and IsPlayerAura(aura, unit) then
-                        local icon = aura.icon or aura.iconFileID
-                        if icon and IsHotAura(aura.name, aura.spellId, aura.duration) then
-                            local key = aura.spellId or aura.name or icon
-                            if not seenSpells[key] then
-                                seenSpells[key] = true
-                                table.insert(hots, {
-                                    name = aura.name,
-                                    icon = icon,
-                                    count = aura.applications or 0,
-                                    duration = aura.duration or 0,
-                                    expirationTime = aura.expirationTime or 0,
-                                    spellId = aura.spellId,
-                                })
-                                if #hots >= maxHots then return hots end
-                            end
-                        end
-                    end
+                    local okAura, aura = pcall(C_UnitAuras.GetAuraDataBySlot, unit, slot)
+                    if okAura and aura and TryAddAura(aura) then return hots end
                 end
             else
                 token = nil
@@ -326,27 +394,11 @@ function AT:GetPlayerHots(unit)
         if #hots > 0 then return hots end
     end
 
-    -- Methode 4: GetUnitAuraByIndex (Fallback)
+    -- Methode 4: GetUnitAuraByIndex (Universeller Index-Scan)
     for i = 1, 40 do
         local aura = GetUnitAuraByIndex(unit, i, "HELPFUL")
         if not aura then break end
-        if IsPlayerAura(aura, unit) and aura.icon then
-            if IsHotAura(aura.name, aura.spellId, aura.duration) then
-                local key = aura.spellId or aura.name or aura.icon
-                if not seenSpells[key] then
-                    seenSpells[key] = true
-                    table.insert(hots, {
-                        name = aura.name,
-                        icon = aura.icon,
-                        count = aura.count or 0,
-                        duration = aura.duration or 0,
-                        expirationTime = aura.expirationTime or 0,
-                        spellId = aura.spellId,
-                    })
-                    if #hots >= maxHots then break end
-                end
-            end
-        end
+        if TryAddAura(aura) then break end
     end
 
     return hots

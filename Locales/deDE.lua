@@ -71,9 +71,14 @@ L["MINIMAP_TOOLTIP_DRAG"] = "|cff888888Ziehen mit linker Maustaste zum Verschieb
 
 -- Tab 2: Tastenbelegung
 L["BINDINGS_HEADER"] = "|cffffff00Mausklicks & Tastenbelegungen (beim Überfahren des Rahmens):|r"
+L["MOD_NONE"] = "Standard"
+L["MOD_CTRL"] = "STRG +"
+L["MOD_ALT"] = "ALT +"
 L["LEFT_CLICK"] = "Linksklick Zauber:"
 L["RIGHT_CLICK"] = "Rechtsklick Zauber:"
 L["MID_CLICK"] = "Mittlere Maustaste:"
+L["MOUSE_BTN4"] = "Maustaste 4 (Daumen):"
+L["MOUSE_BTN5"] = "Maustaste 5 (Daumen):"
 L["WHEEL_UP"] = "Mausrad Hoch:"
 L["WHEEL_DOWN"] = "Mausrad Runter:"
 L["KEY_N_FMT"] = "Taste %d:"

@@ -9,39 +9,52 @@ local _, R4L = ...
 R4L.UnitFrame = {}
 local UF = R4L.UnitFrame
 
--- Klassenfarben-Fallback
+-- Klassenfarben-Fallback (unterstützt englische & deutsche Klassentoken)
 local FALLBACK_CLASS_COLORS = {
     ["WARRIOR"]     = { r = 0.78, g = 0.61, b = 0.43 },
+    ["KRIEGER"]     = { r = 0.78, g = 0.61, b = 0.43 },
     ["PALADIN"]     = { r = 0.96, g = 0.55, b = 0.73 },
     ["HUNTER"]      = { r = 0.67, g = 0.83, b = 0.45 },
+    ["JÄGER"]       = { r = 0.67, g = 0.83, b = 0.45 },
     ["ROGUE"]       = { r = 1.00, g = 0.96, b = 0.41 },
+    ["SCHURKE"]     = { r = 1.00, g = 0.96, b = 0.41 },
     ["PRIEST"]      = { r = 1.00, g = 1.00, b = 1.00 },
+    ["PRIESTER"]    = { r = 1.00, g = 1.00, b = 1.00 },
     ["DEATHKNIGHT"] = { r = 0.77, g = 0.12, b = 0.23 },
+    ["TODESRITTER"] = { r = 0.77, g = 0.12, b = 0.23 },
     ["SHAMAN"]      = { r = 0.00, g = 0.44, b = 0.87 },
+    ["SCHAMANE"]    = { r = 0.00, g = 0.44, b = 0.87 },
     ["MAGE"]        = { r = 0.25, g = 0.78, b = 0.92 },
+    ["MAGIER"]      = { r = 0.25, g = 0.78, b = 0.92 },
     ["WARLOCK"]     = { r = 0.53, g = 0.53, b = 0.93 },
+    ["HEXENMEISTER"]= { r = 0.53, g = 0.53, b = 0.93 },
     ["MONK"]        = { r = 0.00, g = 1.00, b = 0.59 },
+    ["MÖNCH"]       = { r = 0.00, g = 1.00, b = 0.59 },
     ["DRUID"]       = { r = 1.00, g = 0.49, b = 0.04 },
+    ["DRUIDE"]      = { r = 1.00, g = 0.49, b = 0.04 },
     ["DEMONHUNTER"] = { r = 0.64, g = 0.19, b = 0.79 },
+    ["DÄMONENJÄGER"]= { r = 0.64, g = 0.19, b = 0.79 },
     ["EVOKER"]      = { r = 0.20, g = 0.58, b = 0.50 },
+    ["RUFER"]       = { r = 0.20, g = 0.58, b = 0.50 },
 }
 
 -- Ermittelt Klassenfarben zuverlässig für Retail & Classic
 local function GetClassColorRGB(class)
-    if not class then return 1.0, 0.49, 0.04 end
+    if not class then return 0.7, 0.7, 0.7 end
+    local upperClass = string.upper(tostring(class))
     if C_ClassColor and C_ClassColor.GetClassColor then
-        local c = C_ClassColor.GetClassColor(class)
-        if c then return c.r, c.g, c.b end
+        local ok, c = pcall(C_ClassColor.GetClassColor, upperClass)
+        if ok and c and c.r then return c.r, c.g, c.b end
     end
-    if RAID_CLASS_COLORS and RAID_CLASS_COLORS[class] then
-        local c = RAID_CLASS_COLORS[class]
+    if RAID_CLASS_COLORS and RAID_CLASS_COLORS[upperClass] then
+        local c = RAID_CLASS_COLORS[upperClass]
         return c.r, c.g, c.b
     end
-    if FALLBACK_CLASS_COLORS[class] then
-        local c = FALLBACK_CLASS_COLORS[class]
+    if FALLBACK_CLASS_COLORS[upperClass] then
+        local c = FALLBACK_CLASS_COLORS[upperClass]
         return c.r, c.g, c.b
     end
-    return 1.0, 0.49, 0.04
+    return 0.7, 0.7, 0.7
 end
 
 -- Ermittelt Ressourcen-/Power-Farben für alle Klassen
@@ -136,25 +149,36 @@ local function SafeGetHealthText(unit, hp, hpMax, format)
     return ""
 end
 
--- Registriert Unit-Events gezielt für die zugewiesene Einheit
+-- Registriert Unit-Events gezielt für die zugewiesene Einheit (sicher für Retail & Classic)
 function UF:RegisterUnitEvents(frame, unit)
     frame:UnregisterAllEvents()
     if not unit or not UnitExists(unit) then return end
 
-    frame:RegisterUnitEvent("UNIT_HEALTH", unit)
-    frame:RegisterUnitEvent("UNIT_MAXHEALTH", unit)
-    frame:RegisterUnitEvent("UNIT_POWER_UPDATE", unit)
-    frame:RegisterUnitEvent("UNIT_POWER_FREQUENT", unit)
-    frame:RegisterUnitEvent("UNIT_MAXPOWER", unit)
-    frame:RegisterUnitEvent("UNIT_DISPLAYPOWER", unit)
-    frame:RegisterUnitEvent("UNIT_AURA", unit)
-    frame:RegisterUnitEvent("UNIT_CONNECTION", unit)
-    frame:RegisterUnitEvent("UNIT_THREAT_SITUATION_UPDATE", unit)
-    frame:RegisterUnitEvent("UNIT_THREAT_LIST_UPDATE", unit)
-    frame:RegisterEvent("PLAYER_TARGET_CHANGED")
-    frame:RegisterEvent("PLAYER_ROLES_ASSIGNED")
-    frame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
-    frame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    local function SafeRegister(event, u)
+        if frame.RegisterUnitEvent then
+            local ok = pcall(frame.RegisterUnitEvent, frame, event, u)
+            if not ok then
+                pcall(frame.RegisterEvent, frame, event)
+            end
+        else
+            pcall(frame.RegisterEvent, frame, event)
+        end
+    end
+
+    SafeRegister("UNIT_HEALTH", unit)
+    SafeRegister("UNIT_MAXHEALTH", unit)
+    SafeRegister("UNIT_POWER_UPDATE", unit)
+    SafeRegister("UNIT_POWER_FREQUENT", unit)
+    SafeRegister("UNIT_MAXPOWER", unit)
+    SafeRegister("UNIT_DISPLAYPOWER", unit)
+    SafeRegister("UNIT_AURA", unit)
+    SafeRegister("UNIT_CONNECTION", unit)
+    SafeRegister("UNIT_THREAT_SITUATION_UPDATE", unit)
+    SafeRegister("UNIT_THREAT_LIST_UPDATE", unit)
+    pcall(frame.RegisterEvent, frame, "PLAYER_TARGET_CHANGED")
+    pcall(frame.RegisterEvent, frame, "PLAYER_ROLES_ASSIGNED")
+    pcall(frame.RegisterEvent, frame, "PLAYER_SPECIALIZATION_CHANGED")
+    pcall(frame.RegisterEvent, frame, "PLAYER_ENTERING_WORLD")
 end
 
 -- Aktualisiert das Rollen-Icon (Tank, Heiler, DD) nach Blizzard-Standard
@@ -260,7 +284,7 @@ function UF:CreateUnitFrame(name, parent, unit)
     local pHeight = cfg.display.showManaBar and ((cfg.general.powerBarHeight or 10) + 2) or 1
     frame.healthBar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -1, pHeight)
     frame.healthBar:SetStatusBarTexture("Interface\\AddOns\\Resto4Life\\Media\\statusbar.tga")
-    frame.healthBar:SetStatusBarColor(1.0, 0.49, 0.04, 0.95)
+    frame.healthBar:SetStatusBarColor(0.2, 0.8, 0.2, 0.95)
     frame.healthBar:SetMinMaxValues(0, 100)
     frame.healthBar:SetValue(100)
     frame.healthBar:SetFrameLevel(frame:GetFrameLevel() + 2)
@@ -410,7 +434,6 @@ function UF:_UpdateFrameSimulated(frame)
 
     local isReverse = (cfg.display.healthOrientation == "REVERSE")
     if not isReverse then
-        frame.healthBar:SetReverseFill(false)
         frame.healthBar:SetMinMaxValues(0, 100)
         frame.healthBar:SetValue(sim.hp)
         frame.healthBar:SetStatusBarColor(r, g, b, 0.95)
@@ -420,7 +443,6 @@ function UF:_UpdateFrameSimulated(frame)
             frame.healthBar.bg:SetColorTexture(0.08, 0.08, 0.08, 0.95)
         end
     else
-        frame.healthBar:SetReverseFill(false)
         frame.healthBar:SetMinMaxValues(0, 100)
         frame.healthBar:SetValue(100 - sim.hp)
         frame.healthBar:SetStatusBarColor(0.85, 0.15, 0.15, 0.95)
@@ -500,47 +522,82 @@ function UF:_UpdateFrameInternal(frame)
         frame.nameText:Hide()
     end
 
-    -- 2. Reichweitenprüfung & Alpha-Fading
-    if cfg.display.fadeOutOfRange then
-        if UnitIsUnit(unit, "player") then
-            frame:SetAlpha(1.0)
-        else
-            local inRange = UnitInRange(unit)
-            if inRange == false then
-                frame:SetAlpha(cfg.display.outOfRangeAlpha or 0.4)
-            else
-                frame:SetAlpha(1.0)
+    -- 2. Reichweitenprüfung & Alpha-Fading (Vollständig geschützt vor Secret-Value Fehlern)
+    local targetAlpha = 1.0
+    if cfg.display.fadeOutOfRange and not UnitIsUnit(unit, "player") then
+        local okRange, inRange = pcall(UnitInRange, unit)
+        if okRange and inRange ~= nil then
+            local isRangeSecret = false
+            if issecretvalue then
+                local okSec, sec = pcall(issecretvalue, inRange)
+                if okSec and sec then
+                    isRangeSecret = true
+                end
+            end
+
+            if not isRangeSecret then
+                local okComp, isOut = pcall(function()
+                    return inRange == false
+                end)
+                if okComp and isOut == true then
+                    targetAlpha = cfg.display.outOfRangeAlpha or 0.4
+                end
             end
         end
-    else
-        frame:SetAlpha(1.0)
     end
+    frame:SetAlpha(targetAlpha)
 
     -- 3. Lebenspunkte & Farbgebung
     local hp = UnitHealth(unit)
     local hpMax = UnitHealthMax(unit)
-    local isDead = UnitIsDead(unit)
-    local isGhost = UnitIsGhost(unit)
-    local isConnected = UnitIsConnected(unit)
 
-    local isSecret = (issecretvalue ~= nil) and (issecretvalue(hp) or issecretvalue(hpMax))
+    local isDead = false
+    local okDead, deadVal = pcall(UnitIsDead, unit)
+    if okDead and deadVal ~= nil then
+        local okTest, res = pcall(function() return deadVal == true end)
+        if okTest and res then isDead = true end
+    end
 
-    -- Sichere Prozentberechnung (nur wenn kein Secret Value)
-    local pct = 1.0
-    if not isSecret and hp and hpMax then
-        local ok, val = pcall(function()
-            if hpMax > 0 then
-                return hp / hpMax
-            end
-            return 1.0
-        end)
-        if ok and type(val) == "number" then
-            pct = math.max(0, math.min(1.0, val))
+    local isGhost = false
+    local okGhost, ghostVal = pcall(UnitIsGhost, unit)
+    if okGhost and ghostVal ~= nil then
+        local okTest, res = pcall(function() return ghostVal == true end)
+        if okTest and res then isGhost = true end
+    end
+
+    local isConnected = true
+    local okConn, connVal = pcall(UnitIsConnected, unit)
+    if okConn and connVal ~= nil then
+        local okTest, res = pcall(function() return connVal == false end)
+        if okTest and res then isConnected = false end
+    end
+
+    -- Sichere Prozentberechnung
+    local isSecret = false
+    if issecretvalue then
+        local okS1, s1 = pcall(issecretvalue, hp)
+        local okS2, s2 = pcall(issecretvalue, hpMax)
+        if (okS1 and s1) or (okS2 and s2) then
+            isSecret = true
         end
     end
 
+    local pct = 1.0
+    local okArith, calcPct = pcall(function()
+        if hpMax and hpMax > 0 and hp then
+            return hp / hpMax
+        end
+        return 1.0
+    end)
+    if okArith and type(calcPct) == "number" then
+        pct = math.max(0, math.min(1.0, calcPct))
+    else
+        isSecret = true
+    end
+
     -- Klassenfarben vs. Minimal (Klassischer VuhDo Grün-Gelb-Rot Verlauf)
-    local _, class = UnitClass(unit)
+    local localizedClass, englishClass = UnitClass(unit)
+    local class = englishClass or localizedClass
     local r, g, b = 0.15, 0.85, 0.25
     if cfg.display.colorMode == "MINIMAL" then
         if not isSecret then
@@ -567,13 +624,20 @@ function UF:_UpdateFrameInternal(frame)
 
     if not isReverse then
         -- Normaler Modus: Balken füllt sich in gewählter Farbe (Klassenfarbe oder Grün) und leert sich bei Schaden
-        frame.healthBar:SetReverseFill(false)
-        if isSecret then
-            frame.healthBar:SetMinMaxValues(0, hpMax)
-            frame.healthBar:SetValue(hp)
-        else
-            frame.healthBar:SetMinMaxValues(0, (hpMax and hpMax > 0) and hpMax or 1)
-            frame.healthBar:SetValue(hp or 0)
+        local okSet = pcall(function()
+            if isSecret then
+                frame.healthBar:SetMinMaxValues(0, hpMax)
+                frame.healthBar:SetValue(hp)
+            else
+                local mVal = (hpMax and hpMax > 0) and hpMax or 1
+                local cVal = hp or 0
+                frame.healthBar:SetMinMaxValues(0, mVal)
+                frame.healthBar:SetValue(cVal)
+            end
+        end)
+        if not okSet then
+            pcall(frame.healthBar.SetMinMaxValues, frame.healthBar, 0, 100)
+            pcall(frame.healthBar.SetValue, frame.healthBar, 100)
         end
         frame.healthBar:SetStatusBarColor(r, g, b, 0.95)
         if cfg.display.colorMode == "MINIMAL" then
@@ -583,16 +647,20 @@ function UF:_UpdateFrameInternal(frame)
         end
     else
         -- Reverse / Defizit Modus (VuhDo-Stil): Balken füllt sich rot bei erlittenem Schaden
-        frame.healthBar:SetReverseFill(false)
-        if isSecret then
-            local missing = UnitHealthMissing and UnitHealthMissing(unit) or 0
-            frame.healthBar:SetMinMaxValues(0, hpMax)
-            frame.healthBar:SetValue(missing)
-        else
-            local okDef, deficit = pcall(function() return hpMax - hp end)
-            local defVal = (okDef and type(deficit) == "number") and deficit or 0
-            frame.healthBar:SetMinMaxValues(0, (hpMax and hpMax > 0) and hpMax or 1)
-            frame.healthBar:SetValue(defVal)
+        local okSet = pcall(function()
+            if isSecret then
+                frame.healthBar:SetMinMaxValues(0, hpMax)
+                frame.healthBar:SetValue(0)
+            else
+                local mVal = (hpMax and hpMax > 0) and hpMax or 1
+                local defVal = math.max(0, mVal - (hp or 0))
+                frame.healthBar:SetMinMaxValues(0, mVal)
+                frame.healthBar:SetValue(defVal)
+            end
+        end)
+        if not okSet then
+            pcall(frame.healthBar.SetMinMaxValues, frame.healthBar, 0, 100)
+            pcall(frame.healthBar.SetValue, frame.healthBar, 0)
         end
         frame.healthBar:SetStatusBarColor(0.85, 0.15, 0.15, 0.95) -- Rot bei Schaden
         frame.healthBar.bg:SetColorTexture(r * 0.85, g * 0.85, b * 0.85, 0.90) -- Gewählte Farbe als Basis dahinter
@@ -614,44 +682,73 @@ function UF:_UpdateFrameInternal(frame)
         frame.powerBar:Show()
         frame.powerText:Show()
 
-        -- Bevorzuge Mana (Typ 0) für Druiden und alle Klassen mit Manapool
-        local powerType, powerToken = UnitPowerType(unit)
+        local powerType = 0
+        local okType, pType = pcall(UnitPowerType, unit)
+        if okType and type(pType) == "number" then
+            powerType = pType
+        end
+
+        -- Bevorzuge Mana (Typ 0) falls Einheit Manapool besitzt
         local curType = 0
         local okMana, manaMax = pcall(UnitPowerMax, unit, 0)
-        local isPowerSecret = (issecretvalue ~= nil) and ((okMana and issecretvalue(manaMax)) or false)
-        if not isPowerSecret and okMana and type(manaMax) == "number" and manaMax > 0 then
+        local hasManaPool = false
+        if okMana and manaMax ~= nil then
+            local okCheck, res = pcall(function() return manaMax > 0 end)
+            if okCheck and res then
+                hasManaPool = true
+            end
+        end
+
+        if hasManaPool then
             curType = 0
         else
-            curType = (powerType or 0)
+            curType = powerType
         end
 
         local power = UnitPower(unit, curType)
         local powerMax = UnitPowerMax(unit, curType)
-        local isSecretP = (issecretvalue ~= nil) and (issecretvalue(power) or issecretvalue(powerMax))
 
-        if isSecretP then
-            frame.powerBar:SetMinMaxValues(0, powerMax)
-            frame.powerBar:SetValue(power)
-        else
-            local pMax = (powerMax and powerMax > 0) and powerMax or 100
-            local pCur = power or 0
-            frame.powerBar:SetMinMaxValues(0, pMax)
-            frame.powerBar:SetValue(pCur)
+        local isSecretP = false
+        if issecretvalue then
+            local okS1, s1 = pcall(issecretvalue, power)
+            local okS2, s2 = pcall(issecretvalue, powerMax)
+            if (okS1 and s1) or (okS2 and s2) then
+                isSecretP = true
+            end
+        end
+
+        local okSetP = pcall(function()
+            if isSecretP then
+                frame.powerBar:SetMinMaxValues(0, powerMax)
+                frame.powerBar:SetValue(power)
+            else
+                local pM = (powerMax and powerMax > 0) and powerMax or 100
+                local pC = power or 0
+                frame.powerBar:SetMinMaxValues(0, pM)
+                frame.powerBar:SetValue(pC)
+            end
+        end)
+        if not okSetP then
+            pcall(frame.powerBar.SetMinMaxValues, frame.powerBar, 0, powerMax or 100)
+            pcall(frame.powerBar.SetValue, frame.powerBar, power or 0)
         end
 
         local pr, pg, pb = GetPowerColorRGB(unit, curType)
         frame.powerBar:SetStatusBarColor(pr, pg, pb, 0.95)
 
         local pctText = ""
-        local okPct, calcPct = pcall(function()
-            if pMax > 0 then
-                return math.floor((pCur / pMax) * 100)
+        local okCalc, calcPct = pcall(function()
+            if power and powerMax and powerMax > 0 then
+                if power >= powerMax then return "" end
+                return math.floor((power / powerMax) * 100) .. "%"
             end
-            return 100
+            return ""
         end)
-        if okPct and type(calcPct) == "number" then
-            pctText = math.max(0, math.min(100, calcPct)) .. "%"
-        elseif UnitPowerPercent then
+        if okCalc and type(calcPct) == "string" then
+            pctText = calcPct
+        end
+
+        if pctText == "" and UnitPowerPercent then
             local okP, txt = pcall(function()
                 local p = UnitPowerPercent(unit, curType, false, CurveConstants and CurveConstants.ScaleTo100)
                 if issecretvalue and issecretvalue(p) then return "" end
@@ -738,14 +835,38 @@ function UF:_UpdateFrameInternal(frame)
         frame.border:SetBackdropBorderColor(debuffColor.r, debuffColor.g, debuffColor.b, 1.0)
     else
         -- Priorität 2: Aggro-Anzeige (Rot, nur wenn der Spieler KEIN Tank ist!)
-        local isTank = (UnitGroupRolesAssigned and UnitGroupRolesAssigned(unit) == "TANK")
-        local threat = UnitThreatSituation and UnitThreatSituation(unit)
-        -- threat in WoW: 2 = hohes Bedrohungsrisiko / Übergang, 3 = hat Aggro (wird angegriffen)
-        local hasAggro = (not isTank) and (threat ~= nil and threat >= 2)
+        local isTank = false
+        if UnitGroupRolesAssigned and UnitGroupRolesAssigned(unit) == "TANK" then
+            isTank = true
+        elseif R4L.Sorting and R4L.Sorting:GetUnitRole(unit) == "TANK" then
+            isTank = true
+        end
+
+        local inCombat = false
+        local okCombat, cVal = pcall(UnitAffectingCombat, unit)
+        if okCombat and cVal == true then
+            inCombat = true
+        end
+
+        local threat = nil
+        if UnitThreatSituation then
+            local okThreat, tVal = pcall(UnitThreatSituation, unit)
+            if okThreat and type(tVal) == "number" then
+                threat = tVal
+            end
+        end
+
+        -- threat in WoW:
+        -- nil = kein Kampf / nicht auf Bedrohungsliste
+        -- 0 = unter 100% Bedrohung (keine Aggro)
+        -- 1 = hohe Bedrohung, aber Mob greift noch jemand anderen an
+        -- 2 = Übergang / verliert/gewinnt gerade Aggro
+        -- 3 = hat direkte Aggro (wird geschlagen)
+        local hasAggro = (not isTank) and inCombat and (threat ~= nil and threat >= 2)
         if hasAggro then
             frame.border:SetBackdropBorderColor(1.0, 0.1, 0.1, 1.0) -- Rot bei Aggro auf Nicht-Tank
         else
-            frame.border:SetBackdropBorderColor(0, 0, 0, 0.9) -- Normaler Rahmen
+            frame.border:SetBackdropBorderColor(0, 0, 0, 0.9) -- Normaler schwarzer Rahmen
         end
     end
 

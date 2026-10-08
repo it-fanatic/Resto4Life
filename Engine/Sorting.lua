@@ -9,23 +9,30 @@ R4L.Sorting = {}
 local Sorting = R4L.Sorting
 
 local MELEE_CLASSES = {
-    ["WARRIOR"] = true,
-    ["ROGUE"] = true,
+    ["WARRIOR"]     = true,
+    ["KRIEGER"]     = true,
+    ["ROGUE"]       = true,
+    ["SCHURKE"]     = true,
     ["DEATHKNIGHT"] = true,
+    ["TODESRITTER"] = true,
     ["DEMONHUNTER"] = true,
+    ["DÄMONENJÄGER"]= true,
 }
 
 local RANGED_CLASSES = {
-    ["MAGE"] = true,
-    ["WARLOCK"] = true,
-    ["PRIEST"] = true,
+    ["MAGE"]        = true,
+    ["MAGIER"]      = true,
+    ["WARLOCK"]     = true,
+    ["HEXENMEISTER"]= true,
+    ["PRIEST"]      = true,
+    ["PRIESTER"]    = true,
 }
 
 -- Ermittelt die spezifische Rolle einer Einheit
 function Sorting:GetUnitRole(unit)
     if not UnitExists(unit) then return "UNKNOWN", 99 end
 
-    local role = UnitGroupRolesAssigned(unit)
+    local role = UnitGroupRolesAssigned and UnitGroupRolesAssigned(unit)
     if role == "TANK" then
         return "TANK", 1
     elseif role == "HEALER" then
@@ -33,7 +40,9 @@ function Sorting:GetUnitRole(unit)
     end
 
     -- Damager oder None: Prüfe Nahkampf vs. Fernkampf
-    local _, class = UnitClass(unit)
+    local localizedClass, englishClass = UnitClass(unit)
+    local class = englishClass or localizedClass
+    if class then class = string.upper(tostring(class)) end
     
     if MELEE_CLASSES[class] then
         return "MELEE", 2
@@ -44,16 +53,16 @@ function Sorting:GetUnitRole(unit)
     -- Hybriden (Druid, Paladin, Shaman, Monk, Hunter, Evoker)
     if class == "PALADIN" then
         return "MELEE", 2
-    elseif class == "MONK" then
+    elseif class == "MONK" or class == "MÖNCH" then
         return "MELEE", 2
-    elseif class == "HUNTER" then
+    elseif class == "HUNTER" or class == "JÄGER" then
         return "RANGE", 3
-    elseif class == "EVOKER" then
+    elseif class == "EVOKER" or class == "RUFER" then
         return "RANGE", 3
-    elseif class == "SHAMAN" then
+    elseif class == "SHAMAN" or class == "SCHAMANE" then
         -- Standardmäßig als Ranged einstufen falls nicht eindeutig Melee
         return "RANGE", 3
-    elseif class == "DRUID" then
+    elseif class == "DRUID" or class == "DRUIDE" then
         return "RANGE", 3
     end
 

@@ -53,7 +53,7 @@ function OUI:Initialize()
 
     -- Hauptfenster
     frame = CreateFrame("Frame", "Resto4LifeOptionsFrame", UIParent, "BackdropTemplate")
-    frame:SetSize(700, 560)
+    frame:SetSize(700, 580)
     frame:SetPoint("CENTER")
     frame:SetMovable(true)
     frame:EnableMouse(true)
@@ -375,96 +375,194 @@ function OUI:Initialize()
 
 
     -- =========================================================================
-    -- TAB 2: TASTENBELEGUNG (CLICK-CASTING)
+    -- TAB 2: TASTENBELEGUNG (CLICK-CASTING MIT MODIFIKATOREN STRG & ALT)
     -- =========================================================================
     local p2 = frame.tabPanels[2]
 
     local p2Desc = p2:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    p2Desc:SetPoint("TOPLEFT", p2, "TOPLEFT", 20, -15)
+    p2Desc:SetPoint("TOPLEFT", p2, "TOPLEFT", 20, -12)
     p2Desc:SetText(L["BINDINGS_HEADER"])
 
-    -- Linksklick
-    local ebLeft = CreateEditBox(p2, L["LEFT_CLICK"], 20, -40, 250, function(val)
-        cfg.bindings["1"].action = "spell"
-        cfg.bindings["1"].spell = val
+    local currentMod = "NONE" -- "NONE", "CTRL", "ALT"
+
+    -- 3 Modifikator-Umschalt-Buttons
+    local btnModNone = CreateFrame("Button", nil, p2, "UIPanelButtonTemplate")
+    btnModNone:SetSize(140, 24)
+    btnModNone:SetPoint("TOPLEFT", p2, "TOPLEFT", 20, -32)
+    btnModNone:SetText(L["MOD_NONE"] or "Standard")
+
+    local btnModCtrl = CreateFrame("Button", nil, p2, "UIPanelButtonTemplate")
+    btnModCtrl:SetSize(140, 24)
+    btnModCtrl:SetPoint("LEFT", btnModNone, "RIGHT", 10, 0)
+    btnModCtrl:SetText(L["MOD_CTRL"] or "STRG +")
+
+    local btnModAlt = CreateFrame("Button", nil, p2, "UIPanelButtonTemplate")
+    btnModAlt:SetSize(140, 24)
+    btnModAlt:SetPoint("LEFT", btnModCtrl, "RIGHT", 10, 0)
+    btnModAlt:SetText(L["MOD_ALT"] or "ALT +")
+
+    local function GetBindingKey(baseKey)
+        if currentMod == "NONE" then
+            return baseKey
+        else
+            return currentMod .. "_" .. baseKey
+        end
+    end
+
+    local function SaveSpell(baseKey, val)
+        local key = GetBindingKey(baseKey)
+        if not cfg.bindings[key] then
+            cfg.bindings[key] = { action = "spell", spell = "" }
+        end
+        if baseKey == "1" and currentMod == "NONE" and val == "" then
+            cfg.bindings[key].action = "target"
+            cfg.bindings[key].spell = ""
+        elseif baseKey == "2" and currentMod == "NONE" and val == "" then
+            cfg.bindings[key].action = "menu"
+            cfg.bindings[key].spell = ""
+        else
+            cfg.bindings[key].action = "spell"
+            cfg.bindings[key].spell = val
+        end
         R4L.ClickCast:ApplyAllBindings()
+    end
+
+    local function GetSpell(baseKey)
+        local key = GetBindingKey(baseKey)
+        return (cfg.bindings[key] and cfg.bindings[key].spell) or ""
+    end
+
+    -- Linke Spalte (Mausaktionen): Linksklick, Rechtsklick, Mittlere Maustaste, Maus 4, Maus 5, Mausrad Hoch, Mausrad Runter
+    local ebLeft, titleLeft = CreateEditBox(p2, L["LEFT_CLICK"], 20, -64, 250, function(val)
+        SaveSpell("1", val)
     end)
 
-    -- Rechtsklick
-    local ebRight = CreateEditBox(p2, L["RIGHT_CLICK"], 350, -40, 250, function(val)
-        cfg.bindings["2"].action = "spell"
-        cfg.bindings["2"].spell = val
-        R4L.ClickCast:ApplyAllBindings()
+    local ebRight, titleRight = CreateEditBox(p2, L["RIGHT_CLICK"], 20, -104, 250, function(val)
+        SaveSpell("2", val)
     end)
 
-    -- Mittlere Maustaste
-    local ebMid = CreateEditBox(p2, L["MID_CLICK"], 20, -85, 250, function(val)
-        cfg.bindings["3"].action = "spell"
-        cfg.bindings["3"].spell = val
-        R4L.ClickCast:ApplyAllBindings()
+    local ebMid, titleMid = CreateEditBox(p2, L["MID_CLICK"], 20, -144, 250, function(val)
+        SaveSpell("3", val)
     end)
 
-    -- Mausrad Hoch
-    local ebWheelUp = CreateEditBox(p2, L["WHEEL_UP"], 350, -85, 250, function(val)
-        cfg.bindings["WheelUp"].action = "spell"
-        cfg.bindings["WheelUp"].spell = val
-        R4L.ClickCast:ApplyAllBindings()
+    local ebMouse4, titleMouse4 = CreateEditBox(p2, L["MOUSE_BTN4"] or "Maustaste 4 (Daumen):", 20, -184, 250, function(val)
+        SaveSpell("4", val)
     end)
 
-    -- Mausrad Runter
-    local ebWheelDown = CreateEditBox(p2, L["WHEEL_DOWN"], 20, -130, 250, function(val)
-        cfg.bindings["WheelDown"].action = "spell"
-        cfg.bindings["WheelDown"].spell = val
-        R4L.ClickCast:ApplyAllBindings()
+    local ebMouse5, titleMouse5 = CreateEditBox(p2, L["MOUSE_BTN5"] or "Maustaste 5 (Daumen):", 20, -224, 250, function(val)
+        SaveSpell("5", val)
     end)
 
-    -- Tasten 1 bis 6
+    local ebWheelUp, titleWheelUp = CreateEditBox(p2, L["WHEEL_UP"], 20, -264, 250, function(val)
+        SaveSpell("WheelUp", val)
+    end)
+
+    local ebWheelDown, titleWheelDown = CreateEditBox(p2, L["WHEEL_DOWN"], 20, -304, 250, function(val)
+        SaveSpell("WheelDown", val)
+    end)
+
+    -- Rechte Spalte: Tasten 1 bis 6
     local ebKeys = {}
+    local titleKeys = {}
     for i = 1, 6 do
-        local col = (i <= 3) and 1 or 2
-        local row = (i <= 3) and i or (i - 3)
-        local posX = (col == 1) and 20 or 350
-        local posY = -175 - (row - 1) * 45
-
-        local eb = CreateEditBox(p2, string.format(L["KEY_N_FMT"], i), posX, posY, 250, function(val)
-            local k = "KEY_" .. i
-            cfg.bindings[k].action = "spell"
-            cfg.bindings[k].spell = val
-            R4L.ClickCast:ApplyAllBindings()
+        local posY = -64 - (i - 1) * 40
+        local eb, title = CreateEditBox(p2, string.format(L["KEY_N_FMT"], i), 350, posY, 250, function(val)
+            SaveSpell("KEY_" .. i, val)
         end)
         ebKeys[i] = eb
+        titleKeys[i] = title
     end
+
+    -- Hinweistext unten rechts
+    local hintText = p2:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    hintText:SetPoint("TOPLEFT", p2, "TOPLEFT", 350, -308)
+    hintText:SetWidth(280)
+    hintText:SetJustifyH("LEFT")
+    hintText:SetText("|cff00ccffTipp:|r Wähle oben |cff00ff00[Standard]|r, |cff00ff00[STRG +]|r oder |cff00ff00[ALT +]|r, um Tastenkombinationen zu belegen.")
+
+    local function UpdateBindingsTab()
+        -- Button-Zustände optisch hervorheben
+        if currentMod == "NONE" then
+            btnModNone:SetText("|cff00ff00[ " .. (L["MOD_NONE"] or "Standard") .. " ]|r")
+            btnModCtrl:SetText(L["MOD_CTRL"] or "STRG +")
+            btnModAlt:SetText(L["MOD_ALT"] or "ALT +")
+        elseif currentMod == "CTRL" then
+            btnModNone:SetText(L["MOD_NONE"] or "Standard")
+            btnModCtrl:SetText("|cff00ff00[ " .. (L["MOD_CTRL"] or "STRG +") .. " ]|r")
+            btnModAlt:SetText(L["MOD_ALT"] or "ALT +")
+        elseif currentMod == "ALT" then
+            btnModNone:SetText(L["MOD_NONE"] or "Standard")
+            btnModCtrl:SetText(L["MOD_CTRL"] or "STRG +")
+            btnModAlt:SetText("|cff00ff00[ " .. (L["MOD_ALT"] or "ALT +") .. " ]|r")
+        end
+
+        local pfx = ""
+        if currentMod == "CTRL" then
+            pfx = "STRG + "
+        elseif currentMod == "ALT" then
+            pfx = "ALT + "
+        end
+
+        -- Beschriftungen anpassen
+        titleLeft:SetText(pfx .. L["LEFT_CLICK"])
+        titleRight:SetText(pfx .. L["RIGHT_CLICK"])
+        titleMid:SetText(pfx .. L["MID_CLICK"])
+        titleMouse4:SetText(pfx .. (L["MOUSE_BTN4"] or "Maustaste 4 (Daumen):"))
+        titleMouse5:SetText(pfx .. (L["MOUSE_BTN5"] or "Maustaste 5 (Daumen):"))
+        titleWheelUp:SetText(pfx .. L["WHEEL_UP"])
+        titleWheelDown:SetText(pfx .. L["WHEEL_DOWN"])
+        for i = 1, 6 do
+            titleKeys[i]:SetText(pfx .. string.format(L["KEY_N_FMT"], i))
+        end
+
+        -- Werte in EditBoxen laden
+        ebLeft:SetText(GetSpell("1"))
+        ebRight:SetText(GetSpell("2"))
+        ebMid:SetText(GetSpell("3"))
+        ebMouse4:SetText(GetSpell("4"))
+        ebMouse5:SetText(GetSpell("5"))
+        ebWheelUp:SetText(GetSpell("WheelUp"))
+        ebWheelDown:SetText(GetSpell("WheelDown"))
+        for i = 1, 6 do
+            ebKeys[i]:SetText(GetSpell("KEY_" .. i))
+        end
+    end
+
+    btnModNone:SetScript("OnClick", function()
+        currentMod = "NONE"
+        UpdateBindingsTab()
+    end)
+    btnModCtrl:SetScript("OnClick", function()
+        currentMod = "CTRL"
+        UpdateBindingsTab()
+    end)
+    btnModAlt:SetScript("OnClick", function()
+        currentMod = "ALT"
+        UpdateBindingsTab()
+    end)
 
     -- Smart Battle Rez Sektion (unten mit farbiger Überschrift)
     local rezHeader = p2:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    rezHeader:SetPoint("TOPLEFT", p2, "TOPLEFT", 20, -315)
+    rezHeader:SetPoint("TOPLEFT", p2, "TOPLEFT", 20, -355)
     rezHeader:SetText(L["SMART_REZ_HEADER"])
 
-    local cbSmartRez = CreateCheckbox(p2, L["SMART_REZ_ENABLE"], 20, -335, function(val)
+    local cbSmartRez = CreateCheckbox(p2, L["SMART_REZ_ENABLE"], 20, -375, function(val)
         cfg.smartRez.enabled = val
         R4L.ClickCast:ApplyAllBindings()
     end)
 
-    local ebBattleRez = CreateEditBox(p2, L["COMBAT_REZ_SPELL"], 20, -370, 250, function(val)
+    local ebBattleRez = CreateEditBox(p2, L["COMBAT_REZ_SPELL"], 20, -410, 250, function(val)
         cfg.smartRez.combatRezSpell = val
         R4L.ClickCast:ApplyAllBindings()
     end)
 
-    local ebNormalRez = CreateEditBox(p2, L["NORMAL_REZ_SPELL"], 350, -370, 250, function(val)
+    local ebNormalRez = CreateEditBox(p2, L["NORMAL_REZ_SPELL"], 350, -410, 250, function(val)
         cfg.smartRez.normalRezSpell = val
         R4L.ClickCast:ApplyAllBindings()
     end)
 
     p2:SetScript("OnShow", function()
-        ebLeft:SetText(cfg.bindings["1"] and cfg.bindings["1"].spell or "")
-        ebRight:SetText(cfg.bindings["2"] and cfg.bindings["2"].spell or "")
-        ebMid:SetText(cfg.bindings["3"] and cfg.bindings["3"].spell or "")
-        ebWheelUp:SetText(cfg.bindings["WheelUp"] and cfg.bindings["WheelUp"].spell or "")
-        ebWheelDown:SetText(cfg.bindings["WheelDown"] and cfg.bindings["WheelDown"].spell or "")
-        for i = 1, 6 do
-            local k = "KEY_" .. i
-            ebKeys[i]:SetText(cfg.bindings[k] and cfg.bindings[k].spell or "")
-        end
+        UpdateBindingsTab()
         cbSmartRez:SetChecked(cfg.smartRez.enabled)
         ebBattleRez:SetText(cfg.smartRez.combatRezSpell or "")
         ebNormalRez:SetText(cfg.smartRez.normalRezSpell or "")
