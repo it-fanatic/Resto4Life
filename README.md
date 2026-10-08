@@ -1,4 +1,4 @@
-# Resto4Life - World of Warcraft Heiler-Addon (v0.2.0a_beta)
+# Resto4Life - World of Warcraft Heiler-Addon (v0.2.0-beta)
 
 **Resto4Life** ist ein modernes, leichtgewichtiges und hochgradig anpassbares Heiler-, Gruppen- und Raidframe-Addon – entwickelt speziell für **WoW Forever** (Interface 16001 / Build 1.60.1).
 

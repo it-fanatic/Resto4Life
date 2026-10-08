@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Package Addon
+        run: |
+          mkdir -p build/Resto4Life
+          cp -r Core Engine Locales Media UI Resto4Life.toc README.md FEATURES.md build/Resto4Life/
+          cd build
+          zip -r ../Resto4Life-${{ github.ref_name }}.zip Resto4Life
+          cd ..
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Resto4Life-${{ github.ref_name }}.zip
+          name: Resto4Life ${{ github.ref_name }}
+          prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') }}
+          generate_release_notes: true
+          body: |
+            ### 🌿 Resto4Life ${{ github.ref_name }}
+
+            **Target Client:** WoW Forever 1.60.1 (Interface 16001) / Retail compatible
+            **Status:** Beta Release
+
+            #### 📦 Manuelle Installation:
+            1. Lade `Resto4Life-${{ github.ref_name }}.zip` unten unter **Assets** herunter.
+            2. Entpacke das Archiv in dein WoW Addon-Verzeichnis:
+               - `World of Warcraft/.../Interface/AddOns/`
+            3. Der Ordner muss direkt `Resto4Life` heißen.
+            4. Starte WoW oder lade das Interface im Spiel mit `/reload` neu.
