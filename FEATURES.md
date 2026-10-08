@@ -118,12 +118,17 @@ Diese Dokumentation listet alle aktuellen Funktionen, Mechaniken und Einstellmö
 ---
 
 ## 8. Click-Casting & Tastenbelegungen
-* Zauber direkt per Klick auf die Frames wirken (Mouse-Over):
-  * **Linksklick** (z. B. Verjüngung / Heilung)
-  * **Rechtsklick** (z. B. Nachwachsen / Blitzheilung)
-  * **Mittlere Maustaste** (z. B. Pflege / Rasche Heilung)
+* **Zauber direkt per Klick auf die Frames wirken (Mouse-Over):**
+  * **Linksklick** (Button 1)
+  * **Rechtsklick** (Button 2)
+  * **Mittlere Maustaste** (Button 3)
+  * **Maustaste 4** (Hintere Daumentaste)
+  * **Maustaste 5** (Vordere Daumentaste)
   * **Mausrad Hoch & Runter**
-  * **Tasten 1 bis 6** beim Überfahren des Frames
+  * **Tasten 1 bis 6** beim Überfahren des Frames (Hover-Cast)
+* **Multiplikator-Tasten (STRG & ALT Modifikatoren):**
+  * Im Konfigurationsmenü (`/r4l`) kann über drei Umschalter (`[Standard]`, `[STRG +]`, `[ALT +]`) jede Maustaste, jedes Scrollen und jede Taste 1–6 mit einer separaten Fähigkeit belegt werden.
+  * Unterstützt Blizzards native `SecureActionButtonTemplate`-Modifikatoren für sofortige Ausführung im Kampf ohne Latenz.
 * **Smart Battle-Rez:**
   * Auf tote Ziele wirkt ein Klick automatisch die klassenspezifische Wiederbelebung (im Kampf: Rebirth / Seelenstein, außerhalb: normale Wiederbelebung).
 * **Automatischer Zielwechsel (Target on Cast):**

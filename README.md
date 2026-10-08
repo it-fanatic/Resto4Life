@@ -1,6 +1,8 @@
 # Resto4Life - World of Warcraft Heiler-Addon (v0.2.0a_beta)
 
-**Resto4Life** ist ein modernes, leichtgewichtiges und hochgradig anpassbares Heiler-, Gruppen- und Raidframe-Addon für **WoW Retail** (The War Within 11.x / Midnight 12.x) und **WoW Forever**.
+**Resto4Life** ist ein modernes, leichtgewichtiges und hochgradig anpassbares Heiler-, Gruppen- und Raidframe-Addon – entwickelt speziell für **WoW Forever** (Interface 16001) und kompatibel mit **WoW Retail** (The War Within 11.x+ / Midnight 12.x).
+
+> ⚠️ **Status: Öffentliche Beta:** Das Addon befindet sich in aktiver Weiterentwicklung und im Testbetrieb. Feedback und Vorschläge sind jederzeit willkommen!
 
 Eine vollständige Liste aller Funktionen und Details findest du in der [FEATURES.md](file:///f:/Documents/Projekte/Resto4Life/FEATURES.md).
 
@@ -40,13 +42,15 @@ Eine vollständige Liste aller Funktionen und Details findest du in der [FEATURE
   * Verfolgt aktive eigene HoTs (Verjüngung, Nachwachsen, Erneuerung, Springflut etc.) mit Icon, Restzeitanzeige und Stacks.
 * **Bannbare Flüche, Vergiftungen, Krankheiten & Magie:**
   * Der äußere Rahmen leuchtet in der jeweiligen Debuff-Farbe auf (Lila für Fluch, Grün für Gift, Braun für Krankheit, Blau für Magie), sobald ein Effekt gebannt werden kann.
-* **Konfigurierbares Click-Casting (Mouse-Over):**
-  * **Linksklick** (Button 1)
-  * **Rechtsklick** (Button 2)
-  * **Mittlere Maustaste** (Button 3)
-  * **Mausrad Hoch** (MouseWheelUp)
-  * **Mausrad Runter** (MouseWheelDown)
-  * **Schnelltasten 1 bis 6** beim Überfahren des Gruppenmitglieds
+* **Konfigurierbares Click-Casting (Mouse-Over) & Modifikatoren:**
+  * **Maustaste 1** (Linksklick)
+  * **Maustaste 2** (Rechtsklick)
+  * **Maustaste 3** (Mittlere Maustaste / Mausrad-Klick)
+  * **Maustaste 4** (Hintere Daumentaste)
+  * **Maustaste 5** (Vordere Daumentaste)
+  * **Mausrad Hoch & Runter** (MouseWheelUp / MouseWheelDown)
+  * **Schnelltasten 1 bis 6** beim Überfahren des Gruppenmitglieds (Hover-Cast)
+  * **Multiplikator-Tasten (Modifier):** Volle Unterstützung für **STRG** und **ALT** für alle Klicks, Tasten und das Mausrad (jede Kombination kann mit einem eigenen Zauber belegt werden!)
 * **Profile & Datenverwaltung:**
   * Alle Einstellungen werden **pro Charakter separat gespeichert** (`Resto4LifeCharDB`).
   * **Import- und Exportfunktion:** Einstellungen können als kompakte Zeichenkette exportiert und mit Freunden oder Twinks geteilt werden.
