@@ -1,8 +1,8 @@
 # Resto4Life - World of Warcraft Heiler-Addon (v0.2.0a_beta)
 
-**Resto4Life** ist ein modernes, leichtgewichtiges und hochgradig anpassbares Heiler-, Gruppen- und Raidframe-Addon – entwickelt speziell für **WoW Forever** (Interface 16001) und kompatibel mit **WoW Retail** (The War Within 11.x+ / Midnight 12.x).
+**Resto4Life** ist ein modernes, leichtgewichtiges und hochgradig anpassbares Heiler-, Gruppen- und Raidframe-Addon – entwickelt speziell für **WoW Forever** (Interface 16001 / Build 1.60.1).
 
-> ⚠️ **Status: Öffentliche Beta:** Das Addon befindet sich in aktiver Weiterentwicklung und im Testbetrieb. Feedback und Vorschläge sind jederzeit willkommen!
+> ⚠️ **Status: Öffentliche Beta:** Das Addon befindet sich in aktiver Weiterentwicklung und im Testbetrieb für WoW Forever. Feedback und Vorschläge sind jederzeit willkommen!
 
 Eine vollständige Liste aller Funktionen und Details findest du in der [FEATURES.md](file:///f:/Documents/Projekte/Resto4Life/FEATURES.md).
 
@@ -19,14 +19,13 @@ Eine vollständige Liste aller Funktionen und Details findest du in der [FEATURE
 * **Blizzard Rollen-Icons:**
   * Originalgetreue Rollen-Symbole (Schild für Tank, Kreuz für Heiler, Schwert für Schadensausteiler) oben links auf jedem Frame.
 * **Kompakter 5-Spieler-Gruppenframe (v1):**
-  * Optimiert für 5er-Dungeons / Mythisch+ und Open-World-Content.
+  * Optimiert für 5er-Dungeons und Open-World-Content.
   * Automatische Umschaltung zwischen Party- und Raid-Modus.
 * **Minimap-Button & Addon Compartment:**
   * Ruckelfreier, frei positionierbarer Minimap-Button mit Standard-Tracking-Border.
   * Linksklick öffnet Optionen, Rechtsklick entsperrt Frames, Shift-Linksklick zentriert die Position.
   * Automatische Integration in das moderne Blizzard Addon Compartment Menü.
 * **Gesundheitsbalken (Health Bar):**
-
   * **Normaler Modus:** Lebensbalken leert sich bei erlittenem Schaden.
   * **Reverse-Modus (VuhDo-Stil):** Lebensbalken füllt sich rot auf, je mehr Leben verloren geht (Defizitanzeige).
   * **Farbmodi:** Dynamische **Klassenfarben** oder **Minimaler Farbverlauf** (Grün $\rightarrow$ Gelb $\rightarrow$ Rot je nach HP-Stand).
@@ -59,9 +58,8 @@ Eine vollständige Liste aller Funktionen und Details findest du in der [FEATURE
 
 ## 🚀 Installation
 
-1. Kopiere den gesamten Ordner `Resto4Life` in dein WoW-Addons-Verzeichnis:
-   * **Retail:** `World of Warcraft\_retail_\Interface\AddOns\Resto4Life`
-   * **WoW Forever:** `World of Warcraft\<Forever-Verzeichnis>\Interface\AddOns\Resto4Life`
+1. Kopiere den gesamten Ordner `Resto4Life` in dein WoW Forever Addons-Verzeichnis:
+   * z. B. `World of Warcraft\_classic_beta_\Interface\AddOns\Resto4Life`
 2. Starte World of Warcraft neu oder gib im Spiel `/reload` ein.
 
 ---
