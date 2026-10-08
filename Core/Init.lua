@@ -18,9 +18,14 @@ local eventCallbacks = {}
 function R4L:RegisterEvent(event, callback)
     if not eventCallbacks[event] then
         eventCallbacks[event] = {}
-        eventFrame:RegisterEvent(event)
+        local ok = pcall(eventFrame.RegisterEvent, eventFrame, event)
+        if not ok then
+            eventCallbacks[event] = nil
+            return false
+        end
     end
     table.insert(eventCallbacks[event], callback)
+    return true
 end
 
 function R4L:UnregisterEvent(event, callback)

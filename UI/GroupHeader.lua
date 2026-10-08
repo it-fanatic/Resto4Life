@@ -14,6 +14,43 @@ GH.frames = {}
 GH.maxMembers = 5 -- Erste Version: 5-Spieler-Gruppe
 GH.isSimulating = false
 
+-- Sicherer Timer-Helper für Retail & Classic / Forever
+local function SafeAfter(delay, func)
+    if C_Timer and C_Timer.After then
+        C_Timer.After(delay, func)
+    else
+        local f = CreateFrame("Frame")
+        local elapsed = 0
+        f:SetScript("OnUpdate", function(self, dt)
+            elapsed = elapsed + dt
+            if elapsed >= delay then
+                self:SetScript("OnUpdate", nil)
+                func()
+            end
+        end)
+    end
+end
+
+function GH:RequestRosterUpdate(delay)
+    if self.isSimulating then return end
+    if InCombatLockdown() then
+        R4L:QueueOutOfCombat(function()
+            GH:UpdateRoster()
+        end)
+        return
+    end
+
+    self:UpdateRoster()
+
+    if delay and delay > 0 then
+        SafeAfter(delay, function()
+            if not InCombatLockdown() then
+                GH:UpdateRoster()
+            end
+        end)
+    end
+end
+
 function GH:Initialize()
     local cfg = R4L.ProfileManager:GetConfig()
     cfg.general.spacing = 0
@@ -200,13 +237,32 @@ function GH:Initialize()
         self.frames[i] = frame
     end
 
-    -- Event-Registrierungen
-    R4L:RegisterEvent("GROUP_ROSTER_UPDATE", function()
-        GH:UpdateRoster()
-    end)
-    R4L:RegisterEvent("PLAYER_ENTERING_WORLD", function()
-        GH:UpdateRoster()
-    end)
+    -- Event-Registrierungen für zuverlässige Roster-Updates
+    local rosterEvents = {
+        "GROUP_ROSTER_UPDATE",
+        "PLAYER_ENTERING_WORLD",
+        "PARTY_MEMBER_ENABLE",
+        "PARTY_MEMBER_DISABLE",
+        "PARTY_LEADER_CHANGED",
+        "GROUP_JOINED",
+        "GROUP_LEFT",
+        "PLAYER_ROLES_ASSIGNED",
+    }
+    for _, evt in ipairs(rosterEvents) do
+        R4L:RegisterEvent(evt, function()
+            GH:RequestRosterUpdate()
+        end)
+    end
+
+    -- Zusätzliche Unit-Events für verspätete Verbindungs-/Namensdaten
+    local function OnUnitRosterChange(event, unit)
+        if not unit then return end
+        if unit == "player" or unit:match("^party") or unit:match("^raid") then
+            GH:RequestRosterUpdate()
+        end
+    end
+    R4L:RegisterEvent("UNIT_CONNECTION", OnUnitRosterChange)
+    R4L:RegisterEvent("UNIT_NAME_UPDATE", OnUnitRosterChange)
 
     self:UpdateLayout()
     self:UpdateRoster()
@@ -372,7 +428,12 @@ function GH:UpdateRoster()
 
     -- Prüfe Gruppen-Status
     if IsInRaid() then
-        -- Zukunft: Raid-Unterstützung mit Kennzeichnung der eigenen Gruppe
+        -- Wenn RaidHeader aktiv ist, übernimmt dieser vollständig
+        if R4L.RaidHeader and self.container then
+            self.container:Hide()
+            return
+        end
+
         local mySubgroup = 1
         for i = 1, GetNumGroupMembers() do
             local name, _, subgroup = GetRaidRosterInfo(i)
@@ -407,6 +468,28 @@ function GH:UpdateRoster()
             local unit = "party" .. i
             if UnitExists(unit) then
                 table.insert(rawUnits, unit)
+            end
+        end
+
+        -- Gestaffelter Retry-Mechanismus:
+        -- Falls WoW meldet, dass z.B. 5 Spieler in der Gruppe sind, aber UnitExists("partyX")
+        -- für ein neues Mitglied (z. B. den zweiten Priester) noch kurzzeitig false liefert,
+        -- planen wir automatisch gestaffelte Retries (350ms & 850ms) ein.
+        local expected = (GetNumGroupMembers and GetNumGroupMembers()) or (GetNumSubgroupMembers and (GetNumSubgroupMembers() + 1)) or 0
+        if expected > 0 and #rawUnits < expected and #rawUnits < self.maxMembers then
+            if not self._retryActive then
+                self._retryActive = true
+                SafeAfter(0.35, function()
+                    self._retryActive = false
+                    if not InCombatLockdown() then
+                        GH:UpdateRoster()
+                    end
+                end)
+                SafeAfter(0.85, function()
+                    if not InCombatLockdown() then
+                        GH:UpdateRoster()
+                    end
+                end)
             end
         end
     else

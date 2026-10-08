@@ -20,6 +20,42 @@ RH.simMode = nil -- "10", "25", "40"
 RH.containers = {}
 RH.isLocked = true
 
+local function SafeAfter(delay, func)
+    if C_Timer and C_Timer.After then
+        C_Timer.After(delay, func)
+    else
+        local f = CreateFrame("Frame")
+        local elapsed = 0
+        f:SetScript("OnUpdate", function(self, dt)
+            elapsed = elapsed + dt
+            if elapsed >= delay then
+                self:SetScript("OnUpdate", nil)
+                func()
+            end
+        end)
+    end
+end
+
+function RH:RequestRosterUpdate(delay)
+    if self.isSimulating then return end
+    if InCombatLockdown() then
+        R4L:QueueOutOfCombat(function()
+            RH:UpdateRoster()
+        end)
+        return
+    end
+
+    self:UpdateRoster()
+
+    if delay and delay > 0 then
+        SafeAfter(delay, function()
+            if not InCombatLockdown() then
+                RH:UpdateRoster()
+            end
+        end)
+    end
+end
+
 -- Skaliert einen Container und hält die TOPLEFT-Position pixelgenau auf dem Bildschirm (kein Springen!)
 function RH:SetContainerScale(container, posKey, newScale, onScale)
     local cfg = R4L.ProfileManager:GetConfig()
@@ -396,15 +432,34 @@ function RH:Initialize()
     }
 
     -- Events für Roster-Updates
-    R4L:RegisterEvent("GROUP_ROSTER_UPDATE", function()
-        RH:UpdateRoster()
-    end)
-    R4L:RegisterEvent("PLAYER_ROLES_ASSIGNED", function()
-        RH:UpdateRoster()
-    end)
+    local raidRosterEvents = {
+        "GROUP_ROSTER_UPDATE",
+        "PLAYER_ENTERING_WORLD",
+        "PARTY_MEMBER_ENABLE",
+        "PARTY_MEMBER_DISABLE",
+        "PARTY_LEADER_CHANGED",
+        "GROUP_JOINED",
+        "GROUP_LEFT",
+        "PLAYER_ROLES_ASSIGNED",
+    }
+    for _, evt in ipairs(raidRosterEvents) do
+        R4L:RegisterEvent(evt, function()
+            RH:RequestRosterUpdate()
+        end)
+    end
+
+    local function OnRaidUnitChange(event, unit)
+        if not unit then return end
+        if unit == "player" or unit:match("^party") or unit:match("^raid") then
+            RH:RequestRosterUpdate()
+        end
+    end
+    R4L:RegisterEvent("UNIT_CONNECTION", OnRaidUnitChange)
+    R4L:RegisterEvent("UNIT_NAME_UPDATE", OnRaidUnitChange)
+
     R4L:RegisterEvent("UNIT_PET", function()
         if cfg.raid and cfg.raid.showPets then
-            RH:UpdateRoster()
+            RH:RequestRosterUpdate()
         end
     end)
 
@@ -667,6 +722,25 @@ function RH:UpdateRoster()
     end
     self.petContainer:SetShown(cfg.raid.showPets and #petUnits > 0)
     self:UpdateMovers()
+
+    -- Gestaffelter Retry-Mechanismus für Raids:
+    if inRaid and numMembers > 0 then
+        local totalAssigned = #tankUnits + #myGroupUnits + #remainingUnits
+        if totalAssigned < numMembers and not self._retryActive then
+            self._retryActive = true
+            SafeAfter(0.35, function()
+                self._retryActive = false
+                if not InCombatLockdown() then
+                    RH:UpdateRoster()
+                end
+            end)
+            SafeAfter(0.85, function()
+                if not InCombatLockdown() then
+                    RH:UpdateRoster()
+                end
+            end)
+        end
+    end
 end
 
 function RH:UpdateAllFrames()
