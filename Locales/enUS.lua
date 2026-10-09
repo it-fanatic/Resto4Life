@@ -89,6 +89,7 @@ L["NORMAL_REZ_SPELL"] = "Normal Rez Spell (Out-of-Combat):"
 
 -- Tab 3: HoTs & Debuffs
 L["SHOW_HOTS_CB"] = "Show ticking HoTs on group members (Icons & duration)"
+L["ONLY_MY_HOTS_CB"] = "Filter: Only show my own HoTs on allies (always show all on yourself)"
 L["COLOR_DEBUFFS_CB"] = "Highlight dispellable debuffs on frame (Colored border)"
 L["DISP_ONLY_CB"] = "Only highlight if my class can dispel it"
 L["HIGHLIGHT_CURSE"] = "|cff9900ffCurses|r highlight"

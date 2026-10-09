@@ -522,27 +522,19 @@ function UF:_UpdateFrameInternal(frame)
         frame.nameText:Hide()
     end
 
-    -- 2. Reichweitenprüfung & Alpha-Fading (Vollständig geschützt vor Secret-Value Fehlern)
+    -- 2. Reichweitenprüfung & Alpha-Fading
     local targetAlpha = 1.0
     if cfg.display.fadeOutOfRange and not UnitIsUnit(unit, "player") then
-        local okRange, inRange = pcall(UnitInRange, unit)
-        if okRange and inRange ~= nil then
-            local isRangeSecret = false
-            if issecretvalue then
-                local okSec, sec = pcall(issecretvalue, inRange)
-                if okSec and sec then
-                    isRangeSecret = true
-                end
-            end
+        local inRange = true
+        if R4L.IsUnitInRange then
+            inRange = R4L:IsUnitInRange(unit)
+        else
+            local okRange, rVal = pcall(UnitInRange, unit)
+            if okRange and rVal ~= nil then inRange = (rVal == true or rVal == 1) end
+        end
 
-            if not isRangeSecret then
-                local okComp, isOut = pcall(function()
-                    return inRange == false
-                end)
-                if okComp and isOut == true then
-                    targetAlpha = cfg.display.outOfRangeAlpha or 0.4
-                end
-            end
+        if not inRange then
+            targetAlpha = cfg.display.outOfRangeAlpha or 0.4
         end
     end
     frame:SetAlpha(targetAlpha)

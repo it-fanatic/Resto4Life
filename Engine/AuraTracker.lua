@@ -310,8 +310,17 @@ function AT:GetPlayerHots(unit)
 
     local seenSpells = {}
 
+    local isSelf = UnitIsUnit(unit, "player")
+    local cfg = R4L.ProfileManager and R4L.ProfileManager:GetConfig()
+    local onlyMyHots = not cfg or not cfg.auras or (cfg.auras.onlyMyHots ~= false)
+
     local function TryAddAura(aura)
-        if not aura or not IsPlayerAura(aura) then return false end
+        if not aura then return false end
+        -- Auf sich selbst: Zeige immer alle eingehenden HoTs an (auch von anderen Heilern)
+        -- Auf Verbündeten: Nur eigene HoTs filtern (außer onlyMyHots ist deaktiviert)
+        if not isSelf and onlyMyHots then
+            if not IsPlayerAura(aura) then return false end
+        end
         local name = aura.name
         local icon = aura.icon or aura.iconFileID
         local count = aura.applications or aura.count or 0

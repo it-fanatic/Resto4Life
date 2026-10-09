@@ -89,6 +89,7 @@ L["NORMAL_REZ_SPELL"] = "Normale Wiederbelebung (Out-of-Combat):"
 
 -- Tab 3: HoTs & Debuffs
 L["SHOW_HOTS_CB"] = "Tickende HoTs auf Gruppenmitgliedern anzeigen (Icons & Restzeit)"
+L["ONLY_MY_HOTS_CB"] = "Nur eigene HoTs auf Verbündeten filtern (auf eigenem Frame immer alle)"
 L["COLOR_DEBUFFS_CB"] = "Bannbare Debuffs am Rahmen hervorheben (Farblicher Rand)"
 L["DISP_ONLY_CB"] = "Nur hervorheben, wenn meine Klasse den Debuff bannen kann"
 L["HIGHLIGHT_CURSE"] = "|cff9900ffFlüche|r hervorheben"

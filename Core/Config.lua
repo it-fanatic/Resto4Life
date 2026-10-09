@@ -65,6 +65,7 @@ R4L.Config.Defaults = {
     },
     auras = {
         showHots = true,
+        onlyMyHots = true, -- Nur eigene HoTs auf Gruppenmitgliedern (auf eigenem Frame immer alle)
         hotIconSize = 14,
         maxHots = 4,
         showDebuffs = true,

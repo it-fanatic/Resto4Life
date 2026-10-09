@@ -7,12 +7,14 @@ local addonName, R4L = ...
 _G["Resto4Life"] = R4L
 
 R4L.addonName = addonName
-R4L.version = "0.2.1-beta"
+R4L.version = "0.2.2-beta"
 R4L.inCombat = false
 R4L.combatQueue = {}
 
 -- Event Management
 local eventFrame = CreateFrame("Frame")
+eventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
+eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 local eventCallbacks = {}
 
 function R4L:RegisterEvent(event, callback)
@@ -48,13 +50,20 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
         R4L.inCombat = true
     elseif event == "PLAYER_REGEN_ENABLED" then
         R4L.inCombat = false
-        -- Verarbeite Aktionen, die während des Kampfes verzögert wurden
+        -- Verarbeite Aktionen, die während des Kampfes verzögert wurden (z.B. neue Gruppenmitglieder)
         if #R4L.combatQueue > 0 then
             local queue = R4L.combatQueue
             R4L.combatQueue = {}
             for _, action in ipairs(queue) do
                 pcall(action)
             end
+        end
+        -- Nach Kampfende Roster immer abgleichen
+        if R4L.GroupHeader and R4L.GroupHeader.UpdateRoster then
+            pcall(R4L.GroupHeader.UpdateRoster, R4L.GroupHeader)
+        end
+        if R4L.RaidHeader and R4L.RaidHeader.UpdateRoster then
+            pcall(R4L.RaidHeader.UpdateRoster, R4L.RaidHeader)
         end
     end
 
@@ -74,6 +83,99 @@ function R4L:QueueOutOfCombat(action)
     else
         action()
     end
+end
+
+-- =========================================================================
+-- Zuverlässige 40-Meter Reichweitenprüfung (Retail & Classic / Forever)
+-- =========================================================================
+local FRIENDLY_RANGE_SPELLS = {
+    ["PRIEST"]      = { 2061, 139, 17 },        -- Blitzheilung, Erneuerung, Machtwort: Schild
+    ["DRUID"]       = { 774, 8936, 33763 },     -- Verjüngung, Nachwachsen, Blühendes Leben
+    ["PALADIN"]     = { 19750, 82326 },         -- Lichtblitz, Heiliges Licht
+    ["SHAMAN"]      = { 8004, 77472, 61295 },   -- Heilende Woge, Welle der Heilung, Springflut
+    ["MONK"]        = { 116670, 115175 },       -- Vivat / Beleben, Beruhigender Nebel
+    ["EVOKER"]      = { 361469, 366155 },       -- Lebende Flamme, Zurückspulen
+    ["MAGE"]        = { 475 },                  -- Fluch aufheben
+    ["WARLOCK"]     = { 5697 },                 -- Unendlicher Atem
+}
+
+function R4L:GetRangeCheckSpell()
+    if self.rangeCheckSpell ~= nil then return self.rangeCheckSpell end
+    local _, englishClass = UnitClass("player")
+    local candidates = englishClass and FRIENDLY_RANGE_SPELLS[englishClass]
+    if candidates then
+        for _, id in ipairs(candidates) do
+            local exists = false
+            if C_Spell and C_Spell.DoesSpellExist then
+                local ok, ex = pcall(C_Spell.DoesSpellExist, id)
+                if ok and ex then exists = true end
+            elseif GetSpellInfo then
+                local ok, name = pcall(GetSpellInfo, id)
+                if ok and name then exists = true end
+            end
+            if exists then
+                self.rangeCheckSpell = id
+                return id
+            end
+        end
+    end
+    self.rangeCheckSpell = false
+    return false
+end
+
+function R4L:IsUnitInRange(unit)
+    if not unit or not UnitExists(unit) then return false end
+    if UnitIsUnit(unit, "player") then return true end
+
+    -- 1. Offline oder nicht in 3D-Sichtweite (> 100 Meter)
+    if UnitIsConnected then
+        local okConn, isConn = pcall(UnitIsConnected, unit)
+        if okConn and isConn == false then return false end
+    end
+    if UnitIsVisible then
+        local okVis, isVis = pcall(UnitIsVisible, unit)
+        if okVis and isVis == false then return false end
+    end
+
+    -- 2. Primäre 40-Meter Prüfung über Zauber (100% verlässlich auf jedem Client)
+    local spell = self:GetRangeCheckSpell()
+    if spell then
+        if C_Spell and C_Spell.IsSpellInRange then
+            local okSpell, inSpell = pcall(C_Spell.IsSpellInRange, spell, unit)
+            if okSpell and inSpell ~= nil then
+                return (inSpell == true or inSpell == 1)
+            end
+        elseif IsSpellInRange then
+            local okSpell, inSpell = pcall(IsSpellInRange, spell, unit)
+            if okSpell and inSpell ~= nil then
+                return (inSpell == 1 or inSpell == true)
+            end
+        end
+    end
+
+    -- 3. UnitInRange Fallback
+    if UnitInRange then
+        local okRange, inRange, checked = pcall(UnitInRange, unit)
+        if okRange and inRange ~= nil then
+            if checked == true or checked == 1 then
+                return (inRange == true or inRange == 1)
+            elseif inRange == false or inRange == 0 then
+                return false
+            elseif inRange == true or inRange == 1 then
+                return true
+            end
+        end
+    end
+
+    -- 4. CheckInteractDistance(unit, 4) = ca. 28 Meter
+    if CheckInteractDistance then
+        local okDist, inDist = pcall(CheckInteractDistance, unit, 4)
+        if okDist and inDist == true then
+            return true
+        end
+    end
+
+    return true
 end
 
 function R4L:Print(msg, ...)
