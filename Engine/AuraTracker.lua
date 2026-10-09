@@ -295,32 +295,28 @@ local function IsHotAura(name, spellId, duration)
     return false
 end
 
--- Holt alle aktiven HoTs des Spielers auf der Zieleinheit
+-- Holt alle aktiven HoTs (eigene HoTs und fremde HoTs getrennt) auf der Zieleinheit
 function AT:GetPlayerHots(unit)
-    local hots = {}
-    if not unit or not UnitExists(unit) then return hots end
+    local ownHots = {}
+    local otherHots = {}
+    if not unit or not UnitExists(unit) then return ownHots, otherHots end
 
-    local maxHots = 4
+    local maxOwnHots = 4
+    local maxOtherHots = 3
     if R4L.ProfileManager then
         local cfg = R4L.ProfileManager:GetConfig()
-        if cfg and cfg.auras and cfg.auras.maxHots then
-            maxHots = cfg.auras.maxHots
+        if cfg and cfg.auras then
+            if cfg.auras.maxHots then maxOwnHots = cfg.auras.maxHots end
+            if cfg.auras.maxOtherHots then maxOtherHots = cfg.auras.maxOtherHots end
         end
     end
 
-    local seenSpells = {}
-
-    local isSelf = UnitIsUnit(unit, "player")
-    local cfg = R4L.ProfileManager and R4L.ProfileManager:GetConfig()
-    local onlyMyHots = not cfg or not cfg.auras or (cfg.auras.onlyMyHots ~= false)
+    local seenOwn = {}
+    local seenOther = {}
 
     local function TryAddAura(aura)
         if not aura then return false end
-        -- Auf sich selbst: Zeige immer alle eingehenden HoTs an (auch von anderen Heilern)
-        -- Auf Verbündeten: Nur eigene HoTs filtern (außer onlyMyHots ist deaktiviert)
-        if not isSelf and onlyMyHots then
-            if not IsPlayerAura(aura) then return false end
-        end
+        local isMine = IsPlayerAura(aura)
         local name = aura.name
         local icon = aura.icon or aura.iconFileID
         local count = aura.applications or aura.count or 0
@@ -330,20 +326,29 @@ function AT:GetPlayerHots(unit)
 
         if icon and IsHotAura(name, spellId, duration) then
             local key = spellId or name or icon
-            if not seenSpells[key] then
-                seenSpells[key] = true
-                table.insert(hots, {
-                    name = name,
-                    icon = icon,
-                    count = count,
-                    duration = duration,
-                    expirationTime = expirationTime,
-                    spellId = spellId,
-                })
-                return #hots >= maxHots
+            local hotData = {
+                name = name,
+                icon = icon,
+                count = count,
+                duration = duration,
+                expirationTime = expirationTime,
+                spellId = spellId,
+                isMine = isMine,
+            }
+
+            if isMine then
+                if not seenOwn[key] and #ownHots < maxOwnHots then
+                    seenOwn[key] = true
+                    table.insert(ownHots, hotData)
+                end
+            else
+                if not seenOther[key] and #otherHots < maxOtherHots then
+                    seenOther[key] = true
+                    table.insert(otherHots, hotData)
+                end
             end
         end
-        return false
+        return (#ownHots >= maxOwnHots and #otherHots >= maxOtherHots)
     end
 
     -- Methode 1: C_UnitAuras.GetUnitAuras
@@ -356,10 +361,10 @@ function AT:GetPlayerHots(unit)
         if auras then
             for _, aura in pairs(auras) do
                 if type(aura) == "table" then
-                    if TryAddAura(aura) then return hots end
+                    if TryAddAura(aura) then return ownHots, otherHots end
                 end
             end
-            if #hots > 0 then return hots end
+            if #ownHots > 0 or #otherHots > 0 then return ownHots, otherHots end
         end
     end
 
@@ -381,7 +386,7 @@ function AT:GetPlayerHots(unit)
             end
             return TryAddAura(aura)
         end)
-        if #hots > 0 then return hots end
+        if #ownHots > 0 or #otherHots > 0 then return ownHots, otherHots end
     end
 
     -- Methode 3: C_UnitAuras.GetAuraSlots & GetAuraDataBySlot
@@ -394,13 +399,13 @@ function AT:GetPlayerHots(unit)
                 token = table.remove(slots, 1)
                 for _, slot in ipairs(slots) do
                     local okAura, aura = pcall(C_UnitAuras.GetAuraDataBySlot, unit, slot)
-                    if okAura and aura and TryAddAura(aura) then return hots end
+                    if okAura and aura and TryAddAura(aura) then return ownHots, otherHots end
                 end
             else
                 token = nil
             end
         until token == nil
-        if #hots > 0 then return hots end
+        if #ownHots > 0 or #otherHots > 0 then return ownHots, otherHots end
     end
 
     -- Methode 4: GetUnitAuraByIndex (Universeller Index-Scan)
@@ -410,7 +415,7 @@ function AT:GetPlayerHots(unit)
         if TryAddAura(aura) then break end
     end
 
-    return hots
+    return ownHots, otherHots
 end
 
 -- Findet den wichtigsten reinigbaren Debuff auf einer Einheit

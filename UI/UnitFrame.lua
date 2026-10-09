@@ -307,27 +307,71 @@ function UF:CreateUnitFrame(name, parent, unit)
     frame.statusText:SetPoint("BOTTOMRIGHT", frame.healthBar, "BOTTOMRIGHT", -4, 4)
     frame.statusText:SetJustifyH("RIGHT")
 
-    -- Rollen-Icon (Tank, Heiler, DD) oben links mit Abstand links und oben
+    -- Rollen-Icon (Tank, Heiler, DD) mittig links auf gleicher Höhe wie der Name
     frame.roleIcon = frame.healthBar:CreateTexture(nil, "OVERLAY", nil, 7)
     frame.roleIcon:SetSize(13, 13)
-    frame.roleIcon:SetPoint("TOPLEFT", frame.healthBar, "TOPLEFT", 4, -4)
+    frame.roleIcon:SetPoint("LEFT", frame.healthBar, "LEFT", 4, -7)
     frame.roleIcon:SetTexture("Interface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES")
     frame.roleIcon:SetHorizTile(false)
     frame.roleIcon:SetVertTile(false)
     frame.roleIcon:Hide()
 
-    -- HoT Icons Container (oben rechts)
+    -- Fremde HoT Icons Container (oben links)
+    frame.otherHotContainer = CreateFrame("Frame", nil, frame)
+    frame.otherHotContainer:SetPoint("TOPLEFT", frame, "TOPLEFT", 2, -2)
+    frame.otherHotContainer:SetSize(60, 20)
+    frame.otherHotContainer:SetFrameLevel(frame:GetFrameLevel() + 10)
+    frame.otherHotContainer:Show()
+
+    frame.otherHotIcons = {}
+    for i = 1, 3 do
+        local hotIcon = CreateFrame("Frame", nil, frame.otherHotContainer, "BackdropTemplate")
+        hotIcon:SetSize(16, 16)
+        hotIcon:SetPoint("LEFT", frame.otherHotContainer, "LEFT", ((i - 1) * 18), 0)
+        hotIcon:SetFrameLevel(frame.otherHotContainer:GetFrameLevel() + 2)
+        hotIcon:SetBackdrop({
+            bgFile = "Interface\\Buttons\\WHITE8x8",
+            edgeFile = "Interface\\Buttons\\WHITE8x8",
+            edgeSize = 1,
+        })
+        hotIcon:SetBackdropColor(0, 0, 0, 0.8)
+        hotIcon:SetBackdropBorderColor(0.2, 0.6, 1.0, 0.9) -- Dezenter bläulicher Rand für fremde HoTs
+
+        hotIcon.tex = hotIcon:CreateTexture(nil, "ARTWORK")
+        hotIcon.tex:SetPoint("TOPLEFT", hotIcon, "TOPLEFT", 1, -1)
+        hotIcon.tex:SetPoint("BOTTOMRIGHT", hotIcon, "BOTTOMRIGHT", -1, 1)
+        hotIcon.tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+
+        hotIcon.cdText = hotIcon:CreateFontString(nil, "OVERLAY")
+        if not hotIcon.cdText:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", 10, "OUTLINE") then
+            hotIcon.cdText:SetFontObject("GameFontHighlightSmall")
+        end
+        hotIcon.cdText:SetPoint("CENTER", hotIcon, "CENTER", 0, 0)
+        hotIcon.cdText:SetTextColor(1, 1, 1, 1)
+
+        hotIcon.countText = hotIcon:CreateFontString(nil, "OVERLAY")
+        if not hotIcon.countText:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", 9, "OUTLINE") then
+            hotIcon.countText:SetFontObject("GameFontHighlightSmall")
+        end
+        hotIcon.countText:SetPoint("BOTTOMRIGHT", hotIcon, "BOTTOMRIGHT", 1, -1)
+        hotIcon.countText:SetTextColor(1, 1, 0, 1)
+
+        hotIcon:Hide()
+        frame.otherHotIcons[i] = hotIcon
+    end
+
+    -- Eigene HoT Icons Container (oben rechts)
     frame.hotContainer = CreateFrame("Frame", nil, frame)
     frame.hotContainer:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -2)
-    frame.hotContainer:SetSize(80, 20)
+    frame.hotContainer:SetSize(76, 20)
     frame.hotContainer:SetFrameLevel(frame:GetFrameLevel() + 10)
     frame.hotContainer:Show()
 
     frame.hotIcons = {}
     for i = 1, 4 do
         local hotIcon = CreateFrame("Frame", nil, frame.hotContainer, "BackdropTemplate")
-        hotIcon:SetSize(18, 18)
-        hotIcon:SetPoint("RIGHT", frame.hotContainer, "RIGHT", -((i - 1) * 20), 0)
+        hotIcon:SetSize(16, 16)
+        hotIcon:SetPoint("RIGHT", frame.hotContainer, "RIGHT", -((i - 1) * 18), 0)
         hotIcon:SetFrameLevel(frame.hotContainer:GetFrameLevel() + 2)
         hotIcon:SetBackdrop({
             bgFile = "Interface\\Buttons\\WHITE8x8",
@@ -343,14 +387,14 @@ function UF:CreateUnitFrame(name, parent, unit)
         hotIcon.tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
         hotIcon.cdText = hotIcon:CreateFontString(nil, "OVERLAY")
-        if not hotIcon.cdText:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", 11, "OUTLINE") then
+        if not hotIcon.cdText:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", 10, "OUTLINE") then
             hotIcon.cdText:SetFontObject("GameFontHighlightSmall")
         end
         hotIcon.cdText:SetPoint("CENTER", hotIcon, "CENTER", 0, 0)
         hotIcon.cdText:SetTextColor(1, 1, 1, 1)
 
         hotIcon.countText = hotIcon:CreateFontString(nil, "OVERLAY")
-        if not hotIcon.countText:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", 10, "OUTLINE") then
+        if not hotIcon.countText:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", 9, "OUTLINE") then
             hotIcon.countText:SetFontObject("GameFontHighlightSmall")
         end
         hotIcon.countText:SetPoint("BOTTOMRIGHT", hotIcon, "BOTTOMRIGHT", 1, -1)
@@ -469,10 +513,11 @@ function UF:_UpdateFrameSimulated(frame)
         frame.powerText:Hide()
     end
 
-    -- 5. HoT Icons
-    if sim.hots and cfg.auras and cfg.auras.showHots ~= false then
+    -- 5. HoT Icons (Eigene rechts, Fremde links)
+    if cfg.auras and cfg.auras.showHots ~= false then
+        -- Eigene HoTs (rechts)
         for i = 1, 4 do
-            local hot = sim.hots[i]
+            local hot = sim.hots and sim.hots[i]
             local hotIcon = frame.hotIcons[i]
             if hot then
                 hotIcon.tex:SetTexture(hot.icon)
@@ -483,9 +528,30 @@ function UF:_UpdateFrameSimulated(frame)
                 hotIcon:Hide()
             end
         end
+
+        -- Fremde HoTs (links)
+        if frame.otherHotIcons then
+            for i = 1, 3 do
+                local hot = sim.otherHots and sim.otherHots[i]
+                local hotIcon = frame.otherHotIcons[i]
+                if hot then
+                    hotIcon.tex:SetTexture(hot.icon)
+                    hotIcon.cdText:SetText(hot.cd or "")
+                    hotIcon.countText:SetText(hot.count or "")
+                    hotIcon:Show()
+                else
+                    hotIcon:Hide()
+                end
+            end
+        end
     else
         for i = 1, 4 do
             if frame.hotIcons and frame.hotIcons[i] then frame.hotIcons[i]:Hide() end
+        end
+        if frame.otherHotIcons then
+            for i = 1, 3 do
+                frame.otherHotIcons[i]:Hide()
+            end
         end
     end
 
@@ -761,19 +827,21 @@ function UF:_UpdateFrameInternal(frame)
         frame.powerText:SetText("")
     end
 
-    -- 5. HoT Tracker (Tickende HoTs anzeigen)
+    -- 5. HoT Tracker (Eigene HoTs RECHTS oben, Fremde HoTs LINKS oben)
     local showHots = (cfg.auras == nil) or (cfg.auras.showHots ~= false)
     if showHots and R4L.AuraTracker then
-        local okHots, hots = pcall(R4L.AuraTracker.GetPlayerHots, R4L.AuraTracker, unit)
-        local hotList = (okHots and type(hots) == "table") and hots or {}
+        local okHots, ownHots, otherHots = pcall(R4L.AuraTracker.GetPlayerHots, R4L.AuraTracker, unit)
+        local ownList = (okHots and type(ownHots) == "table") and ownHots or {}
+        local otherList = (okHots and type(otherHots) == "table") and otherHots or {}
+
+        -- 1. Eigene HoTs (oben rechts, max 4)
         for i = 1, 4 do
             local hotIcon = frame.hotIcons[i]
-            local hot = hotList[i]
+            local hot = ownList[i]
             if hot and hot.icon then
                 hotIcon.tex:SetTexture(hot.icon)
                 hotIcon:SetFrameLevel(frame.hotContainer:GetFrameLevel() + 2)
 
-                -- Restzeit anzeigen
                 local cdStr = ""
                 local okTime, timeLeft = pcall(function()
                     if hot.expirationTime and hot.expirationTime > 0 then
@@ -790,7 +858,6 @@ function UF:_UpdateFrameInternal(frame)
                 end
                 hotIcon.cdText:SetText(cdStr)
 
-                -- Stacks anzeigen
                 local okCount, cnt = pcall(function() return hot.count end)
                 if okCount and type(cnt) == "number" and cnt > 1 then
                     hotIcon.countText:SetText(tostring(cnt))
@@ -803,10 +870,54 @@ function UF:_UpdateFrameInternal(frame)
                 hotIcon:Hide()
             end
         end
+
+        -- 2. Fremde HoTs (oben links, max 3)
+        if frame.otherHotIcons then
+            for i = 1, 3 do
+                local hotIcon = frame.otherHotIcons[i]
+                local hot = otherList[i]
+                if hot and hot.icon then
+                    hotIcon.tex:SetTexture(hot.icon)
+                    hotIcon:SetFrameLevel(frame.otherHotContainer:GetFrameLevel() + 2)
+
+                    local cdStr = ""
+                    local okTime, timeLeft = pcall(function()
+                        if hot.expirationTime and hot.expirationTime > 0 then
+                            return hot.expirationTime - GetTime()
+                        end
+                        return nil
+                    end)
+                    if okTime and type(timeLeft) == "number" and timeLeft > 0 then
+                        if timeLeft < 10 then
+                            cdStr = string.format("%.0f", timeLeft)
+                        else
+                            cdStr = string.format("%d", timeLeft)
+                        end
+                    end
+                    hotIcon.cdText:SetText(cdStr)
+
+                    local okCount, cnt = pcall(function() return hot.count end)
+                    if okCount and type(cnt) == "number" and cnt > 1 then
+                        hotIcon.countText:SetText(tostring(cnt))
+                    else
+                        hotIcon.countText:SetText("")
+                    end
+
+                    hotIcon:Show()
+                else
+                    hotIcon:Hide()
+                end
+            end
+        end
     else
         for i = 1, 4 do
             if frame.hotIcons and frame.hotIcons[i] then
                 frame.hotIcons[i]:Hide()
+            end
+        end
+        if frame.otherHotIcons then
+            for i = 1, 3 do
+                frame.otherHotIcons[i]:Hide()
             end
         end
     end

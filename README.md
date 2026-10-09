@@ -1,4 +1,4 @@
-# Resto4Life - World of Warcraft Heiler-Addon (v0.2.2-beta)
+# Resto4Life - World of Warcraft Heiler-Addon (v0.2.3-beta)
 
 **Resto4Life** ist ein modernes, leichtgewichtiges und hochgradig anpassbares Heiler-, Gruppen- und Raidframe-Addon – entwickelt speziell für **WoW Forever** (Interface 16001 / Build 1.60.1).
 
@@ -17,7 +17,7 @@ Eine vollständige Liste aller Funktionen und Details findest du in der [FEATURE
   * **Fallback-Vollansicht:** Bei deaktivierten Spezial-Frames nahtloser Übergang in ein vollständiges Raid-Grid.
   * **Simulation:** Realistische Testläufe für 10-, 25- und 40-Spieler-Raids direkt im Konfigurationsmenü.
 * **Blizzard Rollen-Icons:**
-  * Originalgetreue Rollen-Symbole (Schild für Tank, Kreuz für Heiler, Schwert für Schadensausteiler) oben links auf jedem Frame.
+  * Originalgetreue Rollen-Symbole (Schild für Tank, Kreuz für Heiler, Schwert für Schadensausteiler) auf Höhe des Spielernamens links ausgerichtet.
 * **Kompakter 5-Spieler-Gruppenframe (v1):**
   * Optimiert für 5er-Dungeons und Open-World-Content.
   * Automatische Umschaltung zwischen Party- und Raid-Modus.
@@ -37,8 +37,9 @@ Eine vollständige Liste aller Funktionen und Details findest du in der [FEATURE
 * **Smart Battle Rez (Automatisches Wiederbeleben):**
   * Ist ein Gruppenmitglied tot, löst ein Klick auf den Frame im Kampf automatisch die **Wiedergeburt / Battle-Rez** deiner Klasse aus.
   * Außerhalb des Kampfes wird die normale Wiederbelebung gewirkt.
-* **HoT- & Aura-Tracker:**
-  * Verfolgt aktive eigene HoTs (Verjüngung, Nachwachsen, Erneuerung, Springflut etc.) mit Icon, Restzeitanzeige und Stacks.
+* **HoT- & Aura-Tracker (Duale HoT-Anzeige):**
+  * **Eigene HoTs** werden oben rechts (mit Laufzeit und Stapeln) dargestellt.
+  * **Fremde HoTs** anderer Heiler werden oben links angezeigt, ohne eigene HoTs oder Rollen-Icons zu überdecken.
 * **Bannbare Flüche, Vergiftungen, Krankheiten & Magie:**
   * Der äußere Rahmen leuchtet in der jeweiligen Debuff-Farbe auf (Lila für Fluch, Grün für Gift, Braun für Krankheit, Blau für Magie), sobald ein Effekt gebannt werden kann.
 * **Konfigurierbares Click-Casting (Mouse-Over) & Modifikatoren:**
