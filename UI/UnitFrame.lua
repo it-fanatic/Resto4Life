@@ -334,8 +334,8 @@ function UF:CreateUnitFrame(name, parent, unit)
             edgeFile = "Interface\\Buttons\\WHITE8x8",
             edgeSize = 1,
         })
-        hotIcon:SetBackdropColor(0, 0, 0, 0.8)
-        hotIcon:SetBackdropBorderColor(0.2, 0.6, 1.0, 0.9) -- Dezenter bläulicher Rand für fremde HoTs
+        hotIcon:SetBackdropColor(0, 0, 0, 0.6)
+        hotIcon:SetBackdropBorderColor(0, 0, 0, 1)
 
         hotIcon.tex = hotIcon:CreateTexture(nil, "ARTWORK")
         hotIcon.tex:SetPoint("TOPLEFT", hotIcon, "TOPLEFT", 1, -1)
