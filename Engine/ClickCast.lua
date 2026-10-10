@@ -81,9 +81,13 @@ function CC:SetupChildButtons(frame)
         modTable.UP:SetSize(1, 1)
         modTable.UP:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
         modTable.UP:RegisterForClicks("AnyUp", "AnyDown")
+        modTable.UP:SetAttribute("checkselfcast", false)
+        modTable.UP:SetAttribute("checkfocuscast", false)
         modTable.DOWN:SetSize(1, 1)
         modTable.DOWN:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
         modTable.DOWN:RegisterForClicks("AnyUp", "AnyDown")
+        modTable.DOWN:SetAttribute("checkselfcast", false)
+        modTable.DOWN:SetAttribute("checkfocuscast", false)
     end
 
     frame.wheelUpBtn = frame.wheelBtns.NONE.UP
@@ -100,18 +104,24 @@ function CC:SetupChildButtons(frame)
         btnNone:SetSize(1, 1)
         btnNone:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
         btnNone:RegisterForClicks("AnyUp", "AnyDown")
+        btnNone:SetAttribute("checkselfcast", false)
+        btnNone:SetAttribute("checkfocuscast", false)
         frame.keyBtns.NONE[i] = btnNone
 
         local btnCtrl = CreateFrame("Button", name .. "_Key" .. i .. "_Ctrl", frame, "SecureActionButtonTemplate")
         btnCtrl:SetSize(1, 1)
         btnCtrl:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
         btnCtrl:RegisterForClicks("AnyUp", "AnyDown")
+        btnCtrl:SetAttribute("checkselfcast", false)
+        btnCtrl:SetAttribute("checkfocuscast", false)
         frame.keyBtns.CTRL[i] = btnCtrl
 
         local btnAlt = CreateFrame("Button", name .. "_Key" .. i .. "_Alt", frame, "SecureActionButtonTemplate")
         btnAlt:SetSize(1, 1)
         btnAlt:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
         btnAlt:RegisterForClicks("AnyUp", "AnyDown")
+        btnAlt:SetAttribute("checkselfcast", false)
+        btnAlt:SetAttribute("checkfocuscast", false)
         frame.keyBtns.ALT[i] = btnAlt
     end
 end
@@ -133,6 +143,8 @@ function CC:ApplyBindingsToFrame(frame)
     local unit = frame.unit
 
     frame:RegisterForClicks("AnyUp", "AnyDown")
+    frame:SetAttribute("checkselfcast", false)
+    frame:SetAttribute("checkfocuscast", false)
 
     -- Hilfsfunktion für Child-Buttons (Mausrad & Tasten 1-6)
     local function ConfigureButton(btn, spell)
@@ -299,7 +311,32 @@ function CC:SetupSecureHover(frame)
     end)
 end
 
+-- Verhindert oder erlaubt die Blizzard-Selbstzauber-Interferenz bei ALT
+function CC:ApplySelfCastPreference()
+    local cfg = R4L.ProfileManager:GetConfig()
+    local disable = true
+    if cfg and cfg.general and cfg.general.disableSelfCastKey ~= nil then
+        disable = cfg.general.disableSelfCastKey
+    end
+
+    if disable then
+        if SetModifiedClick then pcall(SetModifiedClick, "SELFCAST", "NONE") end
+        if SetCVar then pcall(SetCVar, "selfCastKey", "NONE") end
+    else
+        if SetModifiedClick then pcall(SetModifiedClick, "SELFCAST", "ALT") end
+        if SetCVar then pcall(SetCVar, "selfCastKey", "ALT") end
+    end
+
+    if SaveBindings and GetCurrentBindingSet then
+        pcall(function()
+            local bSet = GetCurrentBindingSet()
+            if bSet then SaveBindings(bSet) end
+        end)
+    end
+end
+
 function CC:ApplyAllBindings()
+    self:ApplySelfCastPreference()
     if R4L.GroupHeader and R4L.GroupHeader.frames then
         for _, frame in ipairs(R4L.GroupHeader.frames) do
             self:ApplyBindingsToFrame(frame)
@@ -315,4 +352,13 @@ function CC:ApplyAllBindings()
         end
     end
 end
+
+-- Selbstzauber-Einstellung bei Login und Zonenwechsel sicherstellen
+R4L:RegisterEvent("PLAYER_LOGIN", function()
+    CC:ApplySelfCastPreference()
+end)
+
+R4L:RegisterEvent("PLAYER_ENTERING_WORLD", function()
+    CC:ApplySelfCastPreference()
+end)
 

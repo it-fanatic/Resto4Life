@@ -14,7 +14,7 @@ local frame = nil
 local currentTab = 1
 
 -- Hilfsfunktion: Checkbox erstellen
-local function CreateCheckbox(parent, label, x, y, onClick)
+local function CreateCheckbox(parent, label, x, y, onClick, tooltip)
     local cb = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
     cb:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
     cb.text:SetText(label)
@@ -22,6 +22,15 @@ local function CreateCheckbox(parent, label, x, y, onClick)
     cb:SetScript("OnClick", function(self)
         onClick(self:GetChecked())
     end)
+    if tooltip then
+        cb:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(label, 1, 1, 1)
+            GameTooltip:AddLine(tooltip, nil, nil, nil, true)
+            GameTooltip:Show()
+        end)
+        cb:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    end
     return cb
 end
 
@@ -51,7 +60,7 @@ function OUI:Initialize()
 
     local cfg = R4L.ProfileManager:GetConfig()
 
-    -- Hauptfenster
+    -- Hauptfenster (Standard Blizzard Dialog-Fenster)
     frame = CreateFrame("Frame", "Resto4LifeOptionsFrame", UIParent, "BackdropTemplate")
     frame:SetSize(720, 580)
     frame:SetPoint("CENTER")
@@ -94,8 +103,15 @@ function OUI:Initialize()
         frame:Hide()
     end)
 
-    -- Tab-Leiste (6 Tabs inkl. Buff-Bar und Raid)
-    local tabs = { L["TAB_GENERAL"], L["TAB_BINDINGS"], L["TAB_HOTS"], L["TAB_BUFFBAR"] or "Buff-Bar", L["TAB_RAID"], L["TAB_PROFILES"] }
+    -- Tab-Leiste (6 Tabs inkl. Buff-Bar)
+    local tabs = {
+        L["TAB_GENERAL"] or "Allgemein",
+        L["TAB_BINDINGS"] or "Tastenbelegung",
+        L["TAB_HOTS"] or "Auren & HoTs",
+        L["TAB_BUFFBAR"] or "Buff-Bar",
+        L["TAB_RAID"] or "Raid-Frames",
+        L["TAB_PROFILES"] or "Profile",
+    }
     frame.tabButtons = {}
     frame.tabPanels = {}
 
@@ -111,10 +127,13 @@ function OUI:Initialize()
     tabContentArea:SetBackdropColor(0.04, 0.04, 0.04, 0.85)
     tabContentArea:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.8)
 
+    local tabWidth = 110
+    local tabGap = 4
+    local startX = 18
     for i, tabName in ipairs(tabs) do
         local btn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-        btn:SetSize(108, 24)
-        btn:SetPoint("TOPLEFT", frame, "TOPLEFT", 18 + (i - 1) * 114, -42)
+        btn:SetSize(tabWidth, 24)
+        btn:SetPoint("TOPLEFT", frame, "TOPLEFT", startX + (i - 1) * (tabWidth + tabGap), -42)
         btn:SetText(tabName)
         btn:SetScript("OnClick", function()
             OUI:SelectTab(i)
@@ -562,11 +581,18 @@ function OUI:Initialize()
         R4L.ClickCast:ApplyAllBindings()
     end)
 
+    local cbDisableSelfCast = CreateCheckbox(p2, L["DISABLE_SELF_CAST_KEY"], 20, -450, function(val)
+        cfg.general.disableSelfCastKey = val
+        R4L.ClickCast:ApplySelfCastPreference()
+        R4L:Print(val and L["CHAT_SELF_CAST_KEY_DISABLED"] or L["CHAT_SELF_CAST_KEY_ENABLED"])
+    end, L["DISABLE_SELF_CAST_KEY_DESC"])
+
     p2:SetScript("OnShow", function()
         UpdateBindingsTab()
         cbSmartRez:SetChecked(cfg.smartRez.enabled)
         ebBattleRez:SetText(cfg.smartRez.combatRezSpell or "")
         ebNormalRez:SetText(cfg.smartRez.normalRezSpell or "")
+        cbDisableSelfCast:SetChecked(cfg.general and cfg.general.disableSelfCastKey ~= false)
     end)
 
     -- =========================================================================
@@ -740,9 +766,101 @@ function OUI:Initialize()
         if R4L.BuffBar then R4L.BuffBar:ResetPosition() end
     end)
 
+    -- Skalierung / Größe der Buff-Bar
+    local lblScale = p4:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    lblScale:SetPoint("TOPLEFT", p4, "TOPLEFT", 20, -104)
+    lblScale:SetText(L["BUFF_BAR_SCALE"] or "Skalierung / Größe:")
+
+    local btnScaleMinus = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    btnScaleMinus:SetSize(28, 24)
+    btnScaleMinus:SetPoint("LEFT", lblScale, "RIGHT", 25, 0)
+    btnScaleMinus:SetText("-")
+
+    local lblScaleVal = p4:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    lblScaleVal:SetPoint("LEFT", btnScaleMinus, "RIGHT", 8, 0)
+    lblScaleVal:SetWidth(50)
+    lblScaleVal:SetJustifyH("CENTER")
+
+    local btnScalePlus = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    btnScalePlus:SetSize(28, 24)
+    btnScalePlus:SetPoint("LEFT", lblScaleVal, "RIGHT", 8, 0)
+    btnScalePlus:SetText("+")
+
+    local btnScaleReset = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    btnScaleReset:SetSize(60, 24)
+    btnScaleReset:SetPoint("LEFT", btnScalePlus, "RIGHT", 10, 0)
+    btnScaleReset:SetText("100%")
+
+    local function UpdateScaleLabel()
+        local s = cfg.buffBar and cfg.buffBar.scale or 1.0
+        lblScaleVal:SetText(string.format("%d%%", math.floor(s * 100 + 0.5)))
+    end
+
+    btnScaleMinus:SetScript("OnClick", function()
+        if not cfg.buffBar then cfg.buffBar = {} end
+        local cur = cfg.buffBar.scale or 1.0
+        local nextS = math.max(0.5, cur - 0.05)
+        nextS = math.floor(nextS * 100 + 0.5) / 100
+        if R4L.BuffBar then R4L.BuffBar:SetScale(nextS) else cfg.buffBar.scale = nextS end
+        UpdateScaleLabel()
+    end)
+
+    btnScalePlus:SetScript("OnClick", function()
+        if not cfg.buffBar then cfg.buffBar = {} end
+        local cur = cfg.buffBar.scale or 1.0
+        local nextS = math.min(2.0, cur + 0.05)
+        nextS = math.floor(nextS * 100 + 0.5) / 100
+        if R4L.BuffBar then R4L.BuffBar:SetScale(nextS) else cfg.buffBar.scale = nextS end
+        UpdateScaleLabel()
+    end)
+
+    btnScaleReset:SetScript("OnClick", function()
+        if not cfg.buffBar then cfg.buffBar = {} end
+        if R4L.BuffBar then R4L.BuffBar:SetScale(1.0) else cfg.buffBar.scale = 1.0 end
+        UpdateScaleLabel()
+    end)
+
+    -- Button-Abstand der Buff-Bar (0px vs 4px)
+    local lblSpacing = p4:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    lblSpacing:SetPoint("TOPLEFT", p4, "TOPLEFT", 20, -138)
+    lblSpacing:SetText(L["BUFF_BAR_SPACING"] or "Button-Abstand:")
+
+    local btnSpacingFlush = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    btnSpacingFlush:SetSize(120, 24)
+    btnSpacingFlush:SetPoint("LEFT", lblSpacing, "RIGHT", 25, 0)
+    btnSpacingFlush:SetText(L["BUFF_SPACING_FLUSH"] or "0 px (Bündig)")
+
+    local btnSpacingDefault = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    btnSpacingDefault:SetSize(120, 24)
+    btnSpacingDefault:SetPoint("LEFT", btnSpacingFlush, "RIGHT", 10, 0)
+    btnSpacingDefault:SetText(L["BUFF_SPACING_DEFAULT"] or "4 px (Standard)")
+
+    local function UpdateSpacingButtons()
+        local sp = (cfg.buffBar and cfg.buffBar.spacing ~= nil) and cfg.buffBar.spacing or 4
+        if sp == 0 then
+            btnSpacingFlush:SetText("|cff00ff00[ 0 px (Bündig) ]|r")
+            btnSpacingDefault:SetText(L["BUFF_SPACING_DEFAULT"] or "4 px (Standard)")
+        else
+            btnSpacingFlush:SetText(L["BUFF_SPACING_FLUSH"] or "0 px (Bündig)")
+            btnSpacingDefault:SetText("|cff00ff00[ 4 px (Standard) ]|r")
+        end
+    end
+
+    btnSpacingFlush:SetScript("OnClick", function()
+        if not cfg.buffBar then cfg.buffBar = {} end
+        if R4L.BuffBar then R4L.BuffBar:SetSpacing(0) else cfg.buffBar.spacing = 0 end
+        UpdateSpacingButtons()
+    end)
+
+    btnSpacingDefault:SetScript("OnClick", function()
+        if not cfg.buffBar then cfg.buffBar = {} end
+        if R4L.BuffBar then R4L.BuffBar:SetSpacing(4) else cfg.buffBar.spacing = 4 end
+        UpdateSpacingButtons()
+    end)
+
     -- Überschrift Zielgruppen-Filter
     local buffTargetHeader = p4:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    buffTargetHeader:SetPoint("TOPLEFT", p4, "TOPLEFT", 20, -112)
+    buffTargetHeader:SetPoint("TOPLEFT", p4, "TOPLEFT", 20, -175)
     buffTargetHeader:SetText("|cffffff00" .. (L["BUFF_TARGET_HEADER"] or "Zielgruppen-Filter für Klassen-Buffs:") .. "|r")
 
     local buffTargetSub = p4:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -812,7 +930,7 @@ function OUI:Initialize()
         noBuffsText:SetText(L["BUFF_NO_CLASS_BUFFS"] or "Für deine Klasse sind derzeit keine automatischen Klassen-Buffs konfiguriert.")
         noBuffsText:SetTextColor(0.6, 0.6, 0.6, 1)
     else
-        local bY = -155
+        local bY = -218
         for idx, bDef in ipairs(myBuffs) do
             local rowFrame = CreateFrame("Frame", nil, p4, "BackdropTemplate")
             rowFrame:SetSize(640, 42)
@@ -884,6 +1002,8 @@ function OUI:Initialize()
         else
             cbBuffBar:SetChecked(true)
         end
+        UpdateScaleLabel()
+        UpdateSpacingButtons()
         for _, refreshFn in ipairs(buffControls) do
             refreshFn()
         end

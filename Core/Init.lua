@@ -7,7 +7,7 @@ local addonName, R4L = ...
 _G["Resto4Life"] = R4L
 
 R4L.addonName = addonName
-R4L.version = "0.2.5-beta"
+R4L.version = "0.2.6-beta"
 R4L.inCombat = false
 R4L.combatQueue = {}
 
@@ -83,6 +83,39 @@ function R4L:QueueOutOfCombat(action)
     else
         action()
     end
+end
+
+-- =========================================================================
+-- Universelle Zauber-Abfrage (kompatibel mit Retail 11.0+, 12.0, Classic & WotLK 3.3.5)
+-- =========================================================================
+function R4L:GetSpellName(spellId)
+    if not spellId then return nil end
+    if C_Spell and C_Spell.GetSpellInfo then
+        local ok, info = pcall(C_Spell.GetSpellInfo, spellId)
+        if ok and info and info.name then return info.name end
+    end
+    if GetSpellInfo then
+        local ok, name = pcall(GetSpellInfo, spellId)
+        if ok and name then return name end
+    end
+    return nil
+end
+
+function R4L:GetSpellTexture(spellId)
+    if not spellId then return nil end
+    if C_Spell and C_Spell.GetSpellTexture then
+        local ok, tex = pcall(C_Spell.GetSpellTexture, spellId)
+        if ok and tex then return tex end
+    end
+    if GetSpellTexture then
+        local ok, tex = pcall(GetSpellTexture, spellId)
+        if ok and tex then return tex end
+    end
+    if GetSpellInfo then
+        local ok, _, _, sIcon = pcall(GetSpellInfo, spellId)
+        if ok and sIcon then return sIcon end
+    end
+    return nil
 end
 
 -- =========================================================================
@@ -252,6 +285,12 @@ SlashCmdList["RESTO4LIFE"] = function(msg)
     elseif cmd == "resetall" then
         if R4L.ProfileManager then
             R4L.ProfileManager:ResetToDefaults()
+        end
+    elseif cmd == "bufftest" or cmd == "testbuff" then
+        if R4L.BuffBar and R4L.BuffBar.RunDiagnostic then
+            R4L.BuffBar:RunDiagnostic()
+        else
+            R4L:Print("BuffBar-Modul nicht aktiv.")
         end
     else
         if R4L.OptionsUI then

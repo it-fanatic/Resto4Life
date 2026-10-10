@@ -179,6 +179,8 @@ function UF:RegisterUnitEvents(frame, unit)
     pcall(frame.RegisterEvent, frame, "PLAYER_ROLES_ASSIGNED")
     pcall(frame.RegisterEvent, frame, "PLAYER_SPECIALIZATION_CHANGED")
     pcall(frame.RegisterEvent, frame, "PLAYER_ENTERING_WORLD")
+    pcall(frame.RegisterEvent, frame, "UPDATE_SHAPESHIFT_FORM")
+    pcall(frame.RegisterEvent, frame, "UPDATE_SHAPESHIFT_FORMS")
 end
 
 -- Aktualisiert das Rollen-Icon (Tank, Heiler, DD) nach Blizzard-Standard
@@ -236,6 +238,8 @@ end
 function UF:CreateUnitFrame(name, parent, unit)
     local frame = CreateFrame("Button", name, parent, "SecureActionButtonTemplate")
     frame.unit = unit
+    frame:SetAttribute("checkselfcast", false)
+    frame:SetAttribute("checkfocuscast", false)
 
     local cfg = R4L.ProfileManager:GetConfig()
     frame:SetSize(cfg.general.frameWidth, cfg.general.frameHeight)
@@ -316,10 +320,10 @@ function UF:CreateUnitFrame(name, parent, unit)
     frame.roleIcon:SetVertTile(false)
     frame.roleIcon:Hide()
 
-    -- Fremde HoT Icons Container (oben links)
+    -- Fremde HoT Icons Container (oben links - bündig am oberen Rand)
     frame.otherHotContainer = CreateFrame("Frame", nil, frame)
-    frame.otherHotContainer:SetPoint("TOPLEFT", frame, "TOPLEFT", 2, -2)
-    frame.otherHotContainer:SetSize(60, 20)
+    frame.otherHotContainer:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+    frame.otherHotContainer:SetSize(60, 16)
     frame.otherHotContainer:SetFrameLevel(frame:GetFrameLevel() + 10)
     frame.otherHotContainer:Show()
 
@@ -327,7 +331,7 @@ function UF:CreateUnitFrame(name, parent, unit)
     for i = 1, 3 do
         local hotIcon = CreateFrame("Frame", nil, frame.otherHotContainer, "BackdropTemplate")
         hotIcon:SetSize(16, 16)
-        hotIcon:SetPoint("LEFT", frame.otherHotContainer, "LEFT", ((i - 1) * 18), 0)
+        hotIcon:SetPoint("TOPLEFT", frame.otherHotContainer, "TOPLEFT", ((i - 1) * 17), 0)
         hotIcon:SetFrameLevel(frame.otherHotContainer:GetFrameLevel() + 2)
         hotIcon:SetBackdrop({
             bgFile = "Interface\\Buttons\\WHITE8x8",
@@ -360,10 +364,10 @@ function UF:CreateUnitFrame(name, parent, unit)
         frame.otherHotIcons[i] = hotIcon
     end
 
-    -- Eigene HoT Icons Container (oben rechts)
+    -- Eigene HoT Icons Container (oben rechts - bündig am oberen Rand)
     frame.hotContainer = CreateFrame("Frame", nil, frame)
-    frame.hotContainer:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -2)
-    frame.hotContainer:SetSize(76, 20)
+    frame.hotContainer:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0)
+    frame.hotContainer:SetSize(76, 16)
     frame.hotContainer:SetFrameLevel(frame:GetFrameLevel() + 10)
     frame.hotContainer:Show()
 
@@ -371,7 +375,7 @@ function UF:CreateUnitFrame(name, parent, unit)
     for i = 1, 4 do
         local hotIcon = CreateFrame("Frame", nil, frame.hotContainer, "BackdropTemplate")
         hotIcon:SetSize(16, 16)
-        hotIcon:SetPoint("RIGHT", frame.hotContainer, "RIGHT", -((i - 1) * 18), 0)
+        hotIcon:SetPoint("TOPRIGHT", frame.hotContainer, "TOPRIGHT", -((i - 1) * 17), 0)
         hotIcon:SetFrameLevel(frame.hotContainer:GetFrameLevel() + 2)
         hotIcon:SetBackdrop({
             bgFile = "Interface\\Buttons\\WHITE8x8",
@@ -746,22 +750,8 @@ function UF:_UpdateFrameInternal(frame)
             powerType = pType
         end
 
-        -- Bevorzuge Mana (Typ 0) falls Einheit Manapool besitzt
-        local curType = 0
-        local okMana, manaMax = pcall(UnitPowerMax, unit, 0)
-        local hasManaPool = false
-        if okMana and manaMax ~= nil then
-            local okCheck, res = pcall(function() return manaMax > 0 end)
-            if okCheck and res then
-                hasManaPool = true
-            end
-        end
-
-        if hasManaPool then
-            curType = 0
-        else
-            curType = powerType
-        end
+        -- Aktueller Ressourcentyp der Einheit (Wut bei Bär, Energie bei Katze, Mana bei Heiler/Caster)
+        local curType = powerType
 
         local power = UnitPower(unit, curType)
         local powerMax = UnitPowerMax(unit, curType)
@@ -797,8 +787,18 @@ function UF:_UpdateFrameInternal(frame)
         local pctText = ""
         local okCalc, calcPct = pcall(function()
             if power and powerMax and powerMax > 0 then
-                if power >= powerMax then return "" end
-                return math.floor((power / powerMax) * 100) .. "%"
+                if curType == 1 or curType == 3 or curType == 6 then
+                    -- Für Wut, Energie, Runenmacht: zeige Zahlenwert (z.B. 45) wenn vorhanden
+                    if power > 0 then
+                        return tostring(math.floor(power))
+                    else
+                        return ""
+                    end
+                else
+                    -- Für Mana: zeige Prozentwert bei Manadefizit (< 100%)
+                    if power >= powerMax then return "" end
+                    return math.floor((power / powerMax) * 100) .. "%"
+                end
             end
             return ""
         end)

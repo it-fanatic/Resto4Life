@@ -12,6 +12,7 @@ R4L.Config.Defaults = {
     general = {
         locked = true,
         targetOnCast = false,
+        disableSelfCastKey = true,
         frameWidth = 140,
         frameHeight = 52,
         powerBarHeight = 10,
@@ -83,6 +84,7 @@ R4L.Config.Defaults = {
     },
     buffBar = {
         enabled = true,
+        scale = 1.0,
         iconSize = 22,
         spacing = 4,
         posX = 300,
