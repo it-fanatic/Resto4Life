@@ -1,4 +1,5 @@
 ## Interface: 16001
+## Interface-Retail: 110007, 110100
 ## IconTexture: Interface\Icons\Spell_Nature_HealingTouch
 ## Title: |cff00ff96Resto4Life|r
 ## Notes: Modernes Heiler- und Gruppenframe Addon für WoW Forever und Retail.
@@ -8,6 +9,7 @@
 ## SavedVariablesPerCharacter: Resto4LifeCharDB
 ## X-Category: UnitFrames, Healer
 ## X-License: GNU General Public License v3.0 (GPL-3.0)
+## X-Curse-Project-ID: 1734000
 ## AddonCompartmentFunc: Resto4Life_OnAddonCompartmentClick
 
 # Core
