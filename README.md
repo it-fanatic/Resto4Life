@@ -1,10 +1,11 @@
-# Resto4Life - World of Warcraft Heiler-Addon (v0.2.3-beta)
+# Resto4Life - World of Warcraft Heiler-Addon (v0.2.4-beta)
 
-**Resto4Life** ist ein modernes, leichtgewichtiges und hochgradig anpassbares Heiler-, Gruppen- und Raidframe-Addon – entwickelt speziell für **WoW Forever** (Interface 16001 / Build 1.60.1).
+**Resto4Life** ist ein modernes, leichtgewichtiges und hochgradig anpassbares Heiler-, Gruppen- und Raidframe-Addon – entwickelt speziell für **WoW Forever** (Interface 16001 / Build 1.60.1) und kompatibel mit **Retail**.
 
 > ⚠️ **Status: Öffentliche Beta:** Das Addon befindet sich in aktiver Weiterentwicklung und im Testbetrieb für WoW Forever. Feedback und Vorschläge sind jederzeit willkommen!
 
-Eine vollständige Liste aller Funktionen und Details findest du in der [FEATURES.md](file:///f:/Documents/Projekte/Resto4Life/FEATURES.md).
+* **CurseForge Projekt-ID:** `1734000`
+* Eine vollständige Liste aller Funktionen und Details findest du in der [FEATURES.md](file:///f:/Documents/Projekte/Resto4Life/FEATURES.md).
 
 ---
 
@@ -37,9 +38,10 @@ Eine vollständige Liste aller Funktionen und Details findest du in der [FEATURE
 * **Smart Battle Rez (Automatisches Wiederbeleben):**
   * Ist ein Gruppenmitglied tot, löst ein Klick auf den Frame im Kampf automatisch die **Wiedergeburt / Battle-Rez** deiner Klasse aus.
   * Außerhalb des Kampfes wird die normale Wiederbelebung gewirkt.
-* **HoT- & Aura-Tracker (Duale HoT-Anzeige):**
+* **HoT- & Aura-Tracker (Duale HoT-Anzeige mit intelligenter Priorisierung):**
   * **Eigene HoTs** werden oben rechts (mit Laufzeit und Stapeln) dargestellt.
-  * **Fremde HoTs** anderer Heiler werden oben links angezeigt, ohne eigene HoTs oder Rollen-Icons zu überdecken.
+  * **Fremde HoTs** anderer Heiler werden oben links mit identischem schwarzen Rand angezeigt.
+  * **Intelligente Priorisierung:** HoTs werden nach kürzester Restlaufzeit sortiert – auslaufende HoTs rücken automatisch nach!
 * **Bannbare Flüche, Vergiftungen, Krankheiten & Magie:**
   * Der äußere Rahmen leuchtet in der jeweiligen Debuff-Farbe auf (Lila für Fluch, Grün für Gift, Braun für Krankheit, Blau für Magie), sobald ein Effekt gebannt werden kann.
 * **Konfigurierbares Click-Casting (Mouse-Over) & Modifikatoren:**

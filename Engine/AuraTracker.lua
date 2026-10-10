@@ -311,6 +311,8 @@ function AT:GetPlayerHots(unit)
         end
     end
 
+    local allOwn = {}
+    local allOther = {}
     local seenOwn = {}
     local seenOther = {}
 
@@ -337,18 +339,37 @@ function AT:GetPlayerHots(unit)
             }
 
             if isMine then
-                if not seenOwn[key] and #ownHots < maxOwnHots then
+                if not seenOwn[key] then
                     seenOwn[key] = true
-                    table.insert(ownHots, hotData)
+                    table.insert(allOwn, hotData)
                 end
             else
-                if not seenOther[key] and #otherHots < maxOtherHots then
+                if not seenOther[key] then
                     seenOther[key] = true
-                    table.insert(otherHots, hotData)
+                    table.insert(allOther, hotData)
                 end
             end
         end
-        return (#ownHots >= maxOwnHots and #otherHots >= maxOtherHots)
+        return false
+    end
+
+    local function FinalizeHots()
+        local now = GetTime()
+        local function CompareHots(a, b)
+            local timeA = (a.expirationTime and a.expirationTime > 0) and (a.expirationTime - now) or 99999
+            local timeB = (b.expirationTime and b.expirationTime > 0) and (b.expirationTime - now) or 99999
+            return timeA < timeB
+        end
+        table.sort(allOwn, CompareHots)
+        table.sort(allOther, CompareHots)
+
+        for i = 1, math.min(#allOwn, maxOwnHots) do
+            table.insert(ownHots, allOwn[i])
+        end
+        for i = 1, math.min(#allOther, maxOtherHots) do
+            table.insert(otherHots, allOther[i])
+        end
+        return ownHots, otherHots
     end
 
     -- Methode 1: C_UnitAuras.GetUnitAuras
@@ -361,10 +382,10 @@ function AT:GetPlayerHots(unit)
         if auras then
             for _, aura in pairs(auras) do
                 if type(aura) == "table" then
-                    if TryAddAura(aura) then return ownHots, otherHots end
+                    TryAddAura(aura)
                 end
             end
-            if #ownHots > 0 or #otherHots > 0 then return ownHots, otherHots end
+            if #allOwn > 0 or #allOther > 0 then return FinalizeHots() end
         end
     end
 
@@ -384,9 +405,10 @@ function AT:GetPlayerHots(unit)
                 aura.spellId = select(3, ...)
                 aura.isFromPlayerOrPlayerPet = (arg7 and (arg7 == "player" or UnitIsUnit(arg7, "player")))
             end
-            return TryAddAura(aura)
+            TryAddAura(aura)
+            return false
         end)
-        if #ownHots > 0 or #otherHots > 0 then return ownHots, otherHots end
+        if #allOwn > 0 or #allOther > 0 then return FinalizeHots() end
     end
 
     -- Methode 3: C_UnitAuras.GetAuraSlots & GetAuraDataBySlot
@@ -399,23 +421,23 @@ function AT:GetPlayerHots(unit)
                 token = table.remove(slots, 1)
                 for _, slot in ipairs(slots) do
                     local okAura, aura = pcall(C_UnitAuras.GetAuraDataBySlot, unit, slot)
-                    if okAura and aura and TryAddAura(aura) then return ownHots, otherHots end
+                    if okAura and aura then TryAddAura(aura) end
                 end
             else
                 token = nil
             end
         until token == nil
-        if #ownHots > 0 or #otherHots > 0 then return ownHots, otherHots end
+        if #allOwn > 0 or #allOther > 0 then return FinalizeHots() end
     end
 
     -- Methode 4: GetUnitAuraByIndex (Universeller Index-Scan)
     for i = 1, 40 do
         local aura = GetUnitAuraByIndex(unit, i, "HELPFUL")
         if not aura then break end
-        if TryAddAura(aura) then break end
+        TryAddAura(aura)
     end
 
-    return ownHots, otherHots
+    return FinalizeHots()
 end
 
 -- Findet den wichtigsten reinigbaren Debuff auf einer Einheit
