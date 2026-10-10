@@ -81,6 +81,17 @@ R4L.Config.Defaults = {
         combatRezSpell = "",  -- e.g. "Rebirth" (Druid), "Soulstone" (Warlock), "Intercession" (Paladin), "Raise Ally" (Death Knight)
         normalRezSpell = "",  -- e.g. "Revive" (Druid), "Redemption" (Paladin), "Resurrection" (Priest), "Ancestral Spirit" (Shaman)
     },
+    buffBar = {
+        enabled = true,
+        iconSize = 22,
+        spacing = 4,
+        posX = 300,
+        posY = -230,
+        locked = true,
+        targets = {
+            -- Speichert benutzerdefinierte Zieleinstellungen pro Zauber: z.B. ["Dornen"] = "TANK"
+        },
+    },
     bindings = {
         -- Standard: Maustasten (1 = Links, 2 = Rechts, 3 = Mitte, 4 = Daumen hinten, 5 = Daumen vorne)
         ["1"] = { action = "target", spell = "" },

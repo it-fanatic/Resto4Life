@@ -1,4 +1,4 @@
-# Resto4Life - World of Warcraft Heiler-Addon (v0.2.4-beta)
+# Resto4Life - World of Warcraft Heiler-Addon (v0.2.5-beta)
 
 **Resto4Life** ist ein modernes, leichtgewichtiges und hochgradig anpassbares Heiler-, Gruppen- und Raidframe-Addon – entwickelt speziell für **WoW Forever** (Interface 16001 / Build 1.60.1) und kompatibel mit **Retail**.
 
@@ -11,6 +11,12 @@
 
 ## 🌟 Hauptfunktionen
 
+* **Kompakte Buff-Bar (Click-to-Cast & Klassen-Buffs):**
+  * Überwacht permanente Klassen-Buffs für deine Gruppe oder deinen Schlachtzug.
+  * **Status-Feedback:** Roter Rahmen mit Anzahl fehlender Gruppenmitglieder; dezenter Rahmen, wenn alle gebufft sind.
+  * **Click-to-Cast:** Klick auf das Icon bufft direkt das nächste Ziel nach Priorität (*Tank > Heiler > Nahkämpfer > Rest*).
+  * **Zielgruppen-Filter:** Pro Zauber konfigurierbar (*Alle*, *Nur Tank*, *Nur Selbst*, *Mana*, *Melee*, *Aus*) im eigenen Konfigurationsreiter `[Buff-Bar]`.
+  * **Intelligente Talenterkennung:** Zeigt nur Zauber an, die dein Charakter tatsächlich erlernt oder geskillt hat.
 * **Modularer Raid-Heiler (v2):**
   * Entwickelt für 10er-, 25er- und 40er-Schlachtzüge.
   * **Modulare Frames:** Separate, frei verschiebbare und skalierbare Container für **Haupt-Tanks**, **Eigene Gruppe**, **Restlicher Raid** und **Begleiter (Pets)**.

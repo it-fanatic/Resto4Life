@@ -53,7 +53,7 @@ function OUI:Initialize()
 
     -- Hauptfenster
     frame = CreateFrame("Frame", "Resto4LifeOptionsFrame", UIParent, "BackdropTemplate")
-    frame:SetSize(700, 580)
+    frame:SetSize(720, 580)
     frame:SetPoint("CENTER")
     frame:SetMovable(true)
     frame:EnableMouse(true)
@@ -94,8 +94,8 @@ function OUI:Initialize()
         frame:Hide()
     end)
 
-    -- Tab-Leiste (5 Tabs inkl. Raid)
-    local tabs = { L["TAB_GENERAL"], L["TAB_BINDINGS"], L["TAB_HOTS"], L["TAB_RAID"], L["TAB_PROFILES"] }
+    -- Tab-Leiste (6 Tabs inkl. Buff-Bar und Raid)
+    local tabs = { L["TAB_GENERAL"], L["TAB_BINDINGS"], L["TAB_HOTS"], L["TAB_BUFFBAR"] or "Buff-Bar", L["TAB_RAID"], L["TAB_PROFILES"] }
     frame.tabButtons = {}
     frame.tabPanels = {}
 
@@ -113,8 +113,8 @@ function OUI:Initialize()
 
     for i, tabName in ipairs(tabs) do
         local btn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-        btn:SetSize(126, 24)
-        btn:SetPoint("TOPLEFT", frame, "TOPLEFT", 18 + (i - 1) * 132, -42)
+        btn:SetSize(108, 24)
+        btn:SetPoint("TOPLEFT", frame, "TOPLEFT", 18 + (i - 1) * 114, -42)
         btn:SetText(tabName)
         btn:SetScript("OnClick", function()
             OUI:SelectTab(i)
@@ -136,6 +136,7 @@ function OUI:Initialize()
     -- Rahmen entsperren
     local cbLock = CreateCheckbox(p1, L["UNLOCK_FRAME"], 20, -20, function(val)
         R4L.GroupHeader:ToggleLock(not val)
+        if R4L.BuffBar then R4L.BuffBar:ToggleLock(not val) end
     end)
 
     -- In Bildschirm-Mitte zentrieren Button (Rechte Spalte)
@@ -713,11 +714,187 @@ function OUI:Initialize()
     end)
 
     -- =========================================================================
-    -- TAB 4: RAID-OPTIONEN
+    -- TAB 4: BUFF-BAR
     -- =========================================================================
     local p4 = frame.tabPanels[4]
 
-    local cbRaidEnable = CreateCheckbox(p4, L["RAID_ENABLE"], 20, -15, function(val)
+    local bbDesc = p4:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    bbDesc:SetPoint("TOPLEFT", p4, "TOPLEFT", 20, -15)
+    bbDesc:SetWidth(650)
+    bbDesc:SetJustifyH("LEFT")
+    bbDesc:SetText(L["BUFF_BAR_DESC"] or "Die Buff-Bar überwacht permanente Klassen-Buffs in deiner Gruppe oder deinem Raid.\nFehlende Buffs werden mit einem roten Rahmen und der Anzahl fehlender Ziele markiert.\nPer Linksklick zauberst du den Buff direkt auf das nächste fehlende Gruppenmitglied (Tank > Heiler > DD).")
+
+    -- Buff-Bar aktivieren Checkbox
+    local cbBuffBar = CreateCheckbox(p4, L["BUFF_BAR_ENABLE"] or "Buff-Bar aktivieren", 20, -65, function(val)
+        if not cfg.buffBar then cfg.buffBar = {} end
+        cfg.buffBar.enabled = val
+        if R4L.BuffBar then R4L.BuffBar:Update() end
+    end)
+
+    -- Buff-Bar Position Reset Button
+    local btnBuffReset = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    btnBuffReset:SetSize(220, 24)
+    btnBuffReset:SetPoint("TOPLEFT", p4, "TOPLEFT", 300, -65)
+    btnBuffReset:SetText(L["BUFF_BAR_RESET"] or "Buff-Bar Position zurücksetzen")
+    btnBuffReset:SetScript("OnClick", function()
+        if R4L.BuffBar then R4L.BuffBar:ResetPosition() end
+    end)
+
+    -- Überschrift Zielgruppen-Filter
+    local buffTargetHeader = p4:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    buffTargetHeader:SetPoint("TOPLEFT", p4, "TOPLEFT", 20, -112)
+    buffTargetHeader:SetText("|cffffff00" .. (L["BUFF_TARGET_HEADER"] or "Zielgruppen-Filter für Klassen-Buffs:") .. "|r")
+
+    local buffTargetSub = p4:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    buffTargetSub:SetPoint("TOPLEFT", buffTargetHeader, "BOTTOMLEFT", 0, -4)
+    buffTargetSub:SetText(L["BUFF_TARGET_SUB"] or "Klicke auf den Button rechts neben einem Zauber, um festzulegen, wer den Zauber erhalten soll.")
+
+    local TARGET_NAMES = {
+        ALL = L["BUFF_TARGET_ALL"] or "Alle",
+        TANK = L["BUFF_TARGET_TANK"] or "Nur Tank",
+        SELF = L["BUFF_TARGET_SELF"] or "Nur Selbst",
+        MANA = L["BUFF_TARGET_MANA"] or "Mana",
+        MELEE = L["BUFF_TARGET_MELEE"] or "Melee",
+        OFF = L["BUFF_TARGET_OFF"] or "Aus",
+    }
+
+    local TARGET_COLORS = {
+        ALL = "|cff00ff00",
+        TANK = "|cff3399ff",
+        SELF = "|cffffff00",
+        MANA = "|cff00ccff",
+        MELEE = "|cffff8800",
+        OFF = "|cffff4444",
+    }
+
+    local _, pClass = UnitClass("player")
+    local CLASS_BUFF_DEFS = {
+        DRUID = {
+            { name = "Mal der Wildnis", modes = { "ALL", "OFF" }, icon = "Interface\\Icons\\Spell_Nature_Regeneration", desc = "Stärkt Attribute und Rüstung aller Gruppenmitglieder" },
+            { name = "Dornen", modes = { "TANK", "ALL", "SELF", "OFF" }, icon = "Interface\\Icons\\Spell_Nature_Thorns", desc = "Verleiht Dornen (Standard: Nur Tanks erhalten Dornen)" },
+            { name = "Omen der Klarsicht", modes = { "SELF", "OFF" }, icon = "Interface\\Icons\\Spell_Nature_CrystalBall", desc = "Nahkampfangriffe gewähren Chance auf Freizaubern (Nur Selbst)" },
+        },
+        PRIEST = {
+            { name = "Machtwort: Seelenstärke", modes = { "ALL", "OFF" }, icon = "Interface\\Icons\\Spell_Holy_WordFortitude", desc = "Erhöht Ausdauer der Gruppe" },
+            { name = "Göttlicher Wille", modes = { "MANA", "ALL", "OFF" }, icon = "Interface\\Icons\\Spell_Holy_DivineSpirit", desc = "Erhöht Willenskraft von Mana-Klassen" },
+            { name = "Inneres Feuer", modes = { "SELF", "OFF" }, icon = "Interface\\Icons\\Spell_Holy_InnerFire", desc = "Erhöht eigene Rüstung und Zaubermacht (Nur Selbst)" },
+            { name = "Schattenschutz", modes = { "ALL", "OFF" }, icon = "Interface\\Icons\\Spell_Shadow_AntiShadow", desc = "Erhöht Schattenwiderstand der Gruppe" },
+        },
+        MAGE = {
+            { name = "Arkane Intelligenz", modes = { "ALL", "MANA", "OFF" }, icon = "Interface\\Icons\\Spell_Holy_MagicalSentry", desc = "Erhöht Intelligenz von Gruppenmitgliedern" },
+            { name = "Eisrüstung", modes = { "SELF", "OFF" }, icon = "Interface\\Icons\\Spell_Frost_FrostArmor02", desc = "Erhöht eigene Rüstung und Frostwiderstand (Nur Selbst)" },
+        },
+        PALADIN = {
+            { name = "Segen der Macht", modes = { "MELEE", "ALL", "OFF" }, icon = "Interface\\Icons\\Spell_Holy_FistOfJustice", desc = "Erhöht Nahkampf-Angriffskraft (Standard: Nur Melees)" },
+            { name = "Segen der Weisheit", modes = { "MANA", "ALL", "OFF" }, icon = "Interface\\Icons\\Spell_Holy_SealOfWisdom", desc = "Regeneriert Mana für Mana-Klassen" },
+            { name = "Segen der Könige", modes = { "ALL", "OFF" }, icon = "Interface\\Icons\\Spell_Magic_MageArmor", desc = "Erhöht alle Attribute um 10%" },
+            { name = "Zorn der Gerechtigkeit", modes = { "TANK", "OFF" }, icon = "Interface\\Icons\\Spell_Holy_SealOfFury", desc = "Erhöht Heilig-Bedrohung (Standard: Nur als Tank)" },
+        },
+        SHAMAN = {
+            { name = "Wasserschild", modes = { "SELF", "OFF" }, icon = "Interface\\Icons\\Ability_Shaman_WaterShield", desc = "Regeneriert Mana bei Treffern (Nur Selbst)" },
+        },
+        WARLOCK = {
+            { name = "Dämonenrüstung", modes = { "SELF", "OFF" }, icon = "Interface\\Icons\\Spell_Shadow_RagingScream", desc = "Erhöht Rüstung und erhaltene Heilung (Nur Selbst)" },
+            { name = "Seelenverbindung", modes = { "SELF", "OFF" }, icon = "Interface\\Icons\\Spell_Shadow_SoulLeech_3", desc = "Überträgt Schaden auf deinen Dämon (Nur Selbst)" },
+        },
+        WARRIOR = {
+            { name = "Schlachtruf", modes = { "SELF", "OFF" }, icon = "Interface\\Icons\\Ability_Warrior_BattleShout", desc = "Erhöht Nahkampf-Angriffskraft (Nur Selbst zaubern)" },
+            { name = "Befehlsruf", modes = { "SELF", "OFF" }, icon = "Interface\\Icons\\Ability_Warrior_RallyingCry", desc = "Erhöht maximale Gesundheit (Nur Selbst zaubern)" },
+        },
+    }
+
+    local myBuffs = CLASS_BUFF_DEFS[pClass] or {}
+    local buffControls = {}
+
+    if #myBuffs == 0 then
+        local noBuffsText = p4:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        noBuffsText:SetPoint("TOPLEFT", buffTargetSub, "BOTTOMLEFT", 0, -25)
+        noBuffsText:SetText(L["BUFF_NO_CLASS_BUFFS"] or "Für deine Klasse sind derzeit keine automatischen Klassen-Buffs konfiguriert.")
+        noBuffsText:SetTextColor(0.6, 0.6, 0.6, 1)
+    else
+        local bY = -155
+        for idx, bDef in ipairs(myBuffs) do
+            local rowFrame = CreateFrame("Frame", nil, p4, "BackdropTemplate")
+            rowFrame:SetSize(640, 42)
+            rowFrame:SetPoint("TOPLEFT", p4, "TOPLEFT", 20, bY)
+            rowFrame:SetBackdrop({
+                bgFile = "Interface\\Buttons\\WHITE8x8",
+                edgeFile = "Interface\\Buttons\\WHITE8x8",
+                edgeSize = 1,
+            })
+            rowFrame:SetBackdropColor(0.12, 0.12, 0.12, 0.5)
+            rowFrame:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.6)
+
+            -- Zauber-Icon
+            local iconTex = rowFrame:CreateTexture(nil, "ARTWORK")
+            iconTex:SetSize(30, 30)
+            iconTex:SetPoint("LEFT", rowFrame, "LEFT", 6, 0)
+            iconTex:SetTexture(bDef.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+            iconTex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+
+            -- Zauber-Name
+            local bLabel = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+            bLabel:SetPoint("TOPLEFT", rowFrame, "TOPLEFT", 44, -5)
+            bLabel:SetText(bDef.name)
+
+            -- Beschreibung
+            local bDesc = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+            bDesc:SetPoint("TOPLEFT", bLabel, "BOTTOMLEFT", 0, -2)
+            bDesc:SetText(bDef.desc or "")
+
+            -- Cycle-Button
+            local btnCycle = CreateFrame("Button", nil, rowFrame, "UIPanelButtonTemplate")
+            btnCycle:SetSize(130, 24)
+            btnCycle:SetPoint("RIGHT", rowFrame, "RIGHT", -8, 0)
+
+            local function RefreshCycleButton()
+                if not cfg.buffBar then cfg.buffBar = {} end
+                if not cfg.buffBar.targets then cfg.buffBar.targets = {} end
+                local cur = cfg.buffBar.targets[bDef.name] or bDef.modes[1]
+                local col = TARGET_COLORS[cur] or "|cffffffff"
+                local label = TARGET_NAMES[cur] or cur
+                btnCycle:SetText(col .. "[ " .. label .. " ]|r")
+            end
+
+            btnCycle:SetScript("OnClick", function()
+                if not cfg.buffBar then cfg.buffBar = {} end
+                if not cfg.buffBar.targets then cfg.buffBar.targets = {} end
+                local cur = cfg.buffBar.targets[bDef.name] or bDef.modes[1]
+                local nextIdx = 1
+                for mIdx, mVal in ipairs(bDef.modes) do
+                    if mVal == cur then
+                        nextIdx = (mIdx % #bDef.modes) + 1
+                        break
+                    end
+                end
+                cfg.buffBar.targets[bDef.name] = bDef.modes[nextIdx]
+                RefreshCycleButton()
+                if R4L.BuffBar then R4L.BuffBar:Update() end
+            end)
+
+            RefreshCycleButton()
+            table.insert(buffControls, RefreshCycleButton)
+            bY = bY - 48
+        end
+    end
+
+    p4:SetScript("OnShow", function()
+        if cfg.buffBar then
+            cbBuffBar:SetChecked(cfg.buffBar.enabled ~= false)
+        else
+            cbBuffBar:SetChecked(true)
+        end
+        for _, refreshFn in ipairs(buffControls) do
+            refreshFn()
+        end
+    end)
+
+    -- =========================================================================
+    -- TAB 5: RAID-OPTIONEN
+    -- =========================================================================
+    local p5 = frame.tabPanels[5]
+
+    local cbRaidEnable = CreateCheckbox(p5, L["RAID_ENABLE"], 20, -15, function(val)
         cfg.raid.enabled = val
         if R4L.RaidHeader then
             R4L.RaidHeader:UpdateRoster()
@@ -726,62 +903,62 @@ function OUI:Initialize()
     end)
 
     -- Tanks
-    local cbTanks = CreateCheckbox(p4, L["RAID_SHOW_TANKS"], 20, -50, function(val)
+    local cbTanks = CreateCheckbox(p5, L["RAID_SHOW_TANKS"], 20, -50, function(val)
         cfg.raid.showTanks = val
         if R4L.RaidHeader then
             R4L.RaidHeader:UpdateRoster()
             R4L.RaidHeader:UpdateMovers()
         end
     end)
-    local btnTankCol = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    local btnTankCol = CreateFrame("Button", nil, p5, "UIPanelButtonTemplate")
     btnTankCol:SetSize(75, 22)
-    btnTankCol:SetPoint("TOPLEFT", p4, "TOPLEFT", 440, -52)
-    local btnTankRow = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    btnTankCol:SetPoint("TOPLEFT", p5, "TOPLEFT", 440, -52)
+    local btnTankRow = CreateFrame("Button", nil, p5, "UIPanelButtonTemplate")
     btnTankRow:SetSize(75, 22)
     btnTankRow:SetPoint("LEFT", btnTankCol, "RIGHT", 10, 0)
 
     -- Eigene Gruppe
-    local cbMyGroup = CreateCheckbox(p4, L["RAID_SHOW_MYGROUP"], 20, -85, function(val)
+    local cbMyGroup = CreateCheckbox(p5, L["RAID_SHOW_MYGROUP"], 20, -85, function(val)
         cfg.raid.showMyGroup = val
         if R4L.RaidHeader then
             R4L.RaidHeader:UpdateRoster()
             R4L.RaidHeader:UpdateMovers()
         end
     end)
-    local btnGroupCol = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    local btnGroupCol = CreateFrame("Button", nil, p5, "UIPanelButtonTemplate")
     btnGroupCol:SetSize(75, 22)
-    btnGroupCol:SetPoint("TOPLEFT", p4, "TOPLEFT", 440, -87)
-    local btnGroupRow = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    btnGroupCol:SetPoint("TOPLEFT", p5, "TOPLEFT", 440, -87)
+    local btnGroupRow = CreateFrame("Button", nil, p5, "UIPanelButtonTemplate")
     btnGroupRow:SetSize(75, 22)
     btnGroupRow:SetPoint("LEFT", btnGroupCol, "RIGHT", 10, 0)
 
     -- Restlicher Raid
-    local cbRaidRem = CreateCheckbox(p4, L["RAID_SHOW_REMAINING"], 20, -120, function(val)
+    local cbRaidRem = CreateCheckbox(p5, L["RAID_SHOW_REMAINING"], 20, -120, function(val)
         cfg.raid.showRaid = val
         if R4L.RaidHeader then
             R4L.RaidHeader:UpdateRoster()
             R4L.RaidHeader:UpdateMovers()
         end
     end)
-    local btnRaidCol = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    local btnRaidCol = CreateFrame("Button", nil, p5, "UIPanelButtonTemplate")
     btnRaidCol:SetSize(105, 22)
-    btnRaidCol:SetPoint("TOPLEFT", p4, "TOPLEFT", 440, -122)
-    local btnRaidRow = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    btnRaidCol:SetPoint("TOPLEFT", p5, "TOPLEFT", 440, -122)
+    local btnRaidRow = CreateFrame("Button", nil, p5, "UIPanelButtonTemplate")
     btnRaidRow:SetSize(105, 22)
     btnRaidRow:SetPoint("LEFT", btnRaidCol, "RIGHT", 10, 0)
 
     -- Begleiter (Pets)
-    local cbPets = CreateCheckbox(p4, L["RAID_SHOW_PETS"], 20, -155, function(val)
+    local cbPets = CreateCheckbox(p5, L["RAID_SHOW_PETS"], 20, -155, function(val)
         cfg.raid.showPets = val
         if R4L.RaidHeader then
             R4L.RaidHeader:UpdateRoster()
             R4L.RaidHeader:UpdateMovers()
         end
     end)
-    local btnPetCol = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    local btnPetCol = CreateFrame("Button", nil, p5, "UIPanelButtonTemplate")
     btnPetCol:SetSize(75, 22)
-    btnPetCol:SetPoint("TOPLEFT", p4, "TOPLEFT", 440, -157)
-    local btnPetRow = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    btnPetCol:SetPoint("TOPLEFT", p5, "TOPLEFT", 440, -157)
+    local btnPetRow = CreateFrame("Button", nil, p5, "UIPanelButtonTemplate")
     btnPetRow:SetSize(75, 22)
     btnPetRow:SetPoint("LEFT", btnPetCol, "RIGHT", 10, 0)
 
@@ -893,11 +1070,11 @@ function OUI:Initialize()
     end)
 
     -- Mover Sektion
-    local moverHeader = p4:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    moverHeader:SetPoint("TOPLEFT", p4, "TOPLEFT", 20, -195)
+    local moverHeader = p5:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    moverHeader:SetPoint("TOPLEFT", p5, "TOPLEFT", 20, -195)
     moverHeader:SetText(L["RAID_MOVERS_HEADER"])
 
-    local btnUnlockRaid = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    local btnUnlockRaid = CreateFrame("Button", nil, p5, "UIPanelButtonTemplate")
     btnUnlockRaid:SetSize(180, 24)
     btnUnlockRaid:SetPoint("TOPLEFT", moverHeader, "BOTTOMLEFT", 0, -8)
     btnUnlockRaid:SetText(L["RAID_UNLOCK_ALL"])
@@ -917,7 +1094,7 @@ function OUI:Initialize()
         end
     end)
 
-    local btnResetRaid = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    local btnResetRaid = CreateFrame("Button", nil, p5, "UIPanelButtonTemplate")
     btnResetRaid:SetSize(210, 24)
     btnResetRaid:SetPoint("LEFT", btnUnlockRaid, "RIGHT", 15, 0)
     btnResetRaid:SetText(L["RAID_RESET_POS"])
@@ -928,21 +1105,21 @@ function OUI:Initialize()
     end)
 
     -- Simulations Sektion (Umschaltung per Klick / erneuter Klick beendet)
-    local simHeader = p4:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    simHeader:SetPoint("TOPLEFT", p4, "TOPLEFT", 20, -260)
+    local simHeader = p5:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    simHeader:SetPoint("TOPLEFT", p5, "TOPLEFT", 20, -260)
     simHeader:SetText(L["RAID_SIM_HEADER"])
 
-    local btnSim10 = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    local btnSim10 = CreateFrame("Button", nil, p5, "UIPanelButtonTemplate")
     btnSim10:SetSize(190, 24)
     btnSim10:SetPoint("TOPLEFT", simHeader, "BOTTOMLEFT", 0, -8)
     btnSim10:SetText(L["RAID_SIM_10"])
 
-    local btnSim25 = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    local btnSim25 = CreateFrame("Button", nil, p5, "UIPanelButtonTemplate")
     btnSim25:SetSize(190, 24)
     btnSim25:SetPoint("LEFT", btnSim10, "RIGHT", 20, 0)
     btnSim25:SetText(L["RAID_SIM_25"])
 
-    local btnSim40 = CreateFrame("Button", nil, p4, "UIPanelButtonTemplate")
+    local btnSim40 = CreateFrame("Button", nil, p5, "UIPanelButtonTemplate")
     btnSim40:SetSize(190, 24)
     btnSim40:SetPoint("LEFT", btnSim25, "RIGHT", 20, 0)
     btnSim40:SetText(L["RAID_SIM_40"])
@@ -1003,7 +1180,7 @@ function OUI:Initialize()
         end
     end)
 
-    p4:SetScript("OnShow", function()
+    p5:SetScript("OnShow", function()
         cbRaidEnable:SetChecked(cfg.raid.enabled)
         cbTanks:SetChecked(cfg.raid.showTanks)
         cbMyGroup:SetChecked(cfg.raid.showMyGroup)
@@ -1015,17 +1192,17 @@ function OUI:Initialize()
     end)
 
     -- =========================================================================
-    -- TAB 5: PROFIL / IM- UND EXPORT
+    -- TAB 6: PROFIL / IM- UND EXPORT
     -- =========================================================================
-    local p5 = frame.tabPanels[5]
+    local p6 = frame.tabPanels[6]
 
-    local p5Desc = p5:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    p5Desc:SetPoint("TOPLEFT", p5, "TOPLEFT", 20, -15)
-    p5Desc:SetText(L["PROFILES_DESC"])
+    local p6Desc = p6:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    p6Desc:SetPoint("TOPLEFT", p6, "TOPLEFT", 20, -15)
+    p6Desc:SetText(L["PROFILES_DESC"])
 
     -- ScrollFrame für Im- / Export String
-    local scrollFrame = CreateFrame("ScrollFrame", nil, p5, "UIPanelScrollFrameTemplate")
-    scrollFrame:SetPoint("TOPLEFT", p5, "TOPLEFT", 20, -60)
+    local scrollFrame = CreateFrame("ScrollFrame", nil, p6, "UIPanelScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT", p6, "TOPLEFT", 20, -60)
     scrollFrame:SetSize(620, 160)
 
     local exportBox = CreateFrame("EditBox", nil, scrollFrame)
@@ -1035,12 +1212,12 @@ function OUI:Initialize()
     exportBox:SetAutoFocus(false)
     scrollFrame:SetScrollChild(exportBox)
 
-    local statusMsg = p5:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    local statusMsg = p6:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     statusMsg:SetPoint("TOPLEFT", scrollFrame, "BOTTOMLEFT", 0, -15)
     statusMsg:SetText("")
 
     -- Export Button
-    local btnExport = CreateFrame("Button", nil, p5, "UIPanelButtonTemplate")
+    local btnExport = CreateFrame("Button", nil, p6, "UIPanelButtonTemplate")
     btnExport:SetSize(130, 26)
     btnExport:SetPoint("TOPLEFT", statusMsg, "BOTTOMLEFT", 0, -15)
     btnExport:SetText(L["EXPORT_BTN"])
@@ -1053,7 +1230,7 @@ function OUI:Initialize()
     end)
 
     -- Import Button
-    local btnImport = CreateFrame("Button", nil, p5, "UIPanelButtonTemplate")
+    local btnImport = CreateFrame("Button", nil, p6, "UIPanelButtonTemplate")
     btnImport:SetSize(130, 26)
     btnImport:SetPoint("LEFT", btnExport, "RIGHT", 15, 0)
     btnImport:SetText(L["IMPORT_BTN"])
@@ -1068,7 +1245,7 @@ function OUI:Initialize()
     end)
 
     -- Reset Button
-    local btnReset = CreateFrame("Button", nil, p5, "UIPanelButtonTemplate")
+    local btnReset = CreateFrame("Button", nil, p6, "UIPanelButtonTemplate")
     btnReset:SetSize(150, 26)
     btnReset:SetPoint("LEFT", btnImport, "RIGHT", 15, 0)
     btnReset:SetText(L["RESET_DEFAULTS_BTN"])

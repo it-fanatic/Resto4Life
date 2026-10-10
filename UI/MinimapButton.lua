@@ -124,6 +124,9 @@ function MB:Initialize()
                 elseif R4L.GroupHeader then
                     R4L.GroupHeader:ResetPosition()
                 end
+                if R4L.BuffBar then
+                    R4L.BuffBar:ResetPosition()
+                end
             else
                 if R4L.OptionsUI then
                     R4L.OptionsUI:Toggle()
@@ -134,6 +137,9 @@ function MB:Initialize()
                 R4L.RaidHeader:ToggleLock()
             elseif R4L.GroupHeader then
                 R4L.GroupHeader:ToggleLock()
+            end
+            if R4L.BuffBar then
+                R4L.BuffBar:ToggleLock()
             end
         end
 

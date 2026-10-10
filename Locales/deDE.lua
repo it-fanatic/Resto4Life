@@ -37,6 +37,7 @@ L["CONFIG_TITLE_FMT"] = "|cff00ff96Resto4Life|r - Konfiguration (v%s)"
 L["TAB_GENERAL"] = "Allgemein"
 L["TAB_BINDINGS"] = "Tastenbelegung"
 L["TAB_HOTS"] = "HoTs & Debuffs"
+L["TAB_BUFFBAR"] = "Buff-Bar"
 L["TAB_RAID"] = "Raid"
 L["TAB_PROFILES"] = "Profil / Im-Export"
 
@@ -145,6 +146,22 @@ L["DEV_LANG_RESET"] = "Sprache auf Client-Standard (|cff00ff00%s|r) zurückgeset
 L["DEV_LANG_CURRENT"] = "Aktuelle Sprache: |cff00ff00%s|r (Gespeichert: %s). Nutzung: /r4l lang de | en | auto"
 L["MOVER_RCLICK_ORIENTATION"] = "Rechts-Klick: Spalte / Zeile wechseln"
 L["CHAT_ORIENTATION_CHANGED"] = "%s: Anordnung geändert auf |cff00ff00%s|r."
+
+-- Buff-Bar
+L["BUFF_BAR_TITLE"] = "Buffs"
+L["BUFF_BAR_HEADER"] = "Buff-Bar (Klassen-Buffs)"
+L["BUFF_BAR_DESC"] = "Die Buff-Bar überwacht permanente Klassen-Buffs in deiner Gruppe oder deinem Raid.\nFehlende Buffs werden mit einem roten Rahmen und der Anzahl fehlender Ziele markiert.\nPer Linksklick zauberst du den Buff direkt auf das nächste fehlende Gruppenmitglied (Tank > Heiler > DD)."
+L["BUFF_BAR_ENABLE"] = "Buff-Bar aktivieren"
+L["BUFF_BAR_RESET"] = "Buff-Bar Position zurücksetzen"
+L["BUFF_TARGET_HEADER"] = "Zielgruppen-Filter für Klassen-Buffs:"
+L["BUFF_TARGET_SUB"] = "Klicke auf den Button, um festzulegen, wer den Zauber erhalten soll."
+L["BUFF_NO_CLASS_BUFFS"] = "Für deine Klasse sind derzeit keine automatischen Klassen-Buffs konfiguriert."
+L["BUFF_TARGET_ALL"] = "Alle"
+L["BUFF_TARGET_TANK"] = "Nur Tank"
+L["BUFF_TARGET_SELF"] = "Nur Selbst"
+L["BUFF_TARGET_MANA"] = "Mana"
+L["BUFF_TARGET_MELEE"] = "Melee"
+L["BUFF_TARGET_OFF"] = "Aus"
 
 -- Initiales Anwenden der aktiven Sprache
 R4L:ApplyLocale()

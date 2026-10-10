@@ -7,7 +7,7 @@ local addonName, R4L = ...
 _G["Resto4Life"] = R4L
 
 R4L.addonName = addonName
-R4L.version = "0.2.4-beta"
+R4L.version = "0.2.5-beta"
 R4L.inCombat = false
 R4L.combatQueue = {}
 
@@ -226,6 +226,9 @@ SlashCmdList["RESTO4LIFE"] = function(msg)
         elseif R4L.GroupHeader then
             R4L.GroupHeader:ToggleLock(false)
         end
+        if R4L.BuffBar then
+            R4L.BuffBar:ToggleLock(false)
+        end
     elseif cmd == "lock" then
         if R4L.RaidHeader then
             R4L.RaidHeader:ToggleLock(true)
@@ -233,11 +236,17 @@ SlashCmdList["RESTO4LIFE"] = function(msg)
         if R4L.GroupHeader then
             R4L.GroupHeader:ToggleLock(true)
         end
+        if R4L.BuffBar then
+            R4L.BuffBar:ToggleLock(true)
+        end
     elseif cmd == "reset" or cmd == "center" then
         if (IsInRaid() or (R4L.RaidHeader and R4L.RaidHeader.isSimulating)) and R4L.RaidHeader then
             R4L.RaidHeader:ResetPositions()
         elseif R4L.GroupHeader then
             R4L.GroupHeader:ResetPosition()
+        end
+        if R4L.BuffBar then
+            R4L.BuffBar:ResetPosition()
         end
 
     elseif cmd == "resetall" then
