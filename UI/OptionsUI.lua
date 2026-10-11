@@ -785,7 +785,10 @@ function OUI:Initialize()
     local cbBuffBar = CreateCheckbox(p4, L["BUFF_BAR_ENABLE"] or "Buff-Bar aktivieren", 20, -65, function(val)
         if not cfg.buffBar then cfg.buffBar = {} end
         cfg.buffBar.enabled = val
-        if R4L.BuffBar then R4L.BuffBar:Update() end
+        if R4L.BuffBar then
+            if R4L.BuffBar.UpdateLayout then R4L.BuffBar:UpdateLayout() end
+            R4L.BuffBar:Update()
+        end
     end)
 
     -- Buff-Bar Position Reset Button
@@ -1016,7 +1019,10 @@ function OUI:Initialize()
                 end
                 cfg.buffBar.targets[bDef.name] = bDef.modes[nextIdx]
                 RefreshCycleButton()
-                if R4L.BuffBar then R4L.BuffBar:Update() end
+                if R4L.BuffBar then
+                    if R4L.BuffBar.UpdateLayout then R4L.BuffBar:UpdateLayout() end
+                    R4L.BuffBar:Update()
+                end
             end)
 
             RefreshCycleButton()

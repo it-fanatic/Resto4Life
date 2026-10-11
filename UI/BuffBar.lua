@@ -430,6 +430,32 @@ local function ClearUnitCache(unit)
     end
 end
 
+local function ClearBuffCached(unit, spellDef)
+    if not unit or not spellDef then return end
+    local key = GetUnitKey(unit)
+    local uCache = (key and BB.activeBuffCache[key]) or BB.activeBuffCache[unit]
+    if uCache then
+        if spellDef.name then
+            uCache[spellDef.name] = nil
+        end
+        if spellDef.altNames then
+            for _, alt in ipairs(spellDef.altNames) do
+                uCache[alt] = nil
+            end
+        end
+    end
+    if key and BB.activeBuffCache[unit] and BB.activeBuffCache[unit] ~= uCache then
+        if spellDef.name then
+            BB.activeBuffCache[unit][spellDef.name] = nil
+        end
+        if spellDef.altNames then
+            for _, alt in ipairs(spellDef.altNames) do
+                BB.activeBuffCache[unit][alt] = nil
+            end
+        end
+    end
+end
+
 local function SetBuffCached(unit, spellName, duration, expirationTime)
     if not unit or not spellName then return end
     local key = GetUnitKey(unit)
@@ -575,6 +601,8 @@ local function UnitHasBuff(unit, spellDef)
         return false
     end
 
+    local scanSucceeded = false
+
     -- 1. Schnell-Check per Name über Blizzard API (C++ Lookup) - IMMER versuchen (auch im Kampf)
     if AuraUtil and AuraUtil.FindAuraByName then
         for _, alt in ipairs(spellDef.altNames or { spellDef.name }) do
@@ -615,13 +643,19 @@ local function UnitHasBuff(unit, spellDef)
                 return true
             end
         end
+        scanSucceeded = true
     end
 
     -- 3. C_UnitAuras.GetAuraDataByIndex (Modern / Retail / 12.0 / Forever)
     if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
+        local cScanOk = true
         for i = 1, 40 do
             local ok, data = pcall(C_UnitAuras.GetAuraDataByIndex, unit, i, "HELPFUL")
-            if ok and data and type(data) == "table" then
+            if not ok then
+                cScanOk = false
+                break
+            end
+            if data and type(data) == "table" then
                 local aName = data.name
                 local aId = data.spellId
                 local aIcon = data.iconFileID or data.icon
@@ -631,16 +665,17 @@ local function UnitHasBuff(unit, spellDef)
                     SetBuffCached(unit, spellDef.name, data.duration, data.expirationTime)
                     return true
                 end
-            elseif ok and data == nil then
+            elseif data == nil then
                 break
             end
         end
+        if cScanOk then scanSucceeded = true end
     end
 
     -- 4. AuraUtil.ForEachAura (Modern)
     if AuraUtil and AuraUtil.ForEachAura then
         local found = false
-        pcall(AuraUtil.ForEachAura, unit, "HELPFUL", 40, function(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11)
+        local okForEach = pcall(AuraUtil.ForEachAura, unit, "HELPFUL", 40, function(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11)
             local aName, aId, aIcon, aDur, aExp = nil, nil, nil, nil, nil
             if type(arg1) == "table" then
                 aName = arg1.name
@@ -652,14 +687,14 @@ local function UnitHasBuff(unit, spellDef)
                 aName = arg1
                 if type(arg2) == "string" and not (arg2:find("^Interface") or arg2:find("^\\") or arg2:find("^/")) then
                     aIcon = arg3
-                    aDur = (type(arg6) == "number") and a6 or nil
-                    aExp = (type(arg7) == "number") and aExp or nil
-                    aId = (type(arg11) == "number") and a11 or nil
+                    aDur = (type(arg6) == "number") and arg6 or nil
+                    aExp = (type(arg7) == "number") and arg7 or nil
+                    aId = (type(arg11) == "number") and arg11 or nil
                 else
                     aIcon = arg2
-                    aDur = (type(arg5) == "number") and a5 or nil
-                    aExp = (type(arg6) == "number") and a6 or nil
-                    aId = (type(arg10) == "number") and a10 or nil
+                    aDur = (type(arg5) == "number") and arg5 or nil
+                    aExp = (type(arg6) == "number") and arg6 or nil
+                    aId = (type(arg10) == "number") and arg10 or nil
                 end
             end
             local okMatch, isMatch = pcall(AuraMatchesSpellDef, aName, aId, aIcon, aDur, spellDef)
@@ -670,14 +705,22 @@ local function UnitHasBuff(unit, spellDef)
             end
             return false
         end)
-        if found then return true end
+        if okForEach then
+            scanSucceeded = true
+            if found then return true end
+        end
     end
 
     -- 5. Classic UnitAura Index-Scan
     if UnitAura then
+        local uScanOk = true
         for i = 1, 40 do
             local ok, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11 = pcall(UnitAura, unit, i, "HELPFUL")
-            if ok and a1 ~= nil then
+            if not ok then
+                uScanOk = false
+                break
+            end
+            if a1 ~= nil then
                 local aName = a1
                 local aIcon = nil
                 local aId = nil
@@ -699,17 +742,23 @@ local function UnitHasBuff(unit, spellDef)
                     SetBuffCached(unit, spellDef.name, aDur, aExp)
                     return true
                 end
-            elseif ok and a1 == nil then
+            else
                 break
             end
         end
+        if uScanOk then scanSucceeded = true end
     end
 
     -- 6. UnitBuff Fallback
     if UnitBuff then
+        local bScanOk = true
         for i = 1, 40 do
             local ok, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11 = pcall(UnitBuff, unit, i)
-            if ok and a1 ~= nil then
+            if not ok then
+                bScanOk = false
+                break
+            end
+            if a1 ~= nil then
                 local aName = a1
                 local aIcon = nil
                 local aId = nil
@@ -731,15 +780,28 @@ local function UnitHasBuff(unit, spellDef)
                     SetBuffCached(unit, spellDef.name, aDur, aExp)
                     return true
                 end
-            elseif ok and a1 == nil then
+            else
                 break
             end
         end
+        if bScanOk then scanSucceeded = true end
     end
 
-    -- 7. Cache Fallback (Verifiziert Buff-Status wenn API im Kampf maskiert / secret ist)
-    if IsBuffCached(unit, spellDef) then
-        return true
+    -- 7. Ergebnis-Auswertung:
+    -- Wenn mindestens ein Scan-Verfahren fehlerfrei lief und der Buff nicht gefunden wurde:
+    -- Der Buff ist definitiv nicht mehr aktiv -> Cache sofort leeren und false zurückgeben!
+    if scanSucceeded then
+        ClearBuffCached(unit, spellDef)
+        return false
+    end
+
+    -- Notfall-Kampf-Cache Fallback: NUR wenn ALLE Scans im Kampf mit Fehlern scheiterten
+    if InCombatLockdown() then
+        if IsBuffCached(unit, spellDef) then
+            return true
+        end
+    else
+        ClearBuffCached(unit, spellDef)
     end
 
     return false
@@ -826,6 +888,16 @@ function BB:UpdateLayout()
             btn:Hide()
             btn.targetFilter = "OFF"
             btn.missingUnits = {}
+            btn:SetAttribute("*type1", nil)
+            btn:SetAttribute("*macrotext1", nil)
+            btn:SetAttribute("type1", nil)
+            btn:SetAttribute("macrotext1", nil)
+            btn:SetAttribute("*type", nil)
+            btn:SetAttribute("*macrotext", nil)
+            btn:SetAttribute("type", nil)
+            btn:SetAttribute("macrotext", nil)
+            btn:SetAttribute("spell", nil)
+            btn:SetAttribute("unit", nil)
         end
     end
 
@@ -919,9 +991,33 @@ function BB:Update()
                         end
                     end
 
-                    btn:SetAttribute("type", "spell")
-                    btn:SetAttribute("unit", bestUnit or "player")
-                    btn:SetAttribute("spell", castSpell)
+                    if bestUnit then
+                        local macro = "/cast [@" .. bestUnit .. "] " .. castSpell
+                        if cfg.general and cfg.general.targetOnCast then
+                            macro = "/target [@" .. bestUnit .. "]\n" .. macro
+                        end
+                        btn:SetAttribute("*type1", "macro")
+                        btn:SetAttribute("*macrotext1", macro)
+                        btn:SetAttribute("type1", "macro")
+                        btn:SetAttribute("macrotext1", macro)
+                        btn:SetAttribute("*type", "macro")
+                        btn:SetAttribute("*macrotext", macro)
+                        btn:SetAttribute("type", "macro")
+                        btn:SetAttribute("macrotext", macro)
+                    else
+                        btn:SetAttribute("*type1", nil)
+                        btn:SetAttribute("*macrotext1", nil)
+                        btn:SetAttribute("type1", nil)
+                        btn:SetAttribute("macrotext1", nil)
+                        btn:SetAttribute("*type", nil)
+                        btn:SetAttribute("*macrotext", nil)
+                        btn:SetAttribute("type", nil)
+                        btn:SetAttribute("macrotext", nil)
+                    end
+                    btn:SetAttribute("spell", nil)
+                    btn:SetAttribute("unit", nil)
+                else
+                    self.needsAttributeUpdate = true
                 end
 
                 btn.missingUnits = missingUnits
@@ -1314,11 +1410,32 @@ R4L:RegisterEvent("UNIT_AURA", function()
 end)
 
 R4L:RegisterEvent("GROUP_ROSTER_UPDATE", function()
+    local validKeys = {}
+    for _, u in ipairs(GetRosterUnits()) do
+        local k = GetUnitKey(u)
+        if k then validKeys[k] = true end
+        validKeys[u] = true
+    end
+    for k in pairs(BB.activeBuffCache) do
+        if not validKeys[k] then
+            BB.activeBuffCache[k] = nil
+        end
+    end
     BB:UpdateLayout()
     BB:Update()
 end)
 
 R4L:RegisterEvent("PLAYER_REGEN_ENABLED", function()
+    local now = GetTime()
+    for uKey, uMap in pairs(BB.activeBuffCache) do
+        if type(uMap) == "table" then
+            for sName, exp in pairs(uMap) do
+                if type(exp) == "number" and now >= exp then
+                    uMap[sName] = nil
+                end
+            end
+        end
+    end
     BB:UpdateLayout()
     BB:Update()
 end)
@@ -1342,12 +1459,11 @@ R4L:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED", function(unit, castGUID, spellID)
         local classList = CLASS_BUFFS[pClass] or {}
         for _, def in ipairs(classList) do
             if (def.id and def.id == spellID) or (def.allSpellIds and def.allSpellIds[spellID]) then
-                local target = "target"
-                if not UnitExists("target") or UnitIsEnemy("player", "target") then
-                    target = "player"
+                if C_Timer and C_Timer.After then
+                    C_Timer.After(0.05, function() BB:Update() end)
+                else
+                    BB:Update()
                 end
-                SetBuffCached(target, def.name, 1800, nil)
-                BB:Update()
                 return
             end
         end
@@ -1355,6 +1471,7 @@ R4L:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED", function(unit, castGUID, spellID)
 end)
 
 R4L:RegisterEvent("PLAYER_ENTERING_WORLD", function()
+    BB.activeBuffCache = {}
     BB:InitSpellTextures()
     BB:UpdateLayout()
     BB:Update()
