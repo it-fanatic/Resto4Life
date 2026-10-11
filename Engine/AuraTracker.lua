@@ -85,7 +85,8 @@ function AT:GetDispelCapabilities()
     end
     AT._lastDispelCheck = now
 
-    local _, playerClass = UnitClass("player")
+    local okP, locClass, engClass = pcall(UnitClass, "player")
+    local playerClass = okP and (engClass or locClass) or nil
     local playerDispels = {
         Curse = false,
         Poison = false,
@@ -102,7 +103,7 @@ function AT:GetDispelCapabilities()
     local function ApplyClassDispels(cls, target)
         if not cls or type(cls) ~= "string" then return end
         local uClass = cls:upper()
-        if uClass == "DRUID" then
+        if uClass == "DRUID" or uClass == "DRUIDE" then
             target.Curse = true
             target.Poison = true
             target.Magic = true -- Typischerweise als Heiler (Wiederherstellung)
@@ -110,22 +111,26 @@ function AT:GetDispelCapabilities()
             target.Poison = true
             target.Disease = true
             target.Magic = true -- Heilig
-        elseif uClass == "PRIEST" then
+        elseif uClass == "PRIEST" or uClass == "PRIESTER" then
             target.Magic = true
             target.Disease = true -- Läutern / Krankheiten bannen
-        elseif uClass == "SHAMAN" then
+        elseif uClass == "SHAMAN" or uClass == "SCHAMANE" then
             target.Curse = true
             target.Magic = true -- Wiederherstellung
-        elseif uClass == "MONK" then
+            target.Poison = true -- Classic / Forever (Totem der Giftreinigung / Gift heilen)
+            target.Disease = true -- Classic / Forever (Krankheit heilen)
+        elseif uClass == "MONK" or uClass == "MÖNCH" then
             target.Poison = true
             target.Disease = true
             target.Magic = true -- Nebelwirker
-        elseif uClass == "MAGE" then
+        elseif uClass == "MAGE" or uClass == "MAGIER" then
             target.Curse = true
-        elseif uClass == "EVOKER" then
+        elseif uClass == "EVOKER" or uClass == "RUFER" then
             target.Poison = true
             target.Magic = true
             target.Curse = true -- Kauterisierende Flamme
+        elseif uClass == "WARLOCK" or uClass == "HEXENMEISTER" then
+            target.Magic = true -- Teufelsjäger / Wichtel (Magie verschlingen)
         end
     end
 
@@ -144,9 +149,9 @@ function AT:GetDispelCapabilities()
         for i = 1, count do
             local u = "raid" .. i
             if UnitExists(u) and not UnitIsUnit(u, "player") then
-                local okC, _, uClass = pcall(UnitClass, u)
-                if okC and uClass then
-                    ApplyClassDispels(uClass, groupDispels)
+                local okC, lc, ec = pcall(UnitClass, u)
+                if okC then
+                    ApplyClassDispels(ec or lc, groupDispels)
                 end
             end
         end
@@ -160,9 +165,9 @@ function AT:GetDispelCapabilities()
             for i = 1, 4 do
                 local u = "party" .. i
                 if UnitExists(u) then
-                    local okC, _, uClass = pcall(UnitClass, u)
-                    if okC and uClass then
-                        ApplyClassDispels(uClass, groupDispels)
+                    local okC, lc, ec = pcall(UnitClass, u)
+                    if okC then
+                        ApplyClassDispels(ec or lc, groupDispels)
                     end
                 end
             end
@@ -1203,11 +1208,16 @@ function AT:GetDispellableDebuff(unit)
 
         local canPlayerDispel = (playerDispels and playerDispels[dt] == true)
         local canGroupDispel = (groupDispels and groupDispels[dt] == true)
-        local canDispel = canPlayerDispel or canGroupDispel
 
-        -- Wenn "Nur bannbare anzeigen" aktiv ist, muss Spieler oder Gruppenmitglied bannen können
-        if cfg.auras.highlightDispellableOnly and not canDispel then
-            return false, nil, 0
+        -- Wenn "Nur bannbare anzeigen" aktiv ist:
+        if cfg.auras.highlightDispellableOnly then
+            local canDispel = canPlayerDispel
+            if cfg.auras.includeGroupDispels and canGroupDispel then
+                canDispel = true
+            end
+            if not canDispel then
+                return false, nil, 0
+            end
         end
 
         local color = self.DebuffColors[dt] or self.DebuffColors["None"]
@@ -1219,30 +1229,34 @@ function AT:GetDispellableDebuff(unit)
     local bestDebuff, bestColor, bestPriority = nil, nil, -1
     local totalHarmfulScanned = 0
     local scanHadError = false
+    local scanSucceeded = false
 
     -- Methode 0: C_UnitAuras.GetUnitAuras (Modern Retail / Forever C-Level Scan)
     if C_UnitAuras and C_UnitAuras.GetUnitAuras then
         local ok, auras = pcall(C_UnitAuras.GetUnitAuras, unit, "HARMFUL")
         if not ok then
             scanHadError = true
-        elseif auras and type(auras) == "table" and #auras > 0 then
-            for _, data in ipairs(auras) do
-                if type(data) == "table" then
-                    totalHarmfulScanned = totalHarmfulScanned + 1
-                    local rawDT = data.dispelName or data.dispelType or data.debuffType
-                    local debuffData = {
-                        name = (data.name and not IsSecret(data.name)) and data.name or "",
-                        icon = data.iconFileID or data.icon,
-                        dispelType = NormalizeDispelType(rawDT),
-                        duration = (data.duration and not IsSecret(data.duration) and type(data.duration) == "number") and data.duration or 0,
-                        expirationTime = (data.expirationTime and not IsSecret(data.expirationTime) and type(data.expirationTime) == "number") and data.expirationTime or 0,
-                    }
-                    local isMatch, color, prio = EvaluateDebuff(debuffData)
-                    if isMatch and prio > bestPriority then
-                        bestDebuff = debuffData
-                        bestColor = color
-                        bestPriority = prio
-                        if prio == 2 then break end
+        elseif auras and type(auras) == "table" then
+            scanSucceeded = true
+            if #auras > 0 then
+                for _, data in ipairs(auras) do
+                    if type(data) == "table" then
+                        totalHarmfulScanned = totalHarmfulScanned + 1
+                        local rawDT = data.dispelName or data.dispelType or data.debuffType
+                        local debuffData = {
+                            name = (data.name and not IsSecret(data.name)) and data.name or "",
+                            icon = data.iconFileID or data.icon,
+                            dispelType = NormalizeDispelType(rawDT),
+                            duration = (data.duration and not IsSecret(data.duration) and type(data.duration) == "number") and data.duration or 0,
+                            expirationTime = (data.expirationTime and not IsSecret(data.expirationTime) and type(data.expirationTime) == "number") and data.expirationTime or 0,
+                        }
+                        local isMatch, color, prio = EvaluateDebuff(debuffData)
+                        if isMatch and prio > bestPriority then
+                            bestDebuff = debuffData
+                            bestColor = color
+                            bestPriority = prio
+                            if prio == 2 then break end
+                        end
                     end
                 end
             end
@@ -1255,7 +1269,7 @@ function AT:GetDispellableDebuff(unit)
 
     -- 1. Scan über AuraUtil.ForEachAura (Modern Retail / Forever)
     if AuraUtil and AuraUtil.ForEachAura then
-        pcall(AuraUtil.ForEachAura, unit, "HARMFUL", 40, function(arg1, arg2, arg3, arg4, arg5, ...)
+        local okForEach = pcall(AuraUtil.ForEachAura, unit, "HARMFUL", 40, function(arg1, arg2, arg3, arg4, arg5, ...)
             totalHarmfulScanned = totalHarmfulScanned + 1
             local debuffData = nil
             if type(arg1) == "table" then
@@ -1286,6 +1300,7 @@ function AT:GetDispellableDebuff(unit)
             end
             return false
         end)
+        if okForEach then scanSucceeded = true end
         if bestDebuff and bestPriority == 2 then
             self:SetCachedDebuff(unit, bestDebuff, bestColor)
             return bestDebuff, bestColor
@@ -1294,10 +1309,13 @@ function AT:GetDispellableDebuff(unit)
 
     -- 2. Scan über C_UnitAuras.GetAuraDataByIndex (Modern Retail / Forever)
     if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
+        local m2Error = false
         for i = 1, 40 do
             local ok, data = pcall(C_UnitAuras.GetAuraDataByIndex, unit, i, "HARMFUL")
             if not ok then
                 scanHadError = true
+                m2Error = true
+                break
             elseif data and type(data) == "table" then
                 totalHarmfulScanned = totalHarmfulScanned + 1
                 local rawDT = data.dispelName or data.dispelType or data.debuffType
@@ -1319,6 +1337,7 @@ function AT:GetDispellableDebuff(unit)
                 break -- Ende der aktiven Aurenliste
             end
         end
+        if not m2Error then scanSucceeded = true end
         if bestDebuff and bestPriority == 2 then
             self:SetCachedDebuff(unit, bestDebuff, bestColor)
             return bestDebuff, bestColor
@@ -1326,8 +1345,14 @@ function AT:GetDispellableDebuff(unit)
     end
 
     -- 3. Scan über GetUnitAuraByIndex (Classic 3.3.5 / Forever Fallback)
+    local m3Error = false
     for i = 1, 40 do
-        local aura = GetUnitAuraByIndex(unit, i, "HARMFUL")
+        local okAura, aura = pcall(GetUnitAuraByIndex, unit, i, "HARMFUL")
+        if not okAura then
+            scanHadError = true
+            m3Error = true
+            break
+        end
         if not aura then break end
         totalHarmfulScanned = totalHarmfulScanned + 1
 
@@ -1339,11 +1364,19 @@ function AT:GetDispellableDebuff(unit)
             if prio == 2 then break end
         end
     end
+    if not m3Error then scanSucceeded = true end
 
     -- Wenn ein passender aktiver Debuff gefunden wurde -> Cache auffrischen & zurückgeben
     if bestDebuff and bestColor then
         self:SetCachedDebuff(unit, bestDebuff, bestColor)
         return bestDebuff, bestColor
+    end
+
+    -- Wenn mindestens ein Scan-Verfahren fehlerfrei lief und kein bannbarer Debuff gefunden wurde:
+    -- Der Debuff existiert nicht mehr (oder wurde gebannt) -> Cache SOFORT leeren (auch im Kampf!)
+    if scanSucceeded then
+        self:ClearDebuffCache(unit)
+        return nil, nil
     end
 
     -- Status ob Einheit oder Spieler im Kampf ist
@@ -1355,13 +1388,7 @@ function AT:GetDispellableDebuff(unit)
         if okPComb and pVal == true then inCombat = true end
     end
 
-    -- Außerhalb des Kampfes: Wenn der Scan fehlerfrei lief und 0 schädliche Auren gefunden wurden -> Debuff wurde gereinigt / ist weg!
-    if not inCombat and not scanHadError and totalHarmfulScanned == 0 then
-        self:ClearDebuffCache(unit)
-        return nil, nil
-    end
-
-    -- 4. Kampf-Cache Fallback: Wenn im Kampf kein aktiver Debuff direkt sichtbar (z.B. API durch Kampf/Secret Values maskiert)
+    -- 4. Notfall-Kampf-Cache Fallback: NUR wenn ALLE Scans im Kampf mit Fehlern scheiterten (z.B. API im Kampf geschützt)
     if inCombat then
         local cached, cachedColor = self:GetCachedDebuff(unit)
         if cached and cachedColor then

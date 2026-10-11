@@ -37,15 +37,6 @@ local CLASS_BUFFS = {
             iconPath = "Interface\\Icons\\Spell_Nature_Thorns",
             iconFileID = 136104,
         },
-        {
-            id = 16864,
-            name = "Omen der Klarsicht",
-            altNames = { "Omen der Klarsicht", "Omen of Clarity" },
-            allSpellIds = { [16864]=true, [16865]=true, [16866]=true, [16867]=true },
-            defaultTarget = "SELF",
-            iconPath = "Interface\\Icons\\Spell_Nature_CrystalBall",
-            iconFileID = 136034,
-        },
     },
     PRIEST = {
         {
@@ -164,15 +155,6 @@ local CLASS_BUFFS = {
             iconPath = "Interface\\Icons\\Spell_Shadow_RagingScream",
             iconFileID = 136185,
         },
-        {
-            id = 19028,
-            name = "Seelenverbindung",
-            altNames = { "Seelenverbindung", "Soul Link" },
-            allSpellIds = { [19028]=true },
-            defaultTarget = "SELF",
-            iconPath = "Interface\\Icons\\Spell_Shadow_SoulLeech_3",
-            iconFileID = 136187,
-        },
     },
     WARRIOR = {
         {
@@ -213,9 +195,44 @@ local function CleanSpellName(name)
     return base or name
 end
 
+-- Prüft, ob ein Zauber eine passive Fähigkeit ist (kann nicht aktiv gebufft werden)
+local function IsPassiveSpellCheck(spellId, slotIndex, spellBank)
+    if slotIndex then
+        local bank = spellBank or ((BOOKTYPE_SPELL ~= nil) and BOOKTYPE_SPELL or "spell")
+        if GetSpellBookItemInfo then
+            local okInfo, skillType = pcall(GetSpellBookItemInfo, slotIndex, bank)
+            if okInfo and skillType and skillType:upper() == "PASSIVE" then
+                return true
+            end
+        end
+        if IsPassiveSpell then
+            local ok, p = pcall(IsPassiveSpell, slotIndex, bank)
+            if ok and p and p ~= 0 and p ~= false then return true end
+        end
+    end
+    if spellId then
+        if C_Spell and C_Spell.IsSpellPassive then
+            local ok, p = pcall(C_Spell.IsSpellPassive, spellId)
+            if ok and p and p ~= 0 and p ~= false then return true end
+        end
+        if IsSpellPassive then
+            local ok, p = pcall(IsSpellPassive, spellId)
+            if ok and p and p ~= 0 and p ~= false then return true end
+        end
+        if IsPassiveSpell then
+            local ok, p = pcall(IsPassiveSpell, spellId)
+            if ok and p and p ~= 0 and p ~= false then return true end
+        end
+    end
+    return false
+end
+
 -- Prüft sicher mit pcall, ob der Spieler den Zauber beherrscht
 local function PlayerKnowsSpell(spellDef)
     if not spellDef then return false end
+
+    -- Passive Fähigkeiten komplett ignorieren (sind keine aktiven Buffs)
+    if spellDef.id and IsPassiveSpellCheck(spellDef.id) then return false end
 
     -- 1. Check IsPlayerSpell / IsSpellKnown (Modern Retail & neuere Classic Clients)
     if spellDef.id then
@@ -238,12 +255,14 @@ local function PlayerKnowsSpell(spellDef)
                 local _, _, offset, numSpells = GetSpellTabInfo(t)
                 if offset and numSpells then
                     for s = offset + 1, offset + numSpells do
-                        local bookName = GetSpellBookItemName(s, spellBank)
-                        if bookName then
-                            local clean = CleanSpellName(bookName)
-                            for _, alt in ipairs(spellDef.altNames or {}) do
-                                if clean == alt or bookName == alt then
-                                    return true
+                        if not IsPassiveSpellCheck(nil, s, spellBank) then
+                            local bookName = GetSpellBookItemName(s, spellBank)
+                            if bookName then
+                                local clean = CleanSpellName(bookName)
+                                for _, alt in ipairs(spellDef.altNames or {}) do
+                                    if clean == alt or bookName == alt then
+                                        return true
+                                    end
                                 end
                             end
                         end
@@ -253,12 +272,14 @@ local function PlayerKnowsSpell(spellDef)
         else
             -- Fallback wenn GetNumSpellTabs nicht verfügbar ist
             for i = 1, 300 do
-                local bookName = GetSpellBookItemName(i, spellBank)
-                if bookName then
-                    local clean = CleanSpellName(bookName)
-                    for _, alt in ipairs(spellDef.altNames or {}) do
-                        if clean == alt or bookName == alt then
-                            return true
+                if not IsPassiveSpellCheck(nil, i, spellBank) then
+                    local bookName = GetSpellBookItemName(i, spellBank)
+                    if bookName then
+                        local clean = CleanSpellName(bookName)
+                        for _, alt in ipairs(spellDef.altNames or {}) do
+                            if clean == alt or bookName == alt then
+                                return true
+                            end
                         end
                     end
                 end

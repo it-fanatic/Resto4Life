@@ -618,31 +618,37 @@ function OUI:Initialize()
         if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
     end)
 
-    local cbDispOnly = CreateCheckbox(p3, L["DISP_ONLY_CB"], 40, -125, function(val)
+    local cbDispOnly = CreateCheckbox(p3, L["DISP_ONLY_CB"], 40, -120, function(val)
         cfg.auras.highlightDispellableOnly = val
         R4L.GroupHeader:UpdateAllFrames()
         if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
     end)
 
-    local cbCurse = CreateCheckbox(p3, L["HIGHLIGHT_CURSE"], 40, -160, function(val)
+    local cbIncludeGroup = CreateCheckbox(p3, L["INCLUDE_GROUP_DISPELS_CB"], 60, -150, function(val)
+        cfg.auras.includeGroupDispels = val
+        R4L.GroupHeader:UpdateAllFrames()
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
+    end, L["INCLUDE_GROUP_DISPELS_DESC"])
+
+    local cbCurse = CreateCheckbox(p3, L["HIGHLIGHT_CURSE"], 40, -180, function(val)
         cfg.auras.showCurse = val
         R4L.GroupHeader:UpdateAllFrames()
         if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
     end)
 
-    local cbPoison = CreateCheckbox(p3, L["HIGHLIGHT_POISON"], 40, -195, function(val)
+    local cbPoison = CreateCheckbox(p3, L["HIGHLIGHT_POISON"], 40, -210, function(val)
         cfg.auras.showPoison = val
         R4L.GroupHeader:UpdateAllFrames()
         if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
     end)
 
-    local cbDisease = CreateCheckbox(p3, L["HIGHLIGHT_DISEASE"], 40, -230, function(val)
+    local cbDisease = CreateCheckbox(p3, L["HIGHLIGHT_DISEASE"], 40, -240, function(val)
         cfg.auras.showDisease = val
         R4L.GroupHeader:UpdateAllFrames()
         if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
     end)
 
-    local cbMagic = CreateCheckbox(p3, L["HIGHLIGHT_MAGIC"], 40, -265, function(val)
+    local cbMagic = CreateCheckbox(p3, L["HIGHLIGHT_MAGIC"], 40, -270, function(val)
         cfg.auras.showMagic = val
         R4L.GroupHeader:UpdateAllFrames()
         if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
@@ -650,7 +656,7 @@ function OUI:Initialize()
 
     -- Test-Modus für Debuffs (Klick aktiviert, erneuter Klick deaktiviert)
     local testHeader = p3:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    testHeader:SetPoint("TOPLEFT", p3, "TOPLEFT", 20, -305)
+    testHeader:SetPoint("TOPLEFT", p3, "TOPLEFT", 20, -310)
     testHeader:SetText(L["DEBUFF_TEST_HEADER"])
 
     local btnTestPoison = CreateFrame("Button", nil, p3, "UIPanelButtonTemplate")
@@ -756,6 +762,7 @@ function OUI:Initialize()
         cbOnlyMyHots:SetChecked(cfg.auras.onlyMyHots ~= false)
         cbDebuffs:SetChecked(cfg.auras.showDebuffs)
         cbDispOnly:SetChecked(cfg.auras.highlightDispellableOnly)
+        cbIncludeGroup:SetChecked(cfg.auras.includeGroupDispels == true)
         cbCurse:SetChecked(cfg.auras.showCurse)
         cbPoison:SetChecked(cfg.auras.showPoison)
         cbDisease:SetChecked(cfg.auras.showDisease)
@@ -914,7 +921,6 @@ function OUI:Initialize()
         DRUID = {
             { name = "Mal der Wildnis", modes = { "ALL", "OFF" }, icon = "Interface\\Icons\\Spell_Nature_Regeneration", desc = "Stärkt Attribute und Rüstung aller Gruppenmitglieder" },
             { name = "Dornen", modes = { "TANK", "ALL", "SELF", "OFF" }, icon = "Interface\\Icons\\Spell_Nature_Thorns", desc = "Verleiht Dornen (Standard: Nur Tanks erhalten Dornen)" },
-            { name = "Omen der Klarsicht", modes = { "SELF", "OFF" }, icon = "Interface\\Icons\\Spell_Nature_CrystalBall", desc = "Nahkampfangriffe gewähren Chance auf Freizaubern (Nur Selbst)" },
         },
         PRIEST = {
             { name = "Machtwort: Seelenstärke", modes = { "ALL", "OFF" }, icon = "Interface\\Icons\\Spell_Holy_WordFortitude", desc = "Erhöht Ausdauer der Gruppe" },
@@ -937,7 +943,6 @@ function OUI:Initialize()
         },
         WARLOCK = {
             { name = "Dämonenrüstung", modes = { "SELF", "OFF" }, icon = "Interface\\Icons\\Spell_Shadow_RagingScream", desc = "Erhöht Rüstung und erhaltene Heilung (Nur Selbst)" },
-            { name = "Seelenverbindung", modes = { "SELF", "OFF" }, icon = "Interface\\Icons\\Spell_Shadow_SoulLeech_3", desc = "Überträgt Schaden auf deinen Dämon (Nur Selbst)" },
         },
         WARRIOR = {
             { name = "Schlachtruf", modes = { "SELF", "OFF" }, icon = "Interface\\Icons\\Ability_Warrior_BattleShout", desc = "Erhöht Nahkampf-Angriffskraft (Nur Selbst zaubern)" },

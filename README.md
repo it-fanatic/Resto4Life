@@ -1,4 +1,4 @@
-# Resto4Life - World of Warcraft Heiler-Addon (v0.2.7-beta)
+# Resto4Life - World of Warcraft Heiler-Addon (v0.2.8-beta)
 
 **Resto4Life** ist ein modernes, leichtgewichtiges und hochgradig anpassbares Heiler-, Gruppen- und Raidframe-Addon – entwickelt speziell für **WoW Forever** (Interface 16001 / Build 1.60.1) und kompatibel mit **Retail**.
 
@@ -50,6 +50,8 @@
   * **Intelligente Priorisierung:** HoTs werden nach kürzester Restlaufzeit sortiert – auslaufende HoTs rücken automatisch nach!
 * **Bannbare Flüche, Vergiftungen, Krankheiten & Magie:**
   * Der äußere Rahmen leuchtet in der jeweiligen Debuff-Farbe auf (Lila für Fluch, Grün für Gift, Braun für Krankheit, Blau für Magie), sobald ein Effekt gebannt werden kann.
+  * **Intelligente Filter:** Wähle flexibel, ob nur Debuffs deiner eigenen Klasse hervorgehoben werden, oder ob auch Gruppen-Fähigkeiten einbezogen werden.
+  * **Sofortige Entwarnung:** Bei erfolgreicher Reinigung erlischt der Rahmen auch mitten im Kampf sofort in derselben Millisekunde.
 * **Konfigurierbares Click-Casting (Mouse-Over) & Modifikatoren:**
   * **Maustaste 1** (Linksklick)
   * **Maustaste 2** (Rechtsklick)

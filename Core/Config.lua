@@ -71,6 +71,7 @@ R4L.Config.Defaults = {
         maxHots = 4,
         showDebuffs = true,
         highlightDispellableOnly = true,
+        includeGroupDispels = false, -- Auch hervorheben, wenn ein Gruppenmitglied den Debuff bannen kann
         showCurse = true,
         showPoison = true,
         showDisease = true,
