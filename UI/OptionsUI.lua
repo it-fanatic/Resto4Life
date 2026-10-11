@@ -654,18 +654,23 @@ function OUI:Initialize()
     testHeader:SetText(L["DEBUFF_TEST_HEADER"])
 
     local btnTestPoison = CreateFrame("Button", nil, p3, "UIPanelButtonTemplate")
-    btnTestPoison:SetSize(130, 24)
+    btnTestPoison:SetSize(110, 24)
     btnTestPoison:SetPoint("TOPLEFT", testHeader, "BOTTOMLEFT", 0, -8)
     btnTestPoison:SetText(L["POISON_TEST_BTN"])
 
     local btnTestCurse = CreateFrame("Button", nil, p3, "UIPanelButtonTemplate")
-    btnTestCurse:SetSize(130, 24)
-    btnTestCurse:SetPoint("LEFT", btnTestPoison, "RIGHT", 12, 0)
+    btnTestCurse:SetSize(110, 24)
+    btnTestCurse:SetPoint("LEFT", btnTestPoison, "RIGHT", 8, 0)
     btnTestCurse:SetText(L["CURSE_TEST_BTN"])
 
+    local btnTestDisease = CreateFrame("Button", nil, p3, "UIPanelButtonTemplate")
+    btnTestDisease:SetSize(110, 24)
+    btnTestDisease:SetPoint("LEFT", btnTestCurse, "RIGHT", 8, 0)
+    btnTestDisease:SetText(L["DISEASE_TEST_BTN"])
+
     local btnTestMagic = CreateFrame("Button", nil, p3, "UIPanelButtonTemplate")
-    btnTestMagic:SetSize(130, 24)
-    btnTestMagic:SetPoint("LEFT", btnTestCurse, "RIGHT", 12, 0)
+    btnTestMagic:SetSize(110, 24)
+    btnTestMagic:SetPoint("LEFT", btnTestDisease, "RIGHT", 8, 0)
     btnTestMagic:SetText(L["MAGIC_TEST_BTN"])
 
     local function UpdateDebuffTestButtons()
@@ -679,6 +684,12 @@ function OUI:Initialize()
             btnTestCurse:SetText("[" .. L["CURSE_TEST_BTN"] .. "]")
         else
             btnTestCurse:SetText(L["CURSE_TEST_BTN"])
+        end
+
+        if R4L.testDebuff == "Disease" then
+            btnTestDisease:SetText("[" .. L["DISEASE_TEST_BTN"] .. "]")
+        else
+            btnTestDisease:SetText(L["DISEASE_TEST_BTN"])
         end
 
         if R4L.testDebuff == "Magic" then
@@ -708,6 +719,19 @@ function OUI:Initialize()
         else
             R4L.testDebuff = "Curse"
             R4L:Print(L["TEST_CURSE_CHAT"])
+        end
+        UpdateDebuffTestButtons()
+        R4L.GroupHeader:UpdateAllFrames()
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
+    end)
+
+    btnTestDisease:SetScript("OnClick", function()
+        if R4L.testDebuff == "Disease" then
+            R4L.testDebuff = nil
+            R4L:Print(L["CHAT_TEST_DEBUFF_STOP"])
+        else
+            R4L.testDebuff = "Disease"
+            R4L:Print(L["TEST_DISEASE_CHAT"])
         end
         UpdateDebuffTestButtons()
         R4L.GroupHeader:UpdateAllFrames()

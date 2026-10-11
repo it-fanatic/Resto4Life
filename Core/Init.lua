@@ -7,7 +7,7 @@ local addonName, R4L = ...
 _G["Resto4Life"] = R4L
 
 R4L.addonName = addonName
-R4L.version = "0.2.6-beta"
+R4L.version = "0.2.7-beta"
 R4L.inCombat = false
 R4L.combatQueue = {}
 
@@ -292,6 +292,35 @@ SlashCmdList["RESTO4LIFE"] = function(msg)
         else
             R4L:Print("BuffBar-Modul nicht aktiv.")
         end
+    elseif cmd == "debufftest" or cmd == "testdebuff" then
+        if R4L.AuraTracker and R4L.AuraTracker.RunDiagnostic then
+            R4L.AuraTracker:RunDiagnostic()
+        else
+            R4L:Print("AuraTracker-Modul nicht aktiv.")
+        end
+    elseif cmd:match("^test%s+debuff") or cmd:match("^test%s+border") or cmd:match("^debuff%s+test") then
+        local sub = cmd:gsub("^test%s+debuff%s*", ""):gsub("^test%s+border%s*", ""):gsub("^debuff%s+test%s*", "")
+        sub = string.lower(string.trim(sub))
+        if sub == "poison" or sub == "gift" then
+            R4L.testDebuff = "Poison"
+            R4L:Print("Test-Debuff: |cff00ff00Gift (Grüner Rahmen)|r")
+        elseif sub == "curse" or sub == "fluch" then
+            R4L.testDebuff = "Curse"
+            R4L:Print("Test-Debuff: |cffaa00ffFluch (Lila Rahmen)|r")
+        elseif sub == "disease" or sub == "krankheit" then
+            R4L.testDebuff = "Disease"
+            R4L:Print("Test-Debuff: |cff996600Krankheit (Brauner Rahmen)|r")
+        elseif sub == "magic" or sub == "magie" then
+            R4L.testDebuff = "Magic"
+            R4L:Print("Test-Debuff: |cff00aaffMagie (Blauer Rahmen)|r")
+        elseif sub == "off" or sub == "aus" or sub == "stop" then
+            R4L.testDebuff = nil
+            R4L:Print("Test-Debuff deaktiviert.")
+        else
+            R4L:Print("Nutzung: /r4l test debuff poison | curse | disease | magic | off")
+        end
+        if R4L.GroupHeader and R4L.GroupHeader.UpdateAllFrames then R4L.GroupHeader:UpdateAllFrames() end
+        if R4L.RaidHeader and R4L.RaidHeader.UpdateAllFrames then R4L.RaidHeader:UpdateAllFrames() end
     else
         if R4L.OptionsUI then
             R4L.OptionsUI:Toggle()

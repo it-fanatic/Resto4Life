@@ -8,54 +8,6 @@ local _, R4L = ...
 R4L.AuraTracker = {}
 local AT = R4L.AuraTracker
 
--- Standard Blizzard Debuff-Farben
-AT.DebuffColors = {
-    ["Curse"]   = { r = 0.6, g = 0.0, b = 1.0 }, -- Lila
-    ["Poison"]  = { r = 0.0, g = 0.7, b = 0.1 }, -- Grün
-    ["Disease"] = { r = 0.6, g = 0.4, b = 0.0 }, -- Braun
-    ["Magic"]   = { r = 0.2, g = 0.6, b = 1.0 }, -- Blau
-    ["None"]    = { r = 0.8, g = 0.1, b = 0.1 }, -- Rot (Physisch/Bleed)
-}
-
--- Bestimme welche Debuffs die aktuelle Spieler-Klasse reinigen kann
-function AT:GetDispelCapabilities()
-    local _, playerClass = UnitClass("player")
-    local dispels = {
-        Curse = false,
-        Poison = false,
-        Disease = false,
-        Magic = false,
-    }
-
-    if playerClass == "DRUID" then
-        dispels.Curse = true
-        dispels.Poison = true
-        dispels.Magic = true -- Typischerweise als Heiler (Wiederherstellung)
-    elseif playerClass == "PALADIN" then
-        dispels.Poison = true
-        dispels.Disease = true
-        dispels.Magic = true -- Heilig
-    elseif playerClass == "PRIEST" then
-        dispels.Magic = true
-        dispels.Disease = true
-    elseif playerClass == "SHAMAN" then
-        dispels.Curse = true
-        dispels.Magic = true -- Wiederherstellung
-    elseif playerClass == "MONK" then
-        dispels.Poison = true
-        dispels.Disease = true
-        dispels.Magic = true -- Nebelwirker
-    elseif playerClass == "MAGE" then
-        dispels.Curse = true
-    elseif playerClass == "EVOKER" then
-        dispels.Poison = true
-        dispels.Magic = true
-        dispels.Curse = true -- Kauterisierende Flamme
-    end
-
-    return dispels
-end
-
 -- Helper zur Erkennung von geheimen Strings / Werten in WoW Forever & 12.0
 local function IsSecret(val)
     if val == nil then return false end
@@ -63,7 +15,256 @@ local function IsSecret(val)
         local ok, res = pcall(issecretvalue, val)
         if ok and res then return true end
     end
+    if C_Secrets then
+        if C_Secrets.IsSecretValue then
+            local ok, res = pcall(C_Secrets.IsSecretValue, val)
+            if ok and res then return true end
+        end
+        if C_Secrets.IsSecret then
+            local ok, res = pcall(C_Secrets.IsSecret, val)
+            if ok and res then return true end
+        end
+    end
+    -- Secret Values werfen im Kampf bei relationalen Operatoren oder Arithmetik sofort einen Fehler
+    if type(val) == "number" or type(val) == "userdata" then
+        local okComp = pcall(function() return val > 0 end)
+        if not okComp then return true end
+    end
+    if type(val) == "string" then
+        local okLen = pcall(function() return #val end)
+        if not okLen then return true end
+    end
     return false
+end
+R4L.IsSecret = IsSecret
+
+-- Standard Blizzard Debuff-Farben (vollständig für Englisch, Deutsch und Kleinbuchstaben)
+AT.DebuffColors = {
+    ["Curse"]   = { r = 0.6, g = 0.0, b = 1.0 }, -- Lila
+    ["Poison"]  = { r = 0.0, g = 0.7, b = 0.1 }, -- Grün
+    ["Disease"] = { r = 0.6, g = 0.4, b = 0.0 }, -- Braun
+    ["Magic"]   = { r = 0.2, g = 0.6, b = 1.0 }, -- Blau
+    ["None"]    = { r = 0.8, g = 0.1, b = 0.1 }, -- Rot (Physisch/Bleed)
+    ["curse"]   = { r = 0.6, g = 0.0, b = 1.0 },
+    ["poison"]  = { r = 0.0, g = 0.7, b = 0.1 },
+    ["disease"] = { r = 0.6, g = 0.4, b = 0.0 },
+    ["magic"]   = { r = 0.2, g = 0.6, b = 1.0 },
+    ["none"]    = { r = 0.8, g = 0.1, b = 0.1 },
+}
+
+-- Normalisiert Dispel-Typen unabhängig von Groß-/Kleinschreibung oder Client-Sprache (deDE / enUS)
+local function NormalizeDispelType(dt)
+    if not dt or IsSecret(dt) then return nil end
+    if type(dt) ~= "string" then return nil end
+    local lower = dt:lower():gsub("%s+", "")
+    if lower == "curse" or lower:find("fluch") then
+        return "Curse"
+    elseif lower == "poison" or lower:find("gift") then
+        return "Poison"
+    elseif lower == "disease" or lower:find("krank") then
+        return "Disease"
+    elseif lower == "magic" or lower:find("magie") then
+        return "Magic"
+    end
+    if dt == "Curse" or dt == "Poison" or dt == "Disease" or dt == "Magic" then
+        return dt
+    end
+    return nil
+end
+
+-- Bestimmt Dispel-Fähigkeiten (Spieler + gesamte Gruppe/Raid, gecacht für maximale Performance)
+AT._lastDispelCheck = 0
+AT._cachedCombined = nil
+AT._cachedPlayer = nil
+AT._cachedGroup = nil
+
+function AT:GetDispelCapabilities()
+    local now = GetTime()
+    if AT._cachedCombined and (now - AT._lastDispelCheck < 2.0) then
+        return AT._cachedCombined, AT._cachedPlayer, AT._cachedGroup
+    end
+    AT._lastDispelCheck = now
+
+    local _, playerClass = UnitClass("player")
+    local playerDispels = {
+        Curse = false,
+        Poison = false,
+        Disease = false,
+        Magic = false,
+    }
+    local groupDispels = {
+        Curse = false,
+        Poison = false,
+        Disease = false,
+        Magic = false,
+    }
+
+    local function ApplyClassDispels(cls, target)
+        if not cls or type(cls) ~= "string" then return end
+        local uClass = cls:upper()
+        if uClass == "DRUID" then
+            target.Curse = true
+            target.Poison = true
+            target.Magic = true -- Typischerweise als Heiler (Wiederherstellung)
+        elseif uClass == "PALADIN" then
+            target.Poison = true
+            target.Disease = true
+            target.Magic = true -- Heilig
+        elseif uClass == "PRIEST" then
+            target.Magic = true
+            target.Disease = true -- Läutern / Krankheiten bannen
+        elseif uClass == "SHAMAN" then
+            target.Curse = true
+            target.Magic = true -- Wiederherstellung
+        elseif uClass == "MONK" then
+            target.Poison = true
+            target.Disease = true
+            target.Magic = true -- Nebelwirker
+        elseif uClass == "MAGE" then
+            target.Curse = true
+        elseif uClass == "EVOKER" then
+            target.Poison = true
+            target.Magic = true
+            target.Curse = true -- Kauterisierende Flamme
+        end
+    end
+
+    ApplyClassDispels(playerClass, playerDispels)
+    ApplyClassDispels(playerClass, groupDispels)
+
+    -- Scanne Gruppen- und Raidmitglieder für Gruppen-Fähigkeiten
+    local inRaid = false
+    if IsInRaid then
+        local okR, rVal = pcall(IsInRaid)
+        if okR and rVal then inRaid = true end
+    end
+
+    if inRaid then
+        local count = GetNumGroupMembers and GetNumGroupMembers() or 0
+        for i = 1, count do
+            local u = "raid" .. i
+            if UnitExists(u) and not UnitIsUnit(u, "player") then
+                local okC, _, uClass = pcall(UnitClass, u)
+                if okC and uClass then
+                    ApplyClassDispels(uClass, groupDispels)
+                end
+            end
+        end
+    else
+        local inGroup = false
+        if IsInGroup then
+            local okG, gVal = pcall(IsInGroup)
+            if okG and gVal then inGroup = true end
+        end
+        if inGroup then
+            for i = 1, 4 do
+                local u = "party" .. i
+                if UnitExists(u) then
+                    local okC, _, uClass = pcall(UnitClass, u)
+                    if okC and uClass then
+                        ApplyClassDispels(uClass, groupDispels)
+                    end
+                end
+            end
+        end
+    end
+
+    -- Kombiniertes Set (Abwärtskompatibel für Aufrufe wie dispels[type])
+    local combined = {
+        Curse = playerDispels.Curse or groupDispels.Curse,
+        Poison = playerDispels.Poison or groupDispels.Poison,
+        Disease = playerDispels.Disease or groupDispels.Disease,
+        Magic = playerDispels.Magic or groupDispels.Magic,
+    }
+
+    AT._cachedCombined = combined
+    AT._cachedPlayer = playerDispels
+    AT._cachedGroup = groupDispels
+
+    return combined, playerDispels, groupDispels
+end
+
+-- =========================================================================
+-- Intelligenter Debuff-Cache (garantiert 100% Sichtbarkeit im Kampf)
+-- =========================================================================
+AT.debuffCache = {}
+
+local function GetUnitKey(unit)
+    if not unit then return nil end
+    local guid = nil
+    if UnitGUID then
+        local okG, gVal = pcall(UnitGUID, unit)
+        if okG and gVal and not IsSecret(gVal) then
+            guid = gVal
+        end
+    end
+    return guid or unit
+end
+
+function AT:ClearDebuffCache(unit)
+    if not unit then return end
+    local key = GetUnitKey(unit)
+    if key and self.debuffCache[key] then
+        self.debuffCache[key] = nil
+    end
+    if self.debuffCache[unit] then
+        self.debuffCache[unit] = nil
+    end
+end
+
+function AT:SetCachedDebuff(unit, debuffData, color)
+    if not unit or not debuffData then return end
+    local key = GetUnitKey(unit)
+    if not key then return end
+
+    local now = GetTime()
+    local exp = debuffData.expirationTime
+    if not exp or IsSecret(exp) or (type(exp) == "number" and exp <= 0) then
+        local dur = 30
+        if debuffData.duration and not IsSecret(debuffData.duration) and type(debuffData.duration) == "number" and debuffData.duration > 0 then
+            dur = debuffData.duration
+        end
+        exp = now + dur
+    end
+
+    self.debuffCache[key] = {
+        name = (debuffData.name and not IsSecret(debuffData.name)) and debuffData.name or "",
+        icon = debuffData.icon or 0,
+        dispelType = debuffData.dispelType,
+        color = color,
+        expirationTime = exp,
+        duration = (debuffData.duration and not IsSecret(debuffData.duration) and type(debuffData.duration) == "number") and debuffData.duration or 0,
+        lastSeen = now,
+    }
+end
+
+function AT:GetCachedDebuff(unit)
+    if not unit then return nil, nil end
+    if UnitIsDeadOrGhost and UnitIsDeadOrGhost(unit) then
+        self:ClearDebuffCache(unit)
+        return nil, nil
+    end
+
+    local key = GetUnitKey(unit)
+    local cached = (key and self.debuffCache[key]) or self.debuffCache[unit]
+    if not cached then return nil, nil end
+
+    local now = GetTime()
+    -- Ablaufprüfung (sicher gegen Secret Values)
+    if cached.expirationTime and not IsSecret(cached.expirationTime) and type(cached.expirationTime) == "number" and cached.expirationTime > 0 then
+        if now >= cached.expirationTime then
+            self:ClearDebuffCache(unit)
+            return nil, nil
+        end
+    else
+        -- Ohne Ablaufzeit: maximal 20 Sekunden ohne Refresh halten
+        if (now - cached.lastSeen) > 20 then
+            self:ClearDebuffCache(unit)
+            return nil, nil
+        end
+    end
+
+    return cached, cached.color
 end
 
 -- Universeller Argument-Parser für UnitAura / UnitBuff (behandelt 3.3.5 & modernes Classic/Retail Format)
@@ -105,9 +306,9 @@ local function ParseUnitAuraArgs(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11)
             rank = a2,
             icon = a3,
             count = (type(a4) == "number") and a4 or 0,
-            dispelType = a5,
-            duration = (type(a6) == "number") and a6 or 0,
-            expirationTime = (type(a7) == "number") and a7 or 0,
+            dispelType = NormalizeDispelType(a5),
+            duration = (type(a6) == "number" and not IsSecret(a6)) and a6 or 0,
+            expirationTime = (type(a7) == "number" and not IsSecret(a7)) and a7 or 0,
             sourceUnit = caster,
             spellId = spellId,
             isFromPlayerOrPlayerPet = isMine,
@@ -129,9 +330,9 @@ local function ParseUnitAuraArgs(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11)
             name = name,
             icon = a2,
             count = (type(a3) == "number") and a3 or 0,
-            dispelType = a4,
-            duration = (type(a5) == "number") and a5 or 0,
-            expirationTime = (type(a6) == "number") and a6 or 0,
+            dispelType = NormalizeDispelType(a4),
+            duration = (type(a5) == "number" and not IsSecret(a5)) and a5 or 0,
+            expirationTime = (type(a6) == "number" and not IsSecret(a6)) and a6 or 0,
             sourceUnit = caster,
             spellId = spellId,
             isFromPlayerOrPlayerPet = isMine,
@@ -156,13 +357,16 @@ local function GetUnitAuraByIndex(unit, index, filter)
                 local sName = R4L:GetSpellName(spellId)
                 if sName then name = sName end
             end
+            local rawDT = data.dispelName or data.dispelType or data.debuffType
+            local dur = (data.duration and not IsSecret(data.duration) and type(data.duration) == "number") and data.duration or 0
+            local exp = (data.expirationTime and not IsSecret(data.expirationTime) and type(data.expirationTime) == "number") and data.expirationTime or 0
             return {
                 name = name,
                 icon = data.iconFileID or data.icon,
                 count = data.applications or 0,
-                dispelType = data.dispelName,
-                duration = data.duration or 0,
-                expirationTime = data.expirationTime or 0,
+                dispelType = NormalizeDispelType(rawDT),
+                duration = dur,
+                expirationTime = exp,
                 sourceUnit = data.sourceUnit,
                 sourceGUID = data.sourceGUID,
                 spellId = spellId,
@@ -207,8 +411,8 @@ end
 local function IsPlayerAura(aura, unit)
     if not aura then return false end
 
-    -- 1. Blizzard Flag (C_UnitAuras)
-    if aura.isFromPlayerOrPlayerPet == true then
+    -- 1. Blizzard Flag (C_UnitAuras / UnitAura)
+    if not IsSecret(aura.isFromPlayerOrPlayerPet) and aura.isFromPlayerOrPlayerPet == true then
         return true
     end
 
@@ -231,6 +435,39 @@ local function IsPlayerAura(aura, unit)
             return (pGUID and not IsSecret(pGUID) and sGUID == pGUID)
         end)
         if okG and isMatch then
+            return true
+        end
+    end
+
+    -- 4. Wenn unit == "player" ist: Eigener Klassen-HoT auf sich selbst stammt IMMER vom Spieler
+    if unit and not IsSecret(unit) then
+        local okSelf, isSelf = pcall(UnitIsUnit, unit, "player")
+        if okSelf and isSelf then
+            return true
+        end
+    end
+
+    -- 5. Fallback im Kampf: Wenn der HoT zur eigenen Klasse gehört und in der Gruppe kein zweiter Heiler dieser Klasse existiert
+    local inCombat = false
+    local okComb, cVal = pcall(UnitAffectingCombat, "player")
+    if okComb and cVal == true then inCombat = true end
+    if inCombat then
+        local _, pClass = UnitClass("player")
+        local otherSameClass = false
+        if IsInGroup and IsInGroup() then
+            local num = (GetNumGroupMembers and GetNumGroupMembers()) or 0
+            for i = 1, num do
+                local gUnit = (IsInRaid and IsInRaid()) and ("raid" .. i) or ("party" .. i)
+                if UnitExists(gUnit) and not UnitIsUnit(gUnit, "player") then
+                    local _, gClass = UnitClass(gUnit)
+                    if gClass == pClass then
+                        otherSameClass = true
+                        break
+                    end
+                end
+            end
+        end
+        if not otherSameClass then
             return true
         end
     end
@@ -404,27 +641,234 @@ local function GetCleanSpellName(name)
     return name
 end
 
+-- Texture-Datenbanken nach Heiler-Klasse (ermöglicht 100% Erkennung im Kampf trotz Secret Values)
+local CLASS_HOT_TEXTURES = {
+    DRUID = {
+        [136081] = true,   -- Verjüngung (Spell_Nature_Rejuvenation)
+        [1033479] = true,  -- Keimung (spell_druid_germination)
+        [136085] = true,   -- Nachwachsen (Spell_Nature_ResistNature)
+        [134400] = true,   -- Blühendes Leben (INV_Misc_Herb_Felblossom)
+        [236153] = true,   -- Wildwuchs (Ability_Druid_Flourish)
+        [538745] = true,   -- Cenarischer Zauberschutz (ability_druid_naturalperfection)
+        [1392631] = true,  -- Frühlingsblüten (inv_misc_herb_nightshade)
+        [1392632] = true,  -- Kultivierung (ability_druid_cultivation)
+        [3578230] = true,  -- Adaptiver Schwarm (ability_maldraxxus_druid)
+        [136107] = true,   -- Gelassenheit (Spell_Nature_Tranquility)
+        [132256] = true,   -- Rasende Regeneration (Ability_BullRush)
+    },
+    PRIEST = {
+        [135953] = true,   -- Erneuerung (Spell_Holy_Renew)
+        [135940] = true,   -- Machtwort: Schild (Spell_Holy_PowerWordShield)
+        [135944] = true,   -- Gebet der Besserung (Spell_Holy_PrayerOfMendingtga)
+        [237537] = true,   -- Echo des Lichts (spell_holy_ashestoashes)
+        [458224] = true,   -- Abbitte (spell_holy_atonement)
+        [237542] = true,   -- Schutzgeist (spell_holy_guardianspirit)
+        [135936] = true,   -- Schmerzunterdrückung (Spell_Holy_PainSupression)
+    },
+    SHAMAN = {
+        [252995] = true,   -- Springflut (spell_nature_riptide)
+        [136089] = true,   -- Erdschild (Spell_Nature_SkinofEarth)
+        [136053] = true,   -- Totem des heilenden Flusses (INV_Spear_04)
+        [3565449] = true,  -- Urzeitliche Welle (ability_maldraxxus_shaman)
+        [236848] = true,   -- Waffe der Lebensgeister (spell_shaman_earthlivingweapon)
+    },
+    MONK = {
+        [606549] = true,   -- Einhüllender Nebel (spell_monk_envelopingmist)
+        [627487] = true,   -- Erneuernder Nebel (ability_monk_renewingmists)
+        [606550] = true,   -- Beruhigender Nebel (spell_monk_soothingmists)
+        [1360978] = true,  -- Essenzborn (ability_monk_essencefont)
+    },
+    PALADIN = {
+        [236247] = true,   -- Flamme des Glaubens (ability_paladin_beaconoflight)
+        [1030094] = true,  -- Flamme der Zuversicht (ability_paladin_beaconsoflight)
+        [1360762] = true,  -- Flamme der Tugend (ability_paladin_beaconofvirtue)
+        [135919] = true,   -- Zuversicht verleihen (spell_holy_blessingofprotection)
+        [642416] = true,   -- Ewige Flamme (inv_torch_lit)
+        [2065624] = true,  -- Lichtfunke (ability_paladin_glimmeroflight)
+    },
+    EVOKER = {
+        [4622459] = true,  -- Echo (ability_evoker_echo)
+        [4622474] = true,  -- Zurückspulen / Reversion (ability_evoker_reversion)
+        [4622453] = true,  -- Traumatem (ability_evoker_dreambreath)
+        [4622476] = true,  -- Geistblüte (ability_evoker_spiritbloom)
+        [4622477] = true,  -- Zeitdilatation (ability_evoker_timedilation)
+        [4622454] = true,  -- Traumflug (ability_evoker_dreamflight)
+    },
+}
+
+local CLASS_HOT_PATTERNS = {
+    DRUID = {
+        "rejuvenation", "germination", "resistnature", "felblossom",
+        "flourish", "naturalperfection", "nightshade", "cultivation",
+        "maldraxxus_druid", "tranquility", "bullrush",
+    },
+    PRIEST = {
+        "renew", "powerwordshield", "prayerofmending", "ashestoashes",
+        "atonement", "guardianspirit", "painsupression", "painsuppression",
+    },
+    SHAMAN = {
+        "riptide", "skinofearth", "spear_04", "maldraxxus_shaman", "earthlivingweapon",
+    },
+    MONK = {
+        "envelopingmist", "renewingmist", "soothingmist", "essencefont",
+    },
+    PALADIN = {
+        "beaconoflight", "beaconsoflight", "beaconofvirtue", "torch_lit", "glimmeroflight",
+    },
+    EVOKER = {
+        "evoker_echo", "reversion", "dreambreath", "spiritbloom", "timedilation", "dreamflight",
+    },
+}
+
+local DEFAULT_HOT_DURATIONS = {
+    -- Druid
+    [136081] = 12,  -- Rejuvenation
+    [1033479] = 12, -- Germination
+    [136085] = 12,  -- Regrowth
+    [134400] = 15,  -- Lifebloom
+    [236153] = 7,   -- Wild Growth
+    [538745] = 30,  -- Cenarion Ward
+    [1392631] = 6,  -- Spring Blossoms
+    [1392632] = 6,  -- Cultivation
+    [3578230] = 12, -- Adaptive Swarm
+    [136107] = 8,   -- Tranquility
+    [132256] = 3,   -- Frenzied Regeneration
+    -- Priest
+    [135953] = 15,  -- Renew
+    [135940] = 30,  -- Power Word: Shield
+    [135944] = 30,  -- Prayer of Mending
+    [237537] = 6,   -- Echo of Light
+    [458224] = 15,  -- Atonement
+    [237542] = 10,  -- Guardian Spirit
+    [135936] = 8,   -- Pain Suppression
+    -- Shaman
+    [252995] = 18,  -- Riptide
+    [136089] = 600, -- Earth Shield
+    [136053] = 15,  -- Healing Stream Totem
+    [3565449] = 45, -- Primordial Wave
+    [236848] = 12,  -- Earthliving Weapon
+    -- Monk
+    [606549] = 6,   -- Enveloping Mist
+    [627487] = 20,  -- Renewing Mist
+    [606550] = 8,   -- Soothing Mist
+    [1360978] = 8,  -- Essence Font
+    -- Paladin
+    [236247] = 3600,-- Beacon of Light
+    [1030094] = 3600,-- Beacon of Faith
+    [1360762] = 8,  -- Beacon of Virtue
+    [135919] = 5,   -- Bestow Faith
+    [642416] = 30,  -- Eternal Flame
+    [2065624] = 30, -- Glimmer of Light
+    -- Evoker
+    [4622459] = 15, -- Echo
+    [4622474] = 12, -- Reversion
+    [4622453] = 16, -- Dream Breath
+    [4622476] = 10, -- Spiritbloom
+    [4622477] = 8,  -- Time Dilation
+    [4622454] = 15, -- Dream Flight
+}
+
+-- Dynamische Textur-Vorinitialisierung über Client Spell-DBC
+if GetSpellTexture then
+    for cls, spells in pairs(CLASS_HOTS) do
+        for sId in pairs(spells) do
+            local okTex, tex = pcall(GetSpellTexture, sId)
+            if okTex and tex then
+                if type(tex) == "number" then
+                    CLASS_HOT_TEXTURES[cls][tex] = true
+                elseif type(tex) == "string" then
+                    CLASS_HOT_TEXTURES[cls][tex:lower()] = true
+                    local sub = tex:match("[^\\]+$") or tex:match("[^/]+$")
+                    if sub then CLASS_HOT_TEXTURES[cls][sub:lower()] = true end
+                end
+            end
+        end
+    end
+end
+
+-- Identifiziert die Heiler-Klasse einer Aura anhand ihres Icons/ihrer Textur
+local function GetHotClassFromIcon(icon)
+    if not icon or IsSecret(icon) then return nil end
+
+    -- 1. Numerischer Match (FileDataID)
+    local num = nil
+    if type(icon) == "number" then
+        num = icon
+    elseif type(icon) == "string" then
+        num = tonumber(icon)
+    end
+
+    if num then
+        for cls, texMap in pairs(CLASS_HOT_TEXTURES) do
+            if texMap[num] then return cls end
+        end
+    end
+
+    -- 2. String Match (Pfad / Texturname)
+    if type(icon) == "string" then
+        local lower = icon:lower()
+        for cls, texMap in pairs(CLASS_HOT_TEXTURES) do
+            if texMap[lower] then return cls end
+        end
+        for cls, patterns in pairs(CLASS_HOT_PATTERNS) do
+            for _, pat in ipairs(patterns) do
+                if lower:find(pat, 1, true) then
+                    return cls
+                end
+            end
+        end
+    end
+
+    return nil
+end
+
+-- Bestimmt Standard-Dauer eines HoTs als Fallback bei Secret Values
+local function GetDefaultHotDuration(spellId, name, icon)
+    if icon then
+        local num = (type(icon) == "number") and icon or tonumber(icon)
+        if num and DEFAULT_HOT_DURATIONS[num] then
+            return DEFAULT_HOT_DURATIONS[num]
+        end
+    end
+    if spellId and not IsSecret(spellId) and type(spellId) == "number" then
+        if DEFAULT_HOT_DURATIONS[spellId] then
+            return DEFAULT_HOT_DURATIONS[spellId]
+        end
+    end
+    return 15
+end
+
 -- Prüft, ob ein Zauber zur Heiler-Klasse des aktiven Spielers gehört (strikte Trennung!)
-local function IsPlayerClassSpell(name, spellId)
+local function IsPlayerClassSpell(name, spellId, icon)
     local _, pClass = UnitClass("player")
     if not pClass then return false end
 
-    -- 1. Prüfe über Spell-ID in CLASS_HOTS[pClass]
-    if spellId and CLASS_HOTS[pClass] and CLASS_HOTS[pClass][spellId] then
+    -- 1. Prüfe über Icon / Textur (funktioniert 100% im Kampf bei geheimen Namen/IDs!)
+    if icon then
+        local hotClass = GetHotClassFromIcon(icon)
+        if hotClass then
+            return hotClass == pClass
+        end
+    end
+
+    -- 2. Prüfe über Spell-ID in CLASS_HOTS[pClass]
+    if spellId and not IsSecret(spellId) and type(spellId) == "number" and CLASS_HOTS[pClass] and CLASS_HOTS[pClass][spellId] then
         return true
     end
 
-    -- 2. Prüfe über Zaubernamen in CLASS_HOT_NAMES[pClass]
-    local clean = GetCleanSpellName(name)
-    if clean and CLASS_HOT_NAMES[pClass] and CLASS_HOT_NAMES[pClass][clean] then
-        return true
-    end
-    if name and CLASS_HOT_NAMES[pClass] and CLASS_HOT_NAMES[pClass][name] then
-        return true
+    -- 3. Prüfe über Zaubernamen in CLASS_HOT_NAMES[pClass]
+    if name and not IsSecret(name) and type(name) == "string" and name ~= "" then
+        local clean = GetCleanSpellName(name)
+        if clean and clean ~= "" and CLASS_HOT_NAMES[pClass] and CLASS_HOT_NAMES[pClass][clean] then
+            return true
+        end
+        if CLASS_HOT_NAMES[pClass] and CLASS_HOT_NAMES[pClass][name] then
+            return true
+        end
     end
 
-    -- 3. Prüfe über Config trackedHots der eigenen Klasse
-    if R4L.Config and R4L.Config.ClassDefaults and R4L.Config.ClassDefaults[pClass] then
+    -- 4. Prüfe über Config trackedHots der eigenen Klasse
+    if spellId and not IsSecret(spellId) and R4L.Config and R4L.Config.ClassDefaults and R4L.Config.ClassDefaults[pClass] then
         local cDef = R4L.Config.ClassDefaults[pClass]
         if cDef.trackedHots then
             for _, id in ipairs(cDef.trackedHots) do
@@ -436,17 +880,67 @@ local function IsPlayerClassSpell(name, spellId)
     return false
 end
 
--- Prüft, ob eine Aura ein HoT (Heal over Time) irgendeiner Heiler-Klasse ist
-local function IsHotAura(name, spellId, duration)
-    for _, hots in pairs(CLASS_HOTS) do
-        if spellId and hots[spellId] then return true end
+-- Prüft, ob eine Aura ein HoT (Heal over Time) oder Schild irgendeiner Heiler-Klasse ist
+local function IsHotAura(name, spellId, duration, icon)
+    -- 1. Prüfe Icon / Textur (funktioniert IMMER, auch im Kampf mit geheimen Werten!)
+    if icon then
+        local cls = GetHotClassFromIcon(icon)
+        if cls then return true end
     end
-    local cleanName = GetCleanSpellName(name)
-    for _, names in pairs(CLASS_HOT_NAMES) do
-        if cleanName and names[cleanName] then return true end
-        if name and names[name] then return true end
+
+    -- 2. Prüfe SpellId (falls vorhanden und nicht geheim)
+    if spellId and not IsSecret(spellId) and type(spellId) == "number" then
+        for _, hots in pairs(CLASS_HOTS) do
+            if hots[spellId] then return true end
+        end
     end
+
+    -- 3. Prüfe Zaubername (falls vorhanden und nicht geheim)
+    if name and not IsSecret(name) and type(name) == "string" and name ~= "" then
+        local cleanName = GetCleanSpellName(name)
+        for _, names in pairs(CLASS_HOT_NAMES) do
+            if cleanName and cleanName ~= "" and names[cleanName] then return true end
+            if names[name] then return true end
+        end
+    end
+
     return false
+end
+
+-- =========================================================================
+-- Intelligenter HoT-Cache (garantiert 100% Sichtbarkeit von HoTs & Schilden im Kampf)
+-- =========================================================================
+AT.hotCache = {}
+
+function AT:ClearHotCache(unit)
+    if not unit then return end
+    local key = GetUnitKey(unit)
+    if key and self.hotCache[key] then
+        self.hotCache[key] = nil
+    end
+    if self.hotCache[unit] then
+        self.hotCache[unit] = nil
+    end
+end
+
+function AT:SetCachedHot(unit, hotData)
+    if not unit or not hotData or not hotData.icon then return end
+    local key = GetUnitKey(unit)
+    if not key then return end
+    if not self.hotCache[key] then
+        self.hotCache[key] = {}
+    end
+    local hotKey = (hotData.spellId and hotData.spellId ~= 0) and hotData.spellId or hotData.icon
+    self.hotCache[key][hotKey] = {
+        name = hotData.name or "",
+        icon = hotData.icon,
+        count = hotData.count or 0,
+        duration = hotData.duration or 0,
+        expirationTime = hotData.expirationTime or (GetTime() + 15),
+        spellId = hotData.spellId or 0,
+        isMine = hotData.isMine,
+        lastSeen = GetTime(),
+    }
 end
 
 -- Holt alle aktiven HoTs (eigene HoTs und fremde HoTs getrennt) auf der Zieleinheit
@@ -454,6 +948,11 @@ function AT:GetPlayerHots(unit)
     local ownHots = {}
     local otherHots = {}
     if not unit or not UnitExists(unit) then return ownHots, otherHots end
+
+    if UnitIsDeadOrGhost and UnitIsDeadOrGhost(unit) then
+        self:ClearHotCache(unit)
+        return ownHots, otherHots
+    end
 
     local maxOwnHots = 4
     local maxOtherHots = 3
@@ -469,66 +968,99 @@ function AT:GetPlayerHots(unit)
     local allOther = {}
     local seenOwn = {}
     local seenOther = {}
+    local now = GetTime()
 
     local function TryAddAura(aura)
         if not aura then return false end
-        local name = aura.name
+        local name = (aura.name and not IsSecret(aura.name)) and aura.name or ""
         local icon = aura.icon or aura.iconFileID
         local count = aura.applications or aura.count or 0
         local duration = aura.duration or 0
         local expirationTime = aura.expirationTime or 0
-        local spellId = aura.spellId
-
-        -- Eigene HoTs MÜSSEN zwingend zur Klasse des Spielers gehören (z. B. Priester-HoTs für Druiden sind IMMER fremd!)
-        local isMine = false
-        if IsPlayerClassSpell(name, spellId) then
-            isMine = IsPlayerAura(aura, unit)
-        end
+        local spellId = (aura.spellId and not IsSecret(aura.spellId)) and aura.spellId or 0
 
         -- Falls Icon irrtümlich als Rang-String ankam, Textur über Zaubernamen auflösen
         if type(icon) == "string" and (icon:find("Rang") or icon:find("Rank")) then
             if GetSpellTexture then
-                local okTex, sTex = pcall(GetSpellTexture, spellId or name)
+                local okTex, sTex = pcall(GetSpellTexture, (spellId ~= 0 and spellId) or (name ~= "" and name))
                 if okTex and sTex then icon = sTex end
             end
         end
 
-        if icon and IsHotAura(name, spellId, duration) then
-            local key = spellId or name or icon
-            local hotData = {
-                name = name,
-                icon = icon,
-                count = count,
-                duration = duration,
-                expirationTime = expirationTime,
-                spellId = spellId,
-                isMine = isMine,
-            }
+        if not icon or IsSecret(icon) then return false end
 
-            if isMine then
-                if not seenOwn[key] then
-                    seenOwn[key] = true
-                    table.insert(allOwn, hotData)
-                end
+        -- Prüfe, ob es sich um einen HoT / Schild handelt
+        if not IsHotAura(name, spellId, duration, icon) then return false end
+
+        -- Eigene HoTs MÜSSEN zwingend zur Klasse des Spielers gehören
+        local isMine = false
+        if IsPlayerClassSpell(name, spellId, icon) then
+            isMine = IsPlayerAura(aura, unit)
+        end
+
+        -- Sichere Ablaufzeit bestimmen (100% frei von Secret Values)
+        local safeExp = 0
+        if expirationTime and not IsSecret(expirationTime) and type(expirationTime) == "number" and expirationTime > 0 then
+            safeExp = expirationTime
+        else
+            local safeDur = 0
+            if duration and not IsSecret(duration) and type(duration) == "number" and duration > 0 then
+                safeDur = duration
             else
-                if not seenOther[key] then
-                    seenOther[key] = true
-                    table.insert(allOther, hotData)
-                end
+                safeDur = GetDefaultHotDuration(spellId, name, icon)
+            end
+            safeExp = now + (safeDur > 0 and safeDur or 15)
+        end
+
+        local safeDur = 0
+        if duration and not IsSecret(duration) and type(duration) == "number" and duration > 0 then
+            safeDur = duration
+        else
+            safeDur = GetDefaultHotDuration(spellId, name, icon)
+        end
+
+        local safeCount = 0
+        if count and not IsSecret(count) and type(count) == "number" then
+            safeCount = count
+        end
+
+        local hotKey = (spellId ~= 0) and spellId or icon
+        local hotData = {
+            name = name,
+            icon = icon,
+            count = safeCount,
+            duration = safeDur,
+            expirationTime = safeExp,
+            spellId = spellId,
+            isMine = isMine,
+        }
+
+        if isMine then
+            if not seenOwn[hotKey] then
+                seenOwn[hotKey] = true
+                table.insert(allOwn, hotData)
+            end
+        else
+            if not seenOther[hotKey] then
+                seenOther[hotKey] = true
+                table.insert(allOther, hotData)
             end
         end
-        return false
+
+        -- Im Cache sichern
+        self:SetCachedHot(unit, hotData)
+        return true
     end
 
     local function FinalizeHots()
-        local now = GetTime()
+        local fNow = GetTime()
         local function CompareHots(a, b)
-            local timeA = (a.expirationTime and a.expirationTime > 0) and (a.expirationTime - now) or 99999
-            local timeB = (b.expirationTime and b.expirationTime > 0) and (b.expirationTime - now) or 99999
+            local timeA = (a.expirationTime and a.expirationTime > 0) and (a.expirationTime - fNow) or 99999
+            local timeB = (b.expirationTime and b.expirationTime > 0) and (b.expirationTime - fNow) or 99999
             return timeA < timeB
         end
-        table.sort(allOwn, CompareHots)
-        table.sort(allOther, CompareHots)
+        pcall(table.sort, allOwn, CompareHots)
+        pcall(table.sort, allOther, CompareHots)
 
         for i = 1, math.min(#allOwn, maxOwnHots) do
             table.insert(ownHots, allOwn[i])
@@ -598,6 +1130,47 @@ function AT:GetPlayerHots(unit)
         if not aura then break end
         TryAddAura(aura)
     end
+    if #allOwn > 0 or #allOther > 0 then return FinalizeHots() end
+
+    -- Fallback: Wenn 0 HoTs gefunden wurden, aber der Spieler/die Einheit im Kampf ist:
+    -- Prüfe aktiven HoT-Cache, damit HoTs im Kampf niemals flackern oder verschwinden
+    local inCombat = false
+    local okComb, cVal = pcall(UnitAffectingCombat, unit)
+    if okComb and cVal == true then inCombat = true end
+    if not inCombat and UnitAffectingCombat then
+        local okPComb, pVal = pcall(UnitAffectingCombat, "player")
+        if okPComb and pVal == true then inCombat = true end
+    end
+
+    if inCombat then
+        local key = GetUnitKey(unit)
+        local uHots = (key and self.hotCache[key]) or self.hotCache[unit]
+        if uHots then
+            for hotKey, cached in pairs(uHots) do
+                if cached.expirationTime and cached.expirationTime > now then
+                    if cached.isMine then
+                        if not seenOwn[hotKey] then
+                            seenOwn[hotKey] = true
+                            table.insert(allOwn, cached)
+                        end
+                    else
+                        if not seenOther[hotKey] then
+                            seenOther[hotKey] = true
+                            table.insert(allOther, cached)
+                        end
+                    end
+                else
+                    uHots[hotKey] = nil
+                end
+            end
+            if #allOwn > 0 or #allOther > 0 then
+                return FinalizeHots()
+            end
+        end
+    else
+        -- Außerhalb des Kampfes sicher säubern
+        self:ClearHotCache(unit)
+    end
 
     return FinalizeHots()
 end
@@ -605,72 +1178,284 @@ end
 -- Findet den wichtigsten reinigbaren Debuff auf einer Einheit (gesichert im Kampf)
 function AT:GetDispellableDebuff(unit)
     local cfg = R4L.ProfileManager:GetConfig()
-    if not cfg.auras or not cfg.auras.showDebuffs then return nil end
+    if not cfg.auras or not cfg.auras.showDebuffs then return nil, nil end
+    if not unit or not UnitExists(unit) then return nil, nil end
 
-    local dispels = self:GetDispelCapabilities()
+    if UnitIsDeadOrGhost and UnitIsDeadOrGhost(unit) then
+        self:ClearDebuffCache(unit)
+        return nil, nil
+    end
 
-    -- 1. Scan über AuraUtil.ForEachAura
+    local combinedDispels, playerDispels, groupDispels = self:GetDispelCapabilities()
+
+    local function EvaluateDebuff(debuffData)
+        if not debuffData then return false, nil, 0 end
+        local dt = debuffData.dispelType or NormalizeDispelType(debuffData.dispelName or debuffData.debuffType)
+        if not dt or IsSecret(dt) then return false, nil, 0 end
+
+        local showFilter = false
+        if dt == "Curse" and cfg.auras.showCurse then showFilter = true end
+        if dt == "Poison" and cfg.auras.showPoison then showFilter = true end
+        if dt == "Disease" and cfg.auras.showDisease then showFilter = true end
+        if dt == "Magic" and cfg.auras.showMagic then showFilter = true end
+
+        if not showFilter then return false, nil, 0 end
+
+        local canPlayerDispel = (playerDispels and playerDispels[dt] == true)
+        local canGroupDispel = (groupDispels and groupDispels[dt] == true)
+        local canDispel = canPlayerDispel or canGroupDispel
+
+        -- Wenn "Nur bannbare anzeigen" aktiv ist, muss Spieler oder Gruppenmitglied bannen können
+        if cfg.auras.highlightDispellableOnly and not canDispel then
+            return false, nil, 0
+        end
+
+        local color = self.DebuffColors[dt] or self.DebuffColors["None"]
+        -- Priorität: 2 = Eigene Klasse kann bannen, 1 = Gruppe kann bannen, 0 = Allgemeiner Debuff
+        local priority = canPlayerDispel and 2 or (canGroupDispel and 1 or 0)
+        return true, color, priority
+    end
+
+    local bestDebuff, bestColor, bestPriority = nil, nil, -1
+    local totalHarmfulScanned = 0
+    local scanHadError = false
+
+    -- Methode 0: C_UnitAuras.GetUnitAuras (Modern Retail / Forever C-Level Scan)
+    if C_UnitAuras and C_UnitAuras.GetUnitAuras then
+        local ok, auras = pcall(C_UnitAuras.GetUnitAuras, unit, "HARMFUL")
+        if not ok then
+            scanHadError = true
+        elseif auras and type(auras) == "table" and #auras > 0 then
+            for _, data in ipairs(auras) do
+                if type(data) == "table" then
+                    totalHarmfulScanned = totalHarmfulScanned + 1
+                    local rawDT = data.dispelName or data.dispelType or data.debuffType
+                    local debuffData = {
+                        name = (data.name and not IsSecret(data.name)) and data.name or "",
+                        icon = data.iconFileID or data.icon,
+                        dispelType = NormalizeDispelType(rawDT),
+                        duration = (data.duration and not IsSecret(data.duration) and type(data.duration) == "number") and data.duration or 0,
+                        expirationTime = (data.expirationTime and not IsSecret(data.expirationTime) and type(data.expirationTime) == "number") and data.expirationTime or 0,
+                    }
+                    local isMatch, color, prio = EvaluateDebuff(debuffData)
+                    if isMatch and prio > bestPriority then
+                        bestDebuff = debuffData
+                        bestColor = color
+                        bestPriority = prio
+                        if prio == 2 then break end
+                    end
+                end
+            end
+            if bestDebuff and bestPriority == 2 then
+                self:SetCachedDebuff(unit, bestDebuff, bestColor)
+                return bestDebuff, bestColor
+            end
+        end
+    end
+
+    -- 1. Scan über AuraUtil.ForEachAura (Modern Retail / Forever)
     if AuraUtil and AuraUtil.ForEachAura then
-        local foundDebuff, foundColor = nil, nil
         pcall(AuraUtil.ForEachAura, unit, "HARMFUL", 40, function(arg1, arg2, arg3, arg4, arg5, ...)
-            local dispelType = nil
-            local auraData = nil
+            totalHarmfulScanned = totalHarmfulScanned + 1
+            local debuffData = nil
             if type(arg1) == "table" then
-                dispelType = arg1.dispelName
-                auraData = arg1
+                local rawDT = arg1.dispelName or arg1.dispelType or arg1.debuffType
+                debuffData = {
+                    name = (arg1.name and not IsSecret(arg1.name)) and arg1.name or "",
+                    icon = arg1.iconFileID or arg1.icon,
+                    dispelType = NormalizeDispelType(rawDT),
+                    duration = (arg1.duration and not IsSecret(arg1.duration) and type(arg1.duration) == "number") and arg1.duration or 0,
+                    expirationTime = (arg1.expirationTime and not IsSecret(arg1.expirationTime) and type(arg1.expirationTime) == "number") and arg1.expirationTime or 0,
+                }
             else
                 local parsed = ParseUnitAuraArgs(arg1, arg2, arg3, arg4, arg5, ...)
                 if parsed then
-                    dispelType = parsed.dispelType
-                    auraData = parsed
+                    parsed.dispelType = NormalizeDispelType(parsed.dispelType)
+                    debuffData = parsed
                 end
             end
 
-            if dispelType and not IsSecret(dispelType) then
-                local canDispel = dispels[dispelType]
-                local showFilter = false
-                if dispelType == "Curse" and cfg.auras.showCurse then showFilter = true end
-                if dispelType == "Poison" and cfg.auras.showPoison then showFilter = true end
-                if dispelType == "Disease" and cfg.auras.showDisease then showFilter = true end
-                if dispelType == "Magic" and cfg.auras.showMagic then showFilter = true end
-
-                if showFilter and (not cfg.auras.highlightDispellableOnly or canDispel) then
-                    foundDebuff = {
-                        name = (auraData and auraData.name) or "",
-                        icon = (auraData and (auraData.iconFileID or auraData.icon)),
-                        dispelType = dispelType,
-                    }
-                    foundColor = self.DebuffColors[dispelType] or self.DebuffColors["None"]
-                    return true
+            if debuffData then
+                local isMatch, color, prio = EvaluateDebuff(debuffData)
+                if isMatch and prio > bestPriority then
+                    bestDebuff = debuffData
+                    bestColor = color
+                    bestPriority = prio
+                    if prio == 2 then return true end -- Höchste Priorität gefunden
                 end
             end
             return false
         end)
-        if foundDebuff and foundColor then
-            return foundDebuff, foundColor
+        if bestDebuff and bestPriority == 2 then
+            self:SetCachedDebuff(unit, bestDebuff, bestColor)
+            return bestDebuff, bestColor
         end
     end
 
-    -- 2. Scan über GetUnitAuraByIndex (Classic 3.3.5 / Forever / Modern)
+    -- 2. Scan über C_UnitAuras.GetAuraDataByIndex (Modern Retail / Forever)
+    if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
+        for i = 1, 40 do
+            local ok, data = pcall(C_UnitAuras.GetAuraDataByIndex, unit, i, "HARMFUL")
+            if not ok then
+                scanHadError = true
+            elseif data and type(data) == "table" then
+                totalHarmfulScanned = totalHarmfulScanned + 1
+                local rawDT = data.dispelName or data.dispelType or data.debuffType
+                local debuffData = {
+                    name = (data.name and not IsSecret(data.name)) and data.name or "",
+                    icon = data.iconFileID or data.icon,
+                    dispelType = NormalizeDispelType(rawDT),
+                    duration = (data.duration and not IsSecret(data.duration) and type(data.duration) == "number") and data.duration or 0,
+                    expirationTime = (data.expirationTime and not IsSecret(data.expirationTime) and type(data.expirationTime) == "number") and data.expirationTime or 0,
+                }
+                local isMatch, color, prio = EvaluateDebuff(debuffData)
+                if isMatch and prio > bestPriority then
+                    bestDebuff = debuffData
+                    bestColor = color
+                    bestPriority = prio
+                    if prio == 2 then break end
+                end
+            elseif ok and data == nil then
+                break -- Ende der aktiven Aurenliste
+            end
+        end
+        if bestDebuff and bestPriority == 2 then
+            self:SetCachedDebuff(unit, bestDebuff, bestColor)
+            return bestDebuff, bestColor
+        end
+    end
+
+    -- 3. Scan über GetUnitAuraByIndex (Classic 3.3.5 / Forever Fallback)
     for i = 1, 40 do
         local aura = GetUnitAuraByIndex(unit, i, "HARMFUL")
         if not aura then break end
+        totalHarmfulScanned = totalHarmfulScanned + 1
 
-        local dispelType = aura.dispelType
-        if dispelType and not IsSecret(dispelType) then
-            local canDispel = dispels[dispelType]
-            local showFilter = false
-
-            if dispelType == "Curse" and cfg.auras.showCurse then showFilter = true end
-            if dispelType == "Poison" and cfg.auras.showPoison then showFilter = true end
-            if dispelType == "Disease" and cfg.auras.showDisease then showFilter = true end
-            if dispelType == "Magic" and cfg.auras.showMagic then showFilter = true end
-
-            if showFilter and (not cfg.auras.highlightDispellableOnly or canDispel) then
-                return aura, self.DebuffColors[dispelType] or self.DebuffColors["None"]
-            end
+        local isMatch, color, prio = EvaluateDebuff(aura)
+        if isMatch and prio > bestPriority then
+            bestDebuff = aura
+            bestColor = color
+            bestPriority = prio
+            if prio == 2 then break end
         end
     end
 
+    -- Wenn ein passender aktiver Debuff gefunden wurde -> Cache auffrischen & zurückgeben
+    if bestDebuff and bestColor then
+        self:SetCachedDebuff(unit, bestDebuff, bestColor)
+        return bestDebuff, bestColor
+    end
+
+    -- Status ob Einheit oder Spieler im Kampf ist
+    local inCombat = false
+    local okComb, cVal = pcall(UnitAffectingCombat, unit)
+    if okComb and cVal == true then inCombat = true end
+    if not inCombat and UnitAffectingCombat then
+        local okPComb, pVal = pcall(UnitAffectingCombat, "player")
+        if okPComb and pVal == true then inCombat = true end
+    end
+
+    -- Außerhalb des Kampfes: Wenn der Scan fehlerfrei lief und 0 schädliche Auren gefunden wurden -> Debuff wurde gereinigt / ist weg!
+    if not inCombat and not scanHadError and totalHarmfulScanned == 0 then
+        self:ClearDebuffCache(unit)
+        return nil, nil
+    end
+
+    -- 4. Kampf-Cache Fallback: Wenn im Kampf kein aktiver Debuff direkt sichtbar (z.B. API durch Kampf/Secret Values maskiert)
+    if inCombat then
+        local cached, cachedColor = self:GetCachedDebuff(unit)
+        if cached and cachedColor then
+            return cached, cachedColor
+        end
+    else
+        self:ClearDebuffCache(unit)
+    end
+
     return nil, nil
+end
+
+-- =========================================================================
+-- Sichere Event-Registrierung für Cache-Management (ohne CLEU / Taint-frei)
+-- =========================================================================
+if R4L and R4L.RegisterEvent then
+    R4L:RegisterEvent("PLAYER_REGEN_ENABLED", function()
+        -- Kampf beendet: Säubere abgelaufene Debuffs und HoTs
+        local now = GetTime()
+        for k, v in pairs(AT.debuffCache) do
+            if v.expirationTime and not IsSecret(v.expirationTime) and type(v.expirationTime) == "number" and v.expirationTime > 0 and now >= v.expirationTime then
+                AT.debuffCache[k] = nil
+            end
+        end
+        for uKey, uMap in pairs(AT.hotCache) do
+            for hKey, hData in pairs(uMap) do
+                if hData.expirationTime and not IsSecret(hData.expirationTime) and type(hData.expirationTime) == "number" and hData.expirationTime > 0 and now >= hData.expirationTime then
+                    uMap[hKey] = nil
+                end
+            end
+        end
+        AT._cachedCombined = nil
+    end)
+
+    R4L:RegisterEvent("PLAYER_ENTERING_WORLD", function()
+        for k in pairs(AT.debuffCache) do
+            AT.debuffCache[k] = nil
+        end
+        for k in pairs(AT.hotCache) do
+            AT.hotCache[k] = nil
+        end
+        AT._cachedCombined = nil
+    end)
+
+    R4L:RegisterEvent("GROUP_ROSTER_UPDATE", function()
+        AT._cachedCombined = nil
+    end)
+end
+
+-- =========================================================================
+-- Diagnose-Funktion für Debuffs (/r4l debufftest)
+-- =========================================================================
+function AT:RunDiagnostic()
+    local _, playerClass = UnitClass("player")
+    local combined, playerDispels, groupDispels = self:GetDispelCapabilities()
+    local cfg = R4L.ProfileManager:GetConfig()
+
+    print("|cff00ff00=== [Resto4Life Debuff-Diagnose] ===|r")
+    print(string.format("Spieler-Klasse: |cffffff00%s|r", tostring(playerClass)))
+
+    local function FormatDispels(t)
+        if not t then return "|cff888888Keine|r" end
+        local parts = {}
+        if t.Curse then table.insert(parts, "|cffaa00ffFluch|r") end
+        if t.Poison then table.insert(parts, "|cff00ff00Gift|r") end
+        if t.Disease then table.insert(parts, "|cff996600Krankheit|r") end
+        if t.Magic then table.insert(parts, "|cff00aaffMagie|r") end
+        return #parts > 0 and table.concat(parts, ", ") or "|cff888888Keine|r"
+    end
+
+    print("Eigene Dispel-Fähigkeiten: " .. FormatDispels(playerDispels))
+    print("Gruppen-Dispel-Fähigkeiten: " .. FormatDispels(groupDispels))
+
+    if cfg.auras then
+        print(string.format("Auren-Konfig: showDebuffs=%s, highlightDispellableOnly=%s, Fluch=%s, Gift=%s, Krankheit=%s, Magie=%s",
+            tostring(cfg.auras.showDebuffs), tostring(cfg.auras.highlightDispellableOnly),
+            tostring(cfg.auras.showCurse), tostring(cfg.auras.showPoison),
+            tostring(cfg.auras.showDisease), tostring(cfg.auras.showMagic)))
+    end
+
+    local units = { "player", "target" }
+    for i = 1, 4 do
+        if UnitExists("party" .. i) then table.insert(units, "party" .. i) end
+    end
+
+    print("--- Aktuelle Einheiten & Debuffs ---")
+    for _, u in ipairs(units) do
+        local name = UnitName(u) or u
+        local _, uClass = UnitClass(u)
+        local debuff, color = self:GetDispellableDebuff(u)
+        local debuffStr = debuff and string.format("|cffffff00%s|r (Typ: %s)", tostring(debuff.name), tostring(debuff.dispelType)) or "|cff888888Kein bannbarer Debuff|r"
+        local key = GetUnitKey(u)
+        local isCached = (key and self.debuffCache[key]) and "|cff00ff00[Im Cache]|r" or ""
+        print(string.format("[%s - %s (%s)]: %s %s", u, name, tostring(uClass), debuffStr, isCached))
+    end
+    print("|cff00ff00======================================|r")
 end

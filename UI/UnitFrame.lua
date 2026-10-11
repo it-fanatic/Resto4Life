@@ -9,6 +9,21 @@ local _, R4L = ...
 R4L.UnitFrame = {}
 local UF = R4L.UnitFrame
 
+-- Helper zur Erkennung von geheimen Werten in WoW Forever & 12.0
+local function IsSecret(val)
+    if val == nil then return false end
+    if R4L.IsSecret then return R4L.IsSecret(val) end
+    if issecretvalue then
+        local ok, res = pcall(issecretvalue, val)
+        if ok and res then return true end
+    end
+    if type(val) == "number" or type(val) == "userdata" then
+        local okComp = pcall(function() return val > 0 end)
+        if not okComp then return true end
+    end
+    return false
+end
+
 -- Klassenfarben-Fallback (unterstützt englische & deutsche Klassentoken)
 local FALLBACK_CLASS_COLORS = {
     ["WARRIOR"]     = { r = 0.78, g = 0.61, b = 0.43 },
@@ -844,7 +859,7 @@ function UF:_UpdateFrameInternal(frame)
 
                 local cdStr = ""
                 local okTime, timeLeft = pcall(function()
-                    if hot.expirationTime and hot.expirationTime > 0 then
+                    if hot.expirationTime and not IsSecret(hot.expirationTime) and type(hot.expirationTime) == "number" and hot.expirationTime > 0 then
                         return hot.expirationTime - GetTime()
                     end
                     return nil
@@ -858,7 +873,12 @@ function UF:_UpdateFrameInternal(frame)
                 end
                 hotIcon.cdText:SetText(cdStr)
 
-                local okCount, cnt = pcall(function() return hot.count end)
+                local okCount, cnt = pcall(function()
+                    if hot.count and not IsSecret(hot.count) and type(hot.count) == "number" then
+                        return hot.count
+                    end
+                    return 0
+                end)
                 if okCount and type(cnt) == "number" and cnt > 1 then
                     hotIcon.countText:SetText(tostring(cnt))
                 else
@@ -882,7 +902,7 @@ function UF:_UpdateFrameInternal(frame)
 
                     local cdStr = ""
                     local okTime, timeLeft = pcall(function()
-                        if hot.expirationTime and hot.expirationTime > 0 then
+                        if hot.expirationTime and not IsSecret(hot.expirationTime) and type(hot.expirationTime) == "number" and hot.expirationTime > 0 then
                             return hot.expirationTime - GetTime()
                         end
                         return nil
@@ -896,7 +916,12 @@ function UF:_UpdateFrameInternal(frame)
                     end
                     hotIcon.cdText:SetText(cdStr)
 
-                    local okCount, cnt = pcall(function() return hot.count end)
+                    local okCount, cnt = pcall(function()
+                        if hot.count and not IsSecret(hot.count) and type(hot.count) == "number" then
+                            return hot.count
+                        end
+                        return 0
+                    end)
                     if okCount and type(cnt) == "number" and cnt > 1 then
                         hotIcon.countText:SetText(tostring(cnt))
                     else
