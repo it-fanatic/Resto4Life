@@ -8,6 +8,56 @@ local _, R4L = ...
 R4L.ClickCast = {}
 local CC = R4L.ClickCast
 
+-- Löst Zaubernamen sicher auf (egal ob Spell-ID oder Name als String übergeben wurde)
+local function ResolveSpellName(spell)
+    if not spell or spell == "" then return nil end
+    if type(spell) == "number" then
+        if C_Spell and C_Spell.GetSpellInfo then
+            local info = C_Spell.GetSpellInfo(spell)
+            if info and info.name then return info.name end
+        end
+        if GetSpellInfo then
+            local name = GetSpellInfo(spell)
+            if name then return name end
+        end
+    end
+    return tostring(spell)
+end
+CC.ResolveSpellName = ResolveSpellName
+
+-- Ermittelt den passenden Reinigungszauber für die Heiler-Klasse
+function CC:GetDispelSpell()
+    local cfg = R4L.ProfileManager:GetConfig()
+    local sd = cfg.smartDispel or {}
+    if not sd.enabled then return nil end
+
+    if sd.dispelSpell and sd.dispelSpell ~= "" then
+        return ResolveSpellName(sd.dispelSpell)
+    end
+
+    local _, engClass = UnitClass("player")
+    local cls = engClass or "DRUID"
+    local defaults = R4L.Config.ClassDefaults[cls]
+    if defaults and defaults.smartDispel and defaults.smartDispel.dispelSpell then
+        return ResolveSpellName(defaults.smartDispel.dispelSpell)
+    end
+
+    local fallbackSpells = {
+        DRUID = { 88423, 2782 },       -- Nature's Cure, Remove Corruption
+        PRIEST = { 527, 528 },         -- Purify, Dispel Magic
+        PALADIN = { 4987, 1152 },      -- Cleanse, Purify
+        SHAMAN = { 77130, 51886 },     -- Purify Spirit, Cleanse Spirit
+        MONK = { 115450 },             -- Detox
+        EVOKER = { 360823 },           -- Naturalize
+        MAGE = { 475 },                -- Remove Curse
+    }
+    local list = fallbackSpells[cls]
+    if list and list[1] then
+        return ResolveSpellName(list[1])
+    end
+    return nil
+end
+
 -- Erstellt einen sicheren Macrotext unter Berücksichtigung von Smart Battle Rez
 function CC:BuildMacroText(unit, actionType, spellName, isLeftClick)
     local cfg = R4L.ProfileManager:GetConfig()
@@ -25,11 +75,16 @@ function CC:BuildMacroText(unit, actionType, spellName, isLeftClick)
         return nil
     end
 
+    local actualSpell = ResolveSpellName(spellName)
+    if not actualSpell or actualSpell == "" then
+        return nil
+    end
+
     local castLine = ""
     -- Intelligentes Battle-Rez / Normal-Rez bei Linksklick auf tote Gruppenmitglieder
     if smartRez.enabled and isLeftClick then
-        local combatRez = smartRez.combatRezSpell
-        local normalRez = smartRez.normalRezSpell
+        local combatRez = ResolveSpellName(smartRez.combatRezSpell)
+        local normalRez = ResolveSpellName(smartRez.normalRezSpell)
 
         local rezParts = {}
         if combatRez and combatRez ~= "" then
@@ -40,18 +95,57 @@ function CC:BuildMacroText(unit, actionType, spellName, isLeftClick)
         end
 
         if #rezParts > 0 then
-            castLine = "/cast " .. table.concat(rezParts, "; ") .. "; [@" .. unit .. "] " .. spellName
+            castLine = "/cast " .. table.concat(rezParts, "; ") .. "; [@" .. unit .. "] " .. actualSpell
         else
-            castLine = "/cast [@" .. unit .. "] " .. spellName
+            castLine = "/cast [@" .. unit .. "] " .. actualSpell
         end
     else
-        castLine = "/cast [@" .. unit .. "] " .. spellName
+        castLine = "/cast [@" .. unit .. "] " .. actualSpell
     end
 
     if cfg.general and cfg.general.targetOnCast then
         return "/target [@" .. unit .. "]\n" .. castLine
     else
         return castLine
+    end
+end
+
+-- Smart-Dispel: Außerhalb des Kampfes bei Klick auf debuffte Einheit Zauber dynamisch anpassen
+function CC:ApplySmartDispel(frame, debuffColor)
+    if not frame or not frame.unit then return end
+    local cfg = R4L.ProfileManager:GetConfig()
+    local sd = cfg.smartDispel or {}
+
+    if not sd.enabled then
+        if frame._smartDispelApplied then
+            frame._smartDispelApplied = nil
+            if not InCombatLockdown() then
+                self:ApplyBindingsToFrame(frame)
+            end
+        end
+        return
+    end
+
+    if InCombatLockdown() then return end
+
+    local isDead = false
+    local okDead, deadVal = pcall(UnitIsDead, frame.unit)
+    if okDead and deadVal == true then isDead = true end
+
+    local dispelSpell = self:GetDispelSpell()
+    if debuffColor and dispelSpell and not isDead then
+        if not frame._smartDispelApplied then
+            frame._smartDispelApplied = true
+            local targetCmd = (cfg.general and cfg.general.targetOnCast) and ("/target [@" .. frame.unit .. "]\n") or ""
+            local macro = targetCmd .. "/cast [@" .. frame.unit .. "] " .. dispelSpell
+            frame:SetAttribute("*type1", "macro")
+            frame:SetAttribute("*macrotext1", macro)
+            frame:SetAttribute("type1", "macro")
+            frame:SetAttribute("macrotext1", macro)
+        end
+    elseif frame._smartDispelApplied then
+        frame._smartDispelApplied = nil
+        self:ApplyBindingsToFrame(frame)
     end
 end
 
@@ -360,5 +454,29 @@ end)
 
 R4L:RegisterEvent("PLAYER_ENTERING_WORLD", function()
     CC:ApplySelfCastPreference()
+end)
+
+-- Beim Kampfeintritt sicherstellen, dass alle Smart-Dispel Modifikationen zurückgesetzt sind
+R4L:RegisterEvent("PLAYER_REGEN_DISABLED", function()
+    if R4L.GroupHeader and R4L.GroupHeader.frames then
+        for _, frame in ipairs(R4L.GroupHeader.frames) do
+            if frame._smartDispelApplied then
+                frame._smartDispelApplied = nil
+                CC:ApplyBindingsToFrame(frame)
+            end
+        end
+    end
+    if R4L.RaidHeader and R4L.RaidHeader.containers then
+        for _, container in ipairs(R4L.RaidHeader.containers) do
+            if container.frames then
+                for _, frame in ipairs(container.frames) do
+                    if frame._smartDispelApplied then
+                        frame._smartDispelApplied = nil
+                        CC:ApplyBindingsToFrame(frame)
+                    end
+                end
+            end
+        end
+    end
 end)
 

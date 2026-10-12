@@ -190,6 +190,9 @@ function UF:RegisterUnitEvents(frame, unit)
     SafeRegister("UNIT_CONNECTION", unit)
     SafeRegister("UNIT_THREAT_SITUATION_UPDATE", unit)
     SafeRegister("UNIT_THREAT_LIST_UPDATE", unit)
+    SafeRegister("UNIT_HEAL_PREDICTION", unit)
+    SafeRegister("UNIT_ABSORB_AMOUNT_CHANGED", unit)
+    SafeRegister("UNIT_HEAL_ABSORB_AMOUNT_CHANGED", unit)
     pcall(frame.RegisterEvent, frame, "PLAYER_TARGET_CHANGED")
     pcall(frame.RegisterEvent, frame, "PLAYER_ROLES_ASSIGNED")
     pcall(frame.RegisterEvent, frame, "PLAYER_SPECIALIZATION_CHANGED")
@@ -267,7 +270,7 @@ function UF:CreateUnitFrame(name, parent, unit)
         edgeSize = 3,
     })
     frame.border:SetBackdropBorderColor(0, 0, 0, 0.9)
-    frame.border:SetFrameLevel(frame:GetFrameLevel() + 5)
+    frame.border:SetFrameLevel(frame:GetFrameLevel() + 6)
 
     -- Dunkler Hintergrund für den gesamten Rahmen
     frame.bg = frame:CreateTexture(nil, "BACKGROUND", nil, -8)
@@ -283,7 +286,7 @@ function UF:CreateUnitFrame(name, parent, unit)
     frame.powerBar:SetStatusBarColor(0.0, 0.5, 1.0, 0.95)
     frame.powerBar:SetMinMaxValues(0, 100)
     frame.powerBar:SetValue(100)
-    frame.powerBar:SetFrameLevel(frame:GetFrameLevel() + 3)
+    frame.powerBar:SetFrameLevel(frame:GetFrameLevel() + 5)
 
     frame.powerBar.bg = frame.powerBar:CreateTexture(nil, "BACKGROUND", nil, -5)
     frame.powerBar.bg:SetAllPoints(frame.powerBar)
@@ -306,12 +309,40 @@ function UF:CreateUnitFrame(name, parent, unit)
     frame.healthBar:SetStatusBarColor(0.2, 0.8, 0.2, 0.95)
     frame.healthBar:SetMinMaxValues(0, 100)
     frame.healthBar:SetValue(100)
-    frame.healthBar:SetFrameLevel(frame:GetFrameLevel() + 2)
+    frame.healthBar:SetFrameLevel(frame:GetFrameLevel() + 4)
 
     -- Hintergrund hinter der Healthbar (Defizit-Bereich bei erlittenem Schaden)
     frame.healthBar.bg = frame.healthBar:CreateTexture(nil, "BACKGROUND", nil, -5)
     frame.healthBar.bg:SetAllPoints(frame.healthBar)
     frame.healthBar.bg:SetColorTexture(0.55, 0.08, 0.08, 0.95)
+
+    -- Absorb / Shield Bar (hinter HealthBar & HealPredictBar, Level + 2)
+    frame.absorbBar = CreateFrame("StatusBar", nil, frame)
+    frame.absorbBar:SetAllPoints(frame.healthBar)
+    frame.absorbBar:SetStatusBarTexture("Interface\\AddOns\\Resto4Life\\Media\\statusbar.tga")
+    frame.absorbBar:SetStatusBarColor(0.25, 0.70, 1.0, 0.85) -- Schild-Cyan
+    frame.absorbBar:SetMinMaxValues(0, 100)
+    frame.absorbBar:SetValue(0)
+    frame.absorbBar:SetFrameLevel(frame:GetFrameLevel() + 2)
+    frame.absorbBar:Hide()
+
+    -- Heal Prediction Bar (hinter HealthBar, vor AbsorbBar, Level + 3)
+    frame.healPredictBar = CreateFrame("StatusBar", nil, frame)
+    frame.healPredictBar:SetAllPoints(frame.healthBar)
+    frame.healPredictBar:SetStatusBarTexture("Interface\\AddOns\\Resto4Life\\Media\\statusbar.tga")
+    frame.healPredictBar:SetStatusBarColor(0.05, 0.88, 0.52, 0.85) -- Frisches Mint-Grün
+    frame.healPredictBar:SetMinMaxValues(0, 100)
+    frame.healPredictBar:SetValue(0)
+    frame.healPredictBar:SetFrameLevel(frame:GetFrameLevel() + 3)
+    frame.healPredictBar:Hide()
+
+    -- Über-Absorptions-Indikator (Glow/Leuchtstreifen am rechten Rand bei Über-Schild)
+    frame.overAbsorbGlow = frame.healthBar:CreateTexture(nil, "OVERLAY", nil, 6)
+    frame.overAbsorbGlow:SetPoint("TOPRIGHT", frame.healthBar, "TOPRIGHT", 0, 0)
+    frame.overAbsorbGlow:SetPoint("BOTTOMRIGHT", frame.healthBar, "BOTTOMRIGHT", 0, 0)
+    frame.overAbsorbGlow:SetWidth(4)
+    frame.overAbsorbGlow:SetColorTexture(0.4, 0.85, 1.0, 0.95)
+    frame.overAbsorbGlow:Hide()
 
     -- Spielername Text (mittig auf dem Lebensbalken)
     frame.nameText = frame.healthBar:CreateFontString(nil, "OVERLAY")
@@ -505,11 +536,58 @@ function UF:_UpdateFrameSimulated(frame)
         else
             frame.healthBar.bg:SetColorTexture(0.08, 0.08, 0.08, 0.95)
         end
+
+        local simHeal = sim.incomingHeal or 0
+        local simAbsorb = sim.absorbs or 0
+        local predictVal = math.min(100, sim.hp + simHeal)
+        local absorbVal = math.min(100, predictVal + simAbsorb)
+
+        if simHeal > 0 and cfg.display.showHealPrediction ~= false and frame.healPredictBar then
+            frame.healPredictBar:SetMinMaxValues(0, 100)
+            frame.healPredictBar:SetValue(predictVal)
+            frame.healPredictBar:Show()
+        elseif frame.healPredictBar then
+            frame.healPredictBar:Hide()
+        end
+
+        if simAbsorb > 0 and cfg.display.showAbsorbs ~= false and frame.absorbBar then
+            frame.absorbBar:SetMinMaxValues(0, 100)
+            frame.absorbBar:SetValue(absorbVal)
+            frame.absorbBar:Show()
+        elseif frame.absorbBar then
+            frame.absorbBar:Hide()
+        end
+
+        if (sim.hp + simHeal + simAbsorb > 100) and simAbsorb > 0 and cfg.display.showAbsorbs ~= false and frame.overAbsorbGlow then
+            frame.overAbsorbGlow:Show()
+        elseif frame.overAbsorbGlow then
+            frame.overAbsorbGlow:Hide()
+        end
     else
+        local deficit = 100 - sim.hp
         frame.healthBar:SetMinMaxValues(0, 100)
-        frame.healthBar:SetValue(100 - sim.hp)
+        frame.healthBar:SetValue(deficit)
         frame.healthBar:SetStatusBarColor(0.85, 0.15, 0.15, 0.95)
         frame.healthBar.bg:SetColorTexture(r * 0.85, g * 0.85, b * 0.85, 0.90)
+
+        local simHeal = sim.incomingHeal or 0
+        local simAbsorb = sim.absorbs or 0
+        if simHeal > 0 and cfg.display.showHealPrediction ~= false and frame.healPredictBar then
+            frame.healPredictBar:SetMinMaxValues(0, 100)
+            frame.healPredictBar:SetValue(deficit)
+            frame.healPredictBar:Show()
+        elseif frame.healPredictBar then
+            frame.healPredictBar:Hide()
+        end
+
+        if simAbsorb > 0 and cfg.display.showAbsorbs ~= false and frame.absorbBar then
+            frame.absorbBar:SetMinMaxValues(0, 100)
+            frame.absorbBar:SetValue(deficit)
+            frame.absorbBar:Show()
+        elseif frame.absorbBar then
+            frame.absorbBar:Hide()
+        end
+        if frame.overAbsorbGlow then frame.overAbsorbGlow:Hide() end
     end
 
     -- 3. Statustext
@@ -577,8 +655,16 @@ function UF:_UpdateFrameSimulated(frame)
     -- 6. Debuff & Aggro Border (Debuff hat Vorrang vor Aggro)
     if sim.debuffColor then
         frame.border:SetBackdropBorderColor(sim.debuffColor.r, sim.debuffColor.g, sim.debuffColor.b, 1.0)
-    elseif sim.hasAggro then
-        frame.border:SetBackdropBorderColor(1.0, 0.1, 0.1, 1.0) -- Roter Aggro-Rahmen
+    elseif cfg.display.showThreat ~= false and (sim.hasAggro or sim.threat) then
+        if sim.threat == 3 or sim.hasAggro then
+            frame.border:SetBackdropBorderColor(1.0, 0.0, 0.0, 1.0) -- Roter Aggro-Rahmen
+        elseif sim.threat == 2 then
+            frame.border:SetBackdropBorderColor(1.0, 0.5, 0.0, 1.0) -- Orange (Übergang)
+        elseif sim.threat == 1 then
+            frame.border:SetBackdropBorderColor(1.0, 0.8, 0.0, 1.0) -- Gelb-Orange (hohe Bedrohung)
+        else
+            frame.border:SetBackdropBorderColor(0, 0, 0, 0.9)
+        end
     else
         frame.border:SetBackdropBorderColor(0, 0, 0, 0.9)
     end
@@ -741,6 +827,78 @@ function UF:_UpdateFrameInternal(frame)
         end
         frame.healthBar:SetStatusBarColor(0.85, 0.15, 0.15, 0.95) -- Rot bei Schaden
         frame.healthBar.bg:SetColorTexture(r * 0.85, g * 0.85, b * 0.85, 0.90) -- Gewählte Farbe als Basis dahinter
+    end
+
+    -- 3b. Eingehende Heilung (Heal Prediction) & Schilde (Absorbs)
+    local maxVal = (hpMax and hpMax > 0 and not isSecret) and hpMax or 1
+    local curHp = (hp and not isSecret) and hp or 0
+
+    local incomingHeal = 0
+    if cfg.display.showHealPrediction ~= false and UnitGetIncomingHeals and not isDead and not isGhost and isConnected then
+        local okHeal, hVal = pcall(UnitGetIncomingHeals, unit)
+        if okHeal and type(hVal) == "number" and not IsSecret(hVal) and hVal > 0 then
+            incomingHeal = hVal
+        end
+    end
+
+    local absorbs = 0
+    if cfg.display.showAbsorbs ~= false and UnitGetTotalAbsorbs and not isDead and not isGhost and isConnected then
+        local okAbs, aVal = pcall(UnitGetTotalAbsorbs, unit)
+        if okAbs and type(aVal) == "number" and not IsSecret(aVal) and aVal > 0 then
+            absorbs = aVal
+        end
+    end
+
+    if isDead or isGhost or not isConnected then
+        if frame.healPredictBar then frame.healPredictBar:Hide() end
+        if frame.absorbBar then frame.absorbBar:Hide() end
+        if frame.overAbsorbGlow then frame.overAbsorbGlow:Hide() end
+    else
+        if not isReverse then
+            local predictVal = math.min(maxVal, curHp + incomingHeal)
+            local absorbVal = math.min(maxVal, predictVal + absorbs)
+
+            if incomingHeal > 0 and cfg.display.showHealPrediction ~= false and frame.healPredictBar then
+                frame.healPredictBar:SetMinMaxValues(0, maxVal)
+                frame.healPredictBar:SetValue(predictVal)
+                frame.healPredictBar:Show()
+            elseif frame.healPredictBar then
+                frame.healPredictBar:Hide()
+            end
+
+            if absorbs > 0 and cfg.display.showAbsorbs ~= false and frame.absorbBar then
+                frame.absorbBar:SetMinMaxValues(0, maxVal)
+                frame.absorbBar:SetValue(absorbVal)
+                frame.absorbBar:Show()
+            elseif frame.absorbBar then
+                frame.absorbBar:Hide()
+            end
+
+            if (curHp + incomingHeal + absorbs > maxVal) and absorbs > 0 and cfg.display.showAbsorbs ~= false and frame.overAbsorbGlow then
+                frame.overAbsorbGlow:Show()
+            elseif frame.overAbsorbGlow then
+                frame.overAbsorbGlow:Hide()
+            end
+        else
+            -- Reverse Modus
+            local deficit = math.max(0, maxVal - curHp)
+            if incomingHeal > 0 and cfg.display.showHealPrediction ~= false and frame.healPredictBar then
+                frame.healPredictBar:SetMinMaxValues(0, maxVal)
+                frame.healPredictBar:SetValue(deficit)
+                frame.healPredictBar:Show()
+            elseif frame.healPredictBar then
+                frame.healPredictBar:Hide()
+            end
+
+            if absorbs > 0 and cfg.display.showAbsorbs ~= false and frame.absorbBar then
+                frame.absorbBar:SetMinMaxValues(0, maxVal)
+                frame.absorbBar:SetValue(deficit)
+                frame.absorbBar:Show()
+            elseif frame.absorbBar then
+                frame.absorbBar:Hide()
+            end
+            if frame.overAbsorbGlow then frame.overAbsorbGlow:Hide() end
+        end
     end
 
     -- Statustext (Tot, Geist, Offline oder HP/Defizit)
@@ -961,8 +1119,8 @@ function UF:_UpdateFrameInternal(frame)
     if debuffColor then
         -- Priorität 1: Debuff hat IMMER Vorrang vor Aggro!
         frame.border:SetBackdropBorderColor(debuffColor.r, debuffColor.g, debuffColor.b, 1.0)
-    else
-        -- Priorität 2: Aggro-Anzeige (Rot, nur wenn der Spieler KEIN Tank ist!)
+    elseif cfg.display.showThreat ~= false then
+        -- Priorität 2: Aggro- & Bedrohungs-Anzeige
         local isTank = false
         if UnitGroupRolesAssigned and UnitGroupRolesAssigned(unit) == "TANK" then
             isTank = true
@@ -987,15 +1145,35 @@ function UF:_UpdateFrameInternal(frame)
         -- threat in WoW:
         -- nil = kein Kampf / nicht auf Bedrohungsliste
         -- 0 = unter 100% Bedrohung (keine Aggro)
-        -- 1 = hohe Bedrohung, aber Mob greift noch jemand anderen an
+        -- 1 = hohe Bedrohung (>100%), aber Mob greift noch jemand anderen an
         -- 2 = Übergang / verliert/gewinnt gerade Aggro
         -- 3 = hat direkte Aggro (wird geschlagen)
-        local hasAggro = (not isTank) and inCombat and (threat ~= nil and threat >= 2)
-        if hasAggro then
-            frame.border:SetBackdropBorderColor(1.0, 0.1, 0.1, 1.0) -- Rot bei Aggro auf Nicht-Tank
+        if inCombat and threat then
+            if threat == 3 then
+                if isTank then
+                    frame.border:SetBackdropBorderColor(0, 0, 0, 0.9) -- Tank hält regulär Aggro
+                else
+                    frame.border:SetBackdropBorderColor(1.0, 0.0, 0.0, 1.0) -- Rot bei Aggro auf Heiler/DD!
+                end
+            elseif threat == 2 then
+                frame.border:SetBackdropBorderColor(1.0, 0.5, 0.0, 1.0) -- Orange (Aggro-Wechsel)
+            elseif threat == 1 then
+                frame.border:SetBackdropBorderColor(1.0, 0.8, 0.0, 1.0) -- Gelb-Orange (hohe Bedrohung)
+            elseif isTank and threat < 3 then
+                frame.border:SetBackdropBorderColor(1.0, 0.6, 0.1, 1.0) -- Warnung: Tank verliert Aggro!
+            else
+                frame.border:SetBackdropBorderColor(0, 0, 0, 0.9)
+            end
         else
-            frame.border:SetBackdropBorderColor(0, 0, 0, 0.9) -- Normaler schwarzer Rahmen
+            frame.border:SetBackdropBorderColor(0, 0, 0, 0.9)
         end
+    else
+        frame.border:SetBackdropBorderColor(0, 0, 0, 0.9)
+    end
+
+    -- 6b. Smart-Dispel (Außerhalb des Kampfes Linksklick automatisch auf Reinigen setzen)
+    if R4L.ClickCast and R4L.ClickCast.ApplySmartDispel then
+        R4L.ClickCast:ApplySmartDispel(frame, debuffColor)
     end
 
     -- 7. Rollen-Icon (Tank, Heiler, DD)

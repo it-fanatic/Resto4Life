@@ -7,7 +7,7 @@ local addonName, R4L = ...
 _G["Resto4Life"] = R4L
 
 R4L.addonName = addonName
-R4L.version = "0.2.8-beta"
+R4L.version = "0.2.11-beta"
 R4L.inCombat = false
 R4L.combatQueue = {}
 
@@ -212,24 +212,42 @@ function R4L:IsUnitInRange(unit)
 end
 
 function R4L:Print(msg, ...)
-    local formatted = string.format(msg, ...)
+    if not msg then return end
+    local formatted = tostring(msg)
+    if select("#", ...) > 0 then
+        local ok, res = pcall(string.format, msg, ...)
+        if ok and res then
+            formatted = res
+        end
+    end
     print("|cff00ff96[Resto4Life]|r " .. formatted)
+end
+
+local function SafeTrim(s)
+    if not s then return "" end
+    local str = tostring(s)
+    return str:match("^%s*(.-)%s*$") or str
 end
 
 function R4L:SetDevLanguage(targetLocale)
     if not Resto4LifeDB then Resto4LifeDB = {} end
-    local L = self.L
-    if targetLocale == "auto" then
+    if targetLocale == "auto" or targetLocale == "reset" then
         Resto4LifeDB.devLocale = nil
-        self:Print(L["DEV_LANG_RESET"] or "Sprache auf Client-Standard (%s) zurückgesetzt. UI wird neu geladen...", GetLocale())
-    else
-        Resto4LifeDB.devLocale = targetLocale
-        self:Print(L["DEV_LANG_CHANGED"] or "Sprache auf %s geändert. UI wird neu geladen...", targetLocale)
+        if self.ApplyLocale then self:ApplyLocale("auto") end
+        self:Print(self.L["DEV_LANG_RESET"] or "Sprache auf Client-Standard (%s) zurückgesetzt. UI wird neu geladen...", GetLocale())
+    elseif targetLocale == "de" or targetLocale == "deDE" then
+        Resto4LifeDB.devLocale = "deDE"
+        if self.ApplyLocale then self:ApplyLocale("deDE") end
+        self:Print(self.L["DEV_LANG_CHANGED"] or "Sprache auf %s geändert. UI wird neu geladen...", "deDE")
+    elseif targetLocale == "en" or targetLocale == "enUS" then
+        Resto4LifeDB.devLocale = "enUS"
+        if self.ApplyLocale then self:ApplyLocale("enUS") end
+        self:Print(self.L["DEV_LANG_CHANGED"] or "Sprache auf %s geändert. UI wird neu geladen...", "enUS")
     end
     if C_UI and C_UI.Reload then
-        C_UI.Reload()
+        pcall(C_UI.Reload)
     else
-        ReloadUI()
+        pcall(ReloadUI)
     end
 end
 
@@ -239,20 +257,36 @@ SLASH_RESTO4LIFE2 = "/resto4life"
 SLASH_RESTO4LIFE3 = "/resto"
 
 SlashCmdList["RESTO4LIFE"] = function(msg)
-    local cmd = string.lower(string.trim(msg or ""))
-    if cmd:match("^lang") or cmd:match("^devlang") then
-        local sub = string.trim(cmd:gsub("^devlang", ""):gsub("^lang", ""))
-        if sub == "de" or sub == "dede" then
+    local raw = SafeTrim(msg or "")
+    local cmd = string.lower(raw)
+
+    -- Direkte Sprachbefehle: /r4l de, /r4l en, /r4l auto
+    if cmd == "de" or cmd == "dede" then
+        R4L:SetDevLanguage("deDE")
+        return
+    elseif cmd == "en" or cmd == "enus" then
+        R4L:SetDevLanguage("enUS")
+        return
+    elseif cmd == "auto" then
+        R4L:SetDevLanguage("auto")
+        return
+    end
+
+    -- Kombinierte Sprachbefehle: /r4l lang de, /r4l sprache en, etc.
+    if cmd:match("^lang") or cmd:match("^devlang") or cmd:match("^sprache") or cmd:match("^language") then
+        local sub = SafeTrim(cmd:gsub("^devlang", ""):gsub("^language", ""):gsub("^sprache", ""):gsub("^lang", ""))
+        if sub == "de" or sub == "dede" or sub == "deutsch" or sub == "german" then
             R4L:SetDevLanguage("deDE")
-        elseif sub == "en" or sub == "enus" then
+        elseif sub == "en" or sub == "enus" or sub == "englisch" or sub == "english" then
             R4L:SetDevLanguage("enUS")
-        elseif sub == "auto" or sub == "reset" then
+        elseif sub == "auto" or sub == "reset" or sub == "standard" or sub == "client" then
             R4L:SetDevLanguage("auto")
         else
             local saved = (Resto4LifeDB and Resto4LifeDB.devLocale) or "Client-Standard"
             local cur = R4L.currentLocale or GetLocale()
             R4L:Print(R4L.L["DEV_LANG_CURRENT"] or "Aktuelle Sprache: |cff00ff00%s|r (Gespeichert: %s). Nutzung: /r4l lang de | en | auto", cur, saved)
         end
+        return
     elseif cmd == "unlock" or cmd == "move" then
         if (IsInRaid() or (R4L.RaidHeader and R4L.RaidHeader.isSimulating)) and R4L.RaidHeader then
             R4L.RaidHeader:ToggleLock(false)
@@ -300,7 +334,7 @@ SlashCmdList["RESTO4LIFE"] = function(msg)
         end
     elseif cmd:match("^test%s+debuff") or cmd:match("^test%s+border") or cmd:match("^debuff%s+test") then
         local sub = cmd:gsub("^test%s+debuff%s*", ""):gsub("^test%s+border%s*", ""):gsub("^debuff%s+test%s*", "")
-        sub = string.lower(string.trim(sub))
+        sub = string.lower(SafeTrim(sub))
         if sub == "poison" or sub == "gift" then
             R4L.testDebuff = "Poison"
             R4L:Print("Test-Debuff: |cff00ff00Gift (Grüner Rahmen)|r")

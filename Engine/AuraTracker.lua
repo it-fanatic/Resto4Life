@@ -8,31 +8,19 @@ local _, R4L = ...
 R4L.AuraTracker = {}
 local AT = R4L.AuraTracker
 
--- Helper zur Erkennung von geheimen Strings / Werten in WoW Forever & 12.0
+-- Helper zur Erkennung von geheimen Werten in WoW Forever & 12.0
 local function IsSecret(val)
     if val == nil then return false end
     if issecretvalue then
         local ok, res = pcall(issecretvalue, val)
-        if ok and res then return true end
+        if ok and res == true then return true end
     end
-    if C_Secrets then
-        if C_Secrets.IsSecretValue then
-            local ok, res = pcall(C_Secrets.IsSecretValue, val)
-            if ok and res then return true end
-        end
-        if C_Secrets.IsSecret then
-            local ok, res = pcall(C_Secrets.IsSecret, val)
-            if ok and res then return true end
-        end
+    if issecrettable and type(val) == "table" then
+        local ok, res = pcall(issecrettable, val)
+        if ok and res == true then return true end
     end
-    -- Secret Values werfen im Kampf bei relationalen Operatoren oder Arithmetik sofort einen Fehler
-    if type(val) == "number" or type(val) == "userdata" then
-        local okComp = pcall(function() return val > 0 end)
-        if not okComp then return true end
-    end
-    if type(val) == "string" then
-        local okLen = pcall(function() return #val end)
-        if not okLen then return true end
+    if type(val) == "userdata" then
+        return true
     end
     return false
 end
@@ -52,9 +40,17 @@ AT.DebuffColors = {
     ["none"]    = { r = 0.8, g = 0.1, b = 0.1 },
 }
 
--- Normalisiert Dispel-Typen unabhängig von Groß-/Kleinschreibung oder Client-Sprache (deDE / enUS)
+-- Normalisiert Dispel-Typen unabhängig von Groß-/Kleinschreibung oder Client-Sprache (deDE / enUS / Enum / Zahl)
 local function NormalizeDispelType(dt)
     if not dt or IsSecret(dt) then return nil end
+    if type(dt) == "number" then
+        if dt == 1 then return "Magic"
+        elseif dt == 2 then return "Curse"
+        elseif dt == 3 then return "Disease"
+        elseif dt == 4 then return "Poison"
+        end
+        return nil
+    end
     if type(dt) ~= "string" then return nil end
     local lower = dt:lower():gsub("%s+", "")
     if lower == "curse" or lower:find("fluch") then
@@ -1076,10 +1072,13 @@ function AT:GetPlayerHots(unit)
         return ownHots, otherHots
     end
 
-    -- Methode 1: C_UnitAuras.GetUnitAuras
+    -- Methode 1: C_UnitAuras.GetUnitAuras (Modern Retail / Forever C-Level Scan)
     if C_UnitAuras and C_UnitAuras.GetUnitAuras then
         local auras = nil
-        local ok, res = pcall(C_UnitAuras.GetUnitAuras, unit, "HELPFUL")
+        local ok, res = pcall(C_UnitAuras.GetUnitAuras, unit, "HELPFUL", 40, 0, 0)
+        if not ok or not res or type(res) ~= "table" then
+            ok, res = pcall(C_UnitAuras.GetUnitAuras, unit, "HELPFUL")
+        end
         if ok and res and type(res) == "table" and #res > 0 then
             auras = res
         end
@@ -1233,7 +1232,10 @@ function AT:GetDispellableDebuff(unit)
 
     -- Methode 0: C_UnitAuras.GetUnitAuras (Modern Retail / Forever C-Level Scan)
     if C_UnitAuras and C_UnitAuras.GetUnitAuras then
-        local ok, auras = pcall(C_UnitAuras.GetUnitAuras, unit, "HARMFUL")
+        local ok, auras = pcall(C_UnitAuras.GetUnitAuras, unit, "HARMFUL", 40, 0, 0)
+        if not ok or not auras or type(auras) ~= "table" then
+            ok, auras = pcall(C_UnitAuras.GetUnitAuras, unit, "HARMFUL")
+        end
         if not ok then
             scanHadError = true
         elseif auras and type(auras) == "table" then
@@ -1372,13 +1374,6 @@ function AT:GetDispellableDebuff(unit)
         return bestDebuff, bestColor
     end
 
-    -- Wenn mindestens ein Scan-Verfahren fehlerfrei lief und kein bannbarer Debuff gefunden wurde:
-    -- Der Debuff existiert nicht mehr (oder wurde gebannt) -> Cache SOFORT leeren (auch im Kampf!)
-    if scanSucceeded then
-        self:ClearDebuffCache(unit)
-        return nil, nil
-    end
-
     -- Status ob Einheit oder Spieler im Kampf ist
     local inCombat = false
     local okComb, cVal = pcall(UnitAffectingCombat, unit)
@@ -1388,11 +1383,34 @@ function AT:GetDispellableDebuff(unit)
         if okPComb and pVal == true then inCombat = true end
     end
 
-    -- 4. Notfall-Kampf-Cache Fallback: NUR wenn ALLE Scans im Kampf mit Fehlern scheiterten (z.B. API im Kampf geschützt)
+    -- Außerhalb des Kampfes: Wenn mindestens ein Scan-Verfahren fehlerfrei lief und kein bannbarer Debuff gefunden wurde:
+    -- Der Debuff existiert definitiv nicht mehr -> Cache leeren
+    if not inCombat and scanSucceeded then
+        self:ClearDebuffCache(unit)
+        return nil, nil
+    end
+
+    -- Im Kampf:
     if inCombat then
+        -- Wenn schädliche Auren gescannt wurden (totalHarmfulScanned > 0) und keine davon bannbar war:
+        if scanSucceeded and totalHarmfulScanned > 0 then
+            self:ClearDebuffCache(unit)
+            return nil, nil
+        end
+
+        -- Wenn noch ein gültiger gecachter Debuff vorhanden ist (und noch nicht abgelaufen):
         local cached, cachedColor = self:GetCachedDebuff(unit)
         if cached and cachedColor then
-            return cached, cachedColor
+            local now = GetTime()
+            if not cached.expirationTime or cached.expirationTime <= 0 or cached.expirationTime > now then
+                return cached, cachedColor
+            end
+        end
+
+        -- Wenn erfolgreich gescannt und Einheit hat definitiv 0 schädliche Auren (z.B. gebannt oder abgelaufen):
+        if scanSucceeded and totalHarmfulScanned == 0 then
+            self:ClearDebuffCache(unit)
+            return nil, nil
         end
     else
         self:ClearDebuffCache(unit)

@@ -127,9 +127,13 @@ function PM:Initialize()
         }
     end
 
-    -- Entwickler-Sprach-Override anwenden, falls gesetzt
-    if Resto4LifeDB.devLocale and R4L.ApplyLocale then
-        R4L:ApplyLocale(Resto4LifeDB.devLocale)
+    -- Entwickler-Sprach-Override anwenden, falls gesetzt (oder Client-Standard bei nil)
+    if R4L.ApplyLocale then
+        if Resto4LifeDB.devLocale then
+            R4L:ApplyLocale(Resto4LifeDB.devLocale)
+        else
+            R4L:ApplyLocale("auto")
+        end
     end
 
     -- Per Character DB

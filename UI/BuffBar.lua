@@ -181,10 +181,16 @@ local CLASS_BUFFS = {
 -- Helper zur Erkennung von geheimen Strings / Werten in WoW Forever & 12.0
 local function IsSecret(val)
     if val == nil then return false end
+    if R4L.IsSecret then return R4L.IsSecret(val) end
     if issecretvalue then
         local ok, res = pcall(issecretvalue, val)
-        if ok and res then return true end
+        if ok and res == true then return true end
     end
+    if issecrettable and type(val) == "table" then
+        local ok, res = pcall(issecrettable, val)
+        if ok and res == true then return true end
+    end
+    if type(val) == "userdata" then return true end
     return false
 end
 
@@ -603,6 +609,30 @@ local function UnitHasBuff(unit, spellDef)
 
     local scanSucceeded = false
 
+    -- 0. Modern C_UnitAuras.GetUnitAuras (C-Level Batch Scan)
+    if C_UnitAuras and C_UnitAuras.GetUnitAuras then
+        local ok, auras = pcall(C_UnitAuras.GetUnitAuras, unit, "HELPFUL", 40, 0, 0)
+        if not ok or not auras or type(auras) ~= "table" then
+            ok, auras = pcall(C_UnitAuras.GetUnitAuras, unit, "HELPFUL")
+        end
+        if ok and auras and type(auras) == "table" and #auras > 0 then
+            scanSucceeded = true
+            for _, data in ipairs(auras) do
+                if type(data) == "table" then
+                    local aName = data.name
+                    local aId = data.spellId
+                    local aIcon = data.iconFileID or data.icon
+                    local aDur = data.duration
+                    local okMatch, isMatch = pcall(AuraMatchesSpellDef, aName, aId, aIcon, aDur, spellDef)
+                    if okMatch and isMatch then
+                        SetBuffCached(unit, spellDef.name, data.duration, data.expirationTime)
+                        return true
+                    end
+                end
+            end
+        end
+    end
+
     -- 1. Schnell-Check per Name über Blizzard API (C++ Lookup) - IMMER versuchen (auch im Kampf)
     if AuraUtil and AuraUtil.FindAuraByName then
         for _, alt in ipairs(spellDef.altNames or { spellDef.name }) do
@@ -788,20 +818,20 @@ local function UnitHasBuff(unit, spellDef)
     end
 
     -- 7. Ergebnis-Auswertung:
-    -- Wenn mindestens ein Scan-Verfahren fehlerfrei lief und der Buff nicht gefunden wurde:
-    -- Der Buff ist definitiv nicht mehr aktiv -> Cache sofort leeren und false zurückgeben!
-    if scanSucceeded then
-        ClearBuffCached(unit, spellDef)
-        return false
-    end
-
-    -- Notfall-Kampf-Cache Fallback: NUR wenn ALLE Scans im Kampf mit Fehlern scheiterten
+    -- Wenn im Kampf der Buff im Cache als noch aktiv vermerkt ist:
+    -- Niemals im Kampf leeren! Der Klassen-Buff läuft noch (z.B. 30min Mal der Wildnis).
     if InCombatLockdown() then
         if IsBuffCached(unit, spellDef) then
             return true
         end
-    else
+        return false
+    end
+
+    -- Außerhalb des Kampfes: Wenn mindestens ein Scan-Verfahren fehlerfrei lief und der Buff nicht gefunden wurde:
+    -- Der Buff ist definitiv nicht mehr aktiv (z.B. aktiv weggeklickt) -> Cache sofort leeren!
+    if scanSucceeded then
         ClearBuffCached(unit, spellDef)
+        return false
     end
 
     return false

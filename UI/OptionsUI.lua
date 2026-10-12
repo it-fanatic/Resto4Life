@@ -83,24 +83,39 @@ function OUI:Initialize()
     title:SetPoint("TOP", frame, "TOP", 0, -14)
     title:SetText(string.format(L["CONFIG_TITLE_FMT"], R4L.version))
 
-    -- Versteckter Entwickler-Klick (Strg + Rechtsklick auf den Titel schaltet Sprache DE <-> EN um)
-    local devLangBtn = CreateFrame("Button", nil, frame)
-    devLangBtn:SetPoint("TOPLEFT", title, "TOPLEFT", -15, 6)
-    devLangBtn:SetPoint("BOTTOMRIGHT", title, "BOTTOMRIGHT", 15, -6)
-    devLangBtn:RegisterForClicks("RightButtonUp")
-    devLangBtn:SetScript("OnClick", function(self, button)
-        if button == "RightButton" and IsControlKeyDown() then
-            local current = (Resto4LifeDB and Resto4LifeDB.devLocale) or GetLocale()
-            local nextLang = (current == "deDE" or current == "de") and "enUS" or "deDE"
-            R4L:SetDevLanguage(nextLang)
-        end
-    end)
-
     -- Schließen Button
     local closeBtn = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
     closeBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -6, -6)
     closeBtn:SetScript("OnClick", function()
         frame:Hide()
+    end)
+
+    -- Sichtbarer Sprach-Umschalter oben rechts (links neben dem Schließen-Button)
+    local devLangBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    devLangBtn:SetSize(58, 22)
+    devLangBtn:SetPoint("RIGHT", closeBtn, "LEFT", -6, 0)
+    local curDev = Resto4LifeDB and Resto4LifeDB.devLocale
+    devLangBtn:SetText(curDev == "deDE" and "DE" or (curDev == "enUS" and "EN" or "Auto"))
+    devLangBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
+        GameTooltip:SetText(L["DEV_LANG_BTN_TITLE"] or "Sprache / Language", 1, 1, 1)
+        GameTooltip:AddLine(L["DEV_LANG_BTN_HINT"] or "Klick: Umschalten (DE ➔ EN ➔ Auto)", 0.8, 0.8, 0.8)
+        local curLabel = (Resto4LifeDB and Resto4LifeDB.devLocale) or ("Auto (" .. GetLocale() .. ")")
+        GameTooltip:AddLine((L["DEV_LANG_CURRENT_LABEL"] or "Aktuell: ") .. curLabel, 1, 0.82, 0)
+        GameTooltip:Show()
+    end)
+    devLangBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    devLangBtn:SetScript("OnClick", function(self)
+        local current = Resto4LifeDB and Resto4LifeDB.devLocale
+        local nextLang = "auto"
+        if current == "enUS" then
+            nextLang = "deDE"
+        elseif current == "deDE" then
+            nextLang = "auto"
+        else
+            nextLang = "enUS"
+        end
+        R4L:SetDevLanguage(nextLang)
     end)
 
     -- Tab-Leiste (6 Tabs inkl. Buff-Bar)
@@ -375,6 +390,27 @@ function OUI:Initialize()
         R4L.GroupHeader:SetScale(1.0)
     end)
 
+    -- Aggro- & Bedrohungsanzeige
+    local cbThreat = CreateCheckbox(p1, L["SHOW_THREAT"] or "Aggro- & Bedrohungsanzeige hervorheben", 20, -355, function(val)
+        cfg.display.showThreat = val
+        R4L.GroupHeader:UpdateAllFrames()
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
+    end)
+
+    -- Eingehende Heilung (Heal Prediction)
+    local cbHealPredict = CreateCheckbox(p1, L["SHOW_HEAL_PREDICTION"] or "Eingehende Heilung anzeigen (Heal Prediction)", 20, -390, function(val)
+        cfg.display.showHealPrediction = val
+        R4L.GroupHeader:UpdateAllFrames()
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
+    end)
+
+    -- Schilde & Absorbs
+    local cbAbsorbs = CreateCheckbox(p1, L["SHOW_ABSORBS"] or "Schilde & Absorbs anzeigen", 360, -390, function(val)
+        cfg.display.showAbsorbs = val
+        R4L.GroupHeader:UpdateAllFrames()
+        if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
+    end)
+
     p1:SetScript("OnShow", function()
         cbLock:SetChecked(not cfg.general.locked)
         cbNames:SetChecked(cfg.display.showNames)
@@ -388,6 +424,9 @@ function OUI:Initialize()
         cbRange:SetChecked(cfg.display.fadeOutOfRange)
         cbTargetOnCast:SetChecked(cfg.general.targetOnCast or false)
         cbMinimap:SetChecked(cfg.minimap and cfg.minimap.show ~= false)
+        cbThreat:SetChecked(cfg.display.showThreat ~= false)
+        cbHealPredict:SetChecked(cfg.display.showHealPrediction ~= false)
+        cbAbsorbs:SetChecked(cfg.display.showAbsorbs ~= false)
         OUI:UpdateScaleDisplay()
     end)
 
@@ -561,22 +600,28 @@ function OUI:Initialize()
         UpdateBindingsTab()
     end)
 
-    -- Smart Battle Rez Sektion (unten mit farbiger Überschrift)
+    -- Smart Battle Rez & Smart-Dispel Sektion (unten mit farbiger Überschrift)
     local rezHeader = p2:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    rezHeader:SetPoint("TOPLEFT", p2, "TOPLEFT", 20, -355)
+    rezHeader:SetPoint("TOPLEFT", p2, "TOPLEFT", 20, -350)
     rezHeader:SetText(L["SMART_REZ_HEADER"])
 
-    local cbSmartRez = CreateCheckbox(p2, L["SMART_REZ_ENABLE"], 20, -375, function(val)
+    local cbSmartRez = CreateCheckbox(p2, L["SMART_REZ_ENABLE"], 20, -370, function(val)
         cfg.smartRez.enabled = val
         R4L.ClickCast:ApplyAllBindings()
     end)
 
-    local ebBattleRez = CreateEditBox(p2, L["COMBAT_REZ_SPELL"], 20, -410, 250, function(val)
+    local cbSmartDispel = CreateCheckbox(p2, L["SMART_DISPEL_ENABLE"], 350, -370, function(val)
+        if not cfg.smartDispel then cfg.smartDispel = {} end
+        cfg.smartDispel.enabled = val
+        R4L.ClickCast:ApplyAllBindings()
+    end, L["SMART_DISPEL_DESC"])
+
+    local ebBattleRez = CreateEditBox(p2, L["COMBAT_REZ_SPELL"], 20, -408, 250, function(val)
         cfg.smartRez.combatRezSpell = val
         R4L.ClickCast:ApplyAllBindings()
     end)
 
-    local ebNormalRez = CreateEditBox(p2, L["NORMAL_REZ_SPELL"], 350, -410, 250, function(val)
+    local ebNormalRez = CreateEditBox(p2, L["NORMAL_REZ_SPELL"], 350, -408, 250, function(val)
         cfg.smartRez.normalRezSpell = val
         R4L.ClickCast:ApplyAllBindings()
     end)
@@ -587,11 +632,19 @@ function OUI:Initialize()
         R4L:Print(val and L["CHAT_SELF_CAST_KEY_DISABLED"] or L["CHAT_SELF_CAST_KEY_ENABLED"])
     end, L["DISABLE_SELF_CAST_KEY_DESC"])
 
+    local ebSmartDispel = CreateEditBox(p2, L["SMART_DISPEL_SPELL"], 350, -446, 250, function(val)
+        if not cfg.smartDispel then cfg.smartDispel = {} end
+        cfg.smartDispel.dispelSpell = val
+        R4L.ClickCast:ApplyAllBindings()
+    end)
+
     p2:SetScript("OnShow", function()
         UpdateBindingsTab()
         cbSmartRez:SetChecked(cfg.smartRez.enabled)
         ebBattleRez:SetText(cfg.smartRez.combatRezSpell or "")
         ebNormalRez:SetText(cfg.smartRez.normalRezSpell or "")
+        cbSmartDispel:SetChecked(cfg.smartDispel and cfg.smartDispel.enabled or false)
+        ebSmartDispel:SetText((cfg.smartDispel and cfg.smartDispel.dispelSpell) or "")
         cbDisableSelfCast:SetChecked(cfg.general and cfg.general.disableSelfCastKey ~= false)
     end)
 
@@ -1355,26 +1408,39 @@ function OUI:Initialize()
     p6Desc:SetPoint("TOPLEFT", p6, "TOPLEFT", 20, -15)
     p6Desc:SetText(L["PROFILES_DESC"])
 
+    -- Hintergrund-Rahmen für Im- / Export Textfeld
+    local boxBg = CreateFrame("Frame", nil, p6, "BackdropTemplate")
+    boxBg:SetPoint("TOPLEFT", p6, "TOPLEFT", 16, -56)
+    boxBg:SetSize(630, 168)
+    boxBg:SetBackdrop({
+        bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true, tileSize = 16, edgeSize = 12,
+        insets = { left = 3, right = 3, top = 3, bottom = 3 }
+    })
+    boxBg:SetBackdropColor(0, 0, 0, 0.6)
+    boxBg:SetBackdropBorderColor(0.4, 0.4, 0.4, 0.8)
+
     -- ScrollFrame für Im- / Export String
     local scrollFrame = CreateFrame("ScrollFrame", nil, p6, "UIPanelScrollFrameTemplate")
-    scrollFrame:SetPoint("TOPLEFT", p6, "TOPLEFT", 20, -60)
-    scrollFrame:SetSize(620, 160)
+    scrollFrame:SetPoint("TOPLEFT", boxBg, "TOPLEFT", 6, -6)
+    scrollFrame:SetSize(618, 156)
 
     local exportBox = CreateFrame("EditBox", nil, scrollFrame)
     exportBox:SetMultiLine(true)
-    exportBox:SetSize(600, 160)
+    exportBox:SetSize(596, 156)
     exportBox:SetFontObject("GameFontHighlightSmall")
     exportBox:SetAutoFocus(false)
     scrollFrame:SetScrollChild(exportBox)
 
     local statusMsg = p6:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    statusMsg:SetPoint("TOPLEFT", scrollFrame, "BOTTOMLEFT", 0, -15)
+    statusMsg:SetPoint("TOPLEFT", boxBg, "BOTTOMLEFT", 4, -12)
     statusMsg:SetText("")
 
     -- Export Button
     local btnExport = CreateFrame("Button", nil, p6, "UIPanelButtonTemplate")
-    btnExport:SetSize(130, 26)
-    btnExport:SetPoint("TOPLEFT", statusMsg, "BOTTOMLEFT", 0, -15)
+    btnExport:SetSize(135, 26)
+    btnExport:SetPoint("TOPLEFT", statusMsg, "BOTTOMLEFT", 0, -12)
     btnExport:SetText(L["EXPORT_BTN"])
     btnExport:SetScript("OnClick", function()
         local str = R4L.ProfileManager:ExportProfileString()
@@ -1386,8 +1452,8 @@ function OUI:Initialize()
 
     -- Import Button
     local btnImport = CreateFrame("Button", nil, p6, "UIPanelButtonTemplate")
-    btnImport:SetSize(130, 26)
-    btnImport:SetPoint("LEFT", btnExport, "RIGHT", 15, 0)
+    btnImport:SetSize(135, 26)
+    btnImport:SetPoint("LEFT", btnExport, "RIGHT", 12, 0)
     btnImport:SetText(L["IMPORT_BTN"])
     btnImport:SetScript("OnClick", function()
         local text = exportBox:GetText()
@@ -1399,14 +1465,49 @@ function OUI:Initialize()
         end
     end)
 
-    -- Reset Button
+    -- Reset Button (Breiter, damit "Auf Standard zurücksetzen" sauber passt)
     local btnReset = CreateFrame("Button", nil, p6, "UIPanelButtonTemplate")
-    btnReset:SetSize(150, 26)
-    btnReset:SetPoint("LEFT", btnImport, "RIGHT", 15, 0)
+    btnReset:SetSize(185, 26)
+    btnReset:SetPoint("LEFT", btnImport, "RIGHT", 12, 0)
     btnReset:SetText(L["RESET_DEFAULTS_BTN"])
     btnReset:SetScript("OnClick", function()
         R4L.ProfileManager:ResetToDefaults()
         statusMsg:SetText(L["PROFILE_RESET_SUCCESS"])
+    end)
+
+    -- Spracheinstellungen / Language Settings
+    local langTitle = p6:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    langTitle:SetPoint("TOPLEFT", btnExport, "BOTTOMLEFT", 0, -35)
+    langTitle:SetText(L["LANGUAGE_SECTION_TITLE"] or "Spracheinstellungen / Language Settings:")
+
+    local langDesc = p6:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    langDesc:SetPoint("TOPLEFT", langTitle, "BOTTOMLEFT", 0, -6)
+    local curDev = Resto4LifeDB and Resto4LifeDB.devLocale
+    local curText = curDev and (curDev == "deDE" and "Deutsch" or "English") or ((L["DEV_LANG_AUTO"] or "Automatisch") .. " (" .. GetLocale() .. ")")
+    langDesc:SetText(string.format(L["LANGUAGE_SECTION_DESC"] or "Aktive Sprache: %s. Klicke zum Wechseln:", curText))
+
+    local btnAuto = CreateFrame("Button", nil, p6, "UIPanelButtonTemplate")
+    btnAuto:SetSize(160, 26)
+    btnAuto:SetPoint("TOPLEFT", langDesc, "BOTTOMLEFT", 0, -12)
+    btnAuto:SetText(L["LANG_AUTO_BTN"] or "Automatisch (Client)")
+    btnAuto:SetScript("OnClick", function()
+        R4L:SetDevLanguage("auto")
+    end)
+
+    local btnDE = CreateFrame("Button", nil, p6, "UIPanelButtonTemplate")
+    btnDE:SetSize(140, 26)
+    btnDE:SetPoint("LEFT", btnAuto, "RIGHT", 10, 0)
+    btnDE:SetText("Deutsch (deDE)")
+    btnDE:SetScript("OnClick", function()
+        R4L:SetDevLanguage("deDE")
+    end)
+
+    local btnEN = CreateFrame("Button", nil, p6, "UIPanelButtonTemplate")
+    btnEN:SetSize(140, 26)
+    btnEN:SetPoint("LEFT", btnDE, "RIGHT", 10, 0)
+    btnEN:SetText("English (enUS)")
+    btnEN:SetScript("OnClick", function()
+        R4L:SetDevLanguage("enUS")
     end)
 
 

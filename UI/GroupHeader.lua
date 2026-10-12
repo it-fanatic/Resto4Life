@@ -565,7 +565,8 @@ function GH:ApplySimulation()
             name = "Thorvald",
             class = "WARRIOR",
             role = "TANK",
-            hp = 92,
+            hp = 88,
+            absorbs = 12, -- Simuliert: Schild absorbiert Schaden (Cyan)
             power = 45,
             pr = 0.9, pg = 0.2, pb = 0.2,
             hots = {
@@ -582,7 +583,8 @@ function GH:ApplySimulation()
             hp = 78,
             power = 100,
             pr = 1.0, pg = 0.9, pb = 0.1,
-            hasAggro = true, -- Simuliert: DD hat Aggro gezogen -> Roter Rahmen!
+            threat = 3, -- Simuliert: DD hat Aggro gezogen -> Roter Rahmen!
+            hasAggro = true,
             hots = nil,
         },
         {
@@ -590,9 +592,11 @@ function GH:ApplySimulation()
             class = "MAGE",
             role = "DAMAGER",
             hp = 64,
+            absorbs = 15, -- Simuliert: Eisschild / Absorb (Cyan)
             power = 85,
             pr = 0.0, pg = 0.5, pb = 1.0,
-            hasAggro = true, -- Hat Aggro, ABER auch Fluch -> Fluch (Lila) hat Vorrang vor Aggro!
+            threat = 2, -- Hohe Bedrohung, ABER auch Fluch -> Fluch (Lila) hat Vorrang!
+            hasAggro = true,
             hots = {
                 { icon = 136081, cd = "6", count = "" },
                 { icon = 136085, cd = "9", count = "" }, -- Nachwachsen
@@ -603,7 +607,8 @@ function GH:ApplySimulation()
             name = "Valen",
             class = "PRIEST",
             role = "HEALER",
-            hp = 45,
+            hp = 42,
+            incomingHeal = 38, -- Simuliert: Heilzauber unterwegs (Mintgrüne Heal-Prediction bis 80%)
             power = 40,
             pr = 0.0, pg = 0.5, pb = 1.0,
             hots = {

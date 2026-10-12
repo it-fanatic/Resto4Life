@@ -1,4 +1,4 @@
-# Resto4Life - Feature-Übersicht (v0.1.6a_beta)
+# Resto4Life - Feature-Übersicht (v0.2.11-beta)
 
 Diese Dokumentation listet alle aktuellen Funktionen, Mechaniken und Einstellmöglichkeiten von **Resto4Life** auf.
 

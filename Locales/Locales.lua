@@ -23,7 +23,9 @@ R4L.L = L
 
 function R4L:ApplyLocale(targetLocale)
     local loc = targetLocale
-    if not loc or loc == "auto" then
+    if loc == "auto" then
+        loc = GetLocale()
+    elseif not loc then
         if Resto4LifeDB and Resto4LifeDB.devLocale then
             loc = Resto4LifeDB.devLocale
         else

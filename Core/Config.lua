@@ -37,6 +37,9 @@ R4L.Config.Defaults = {
         showManaBar = true,
         fadeOutOfRange = true,
         outOfRangeAlpha = 0.4,
+        showThreat = true,            -- Aggro- & Bedrohungsanzeige
+        showHealPrediction = true,    -- Eingehende Heilung visualisieren
+        showAbsorbs = true,           -- Schilde & Absorbs visualisieren
     },
     raid = {
         enabled = true,
@@ -82,6 +85,11 @@ R4L.Config.Defaults = {
         autoDetectSpell = true,
         combatRezSpell = "",  -- e.g. "Rebirth" (Druid), "Soulstone" (Warlock), "Intercession" (Paladin), "Raise Ally" (Death Knight)
         normalRezSpell = "",  -- e.g. "Revive" (Druid), "Redemption" (Paladin), "Resurrection" (Priest), "Ancestral Spirit" (Shaman)
+    },
+    smartDispel = {
+        enabled = false,      -- Deaktivierbar / optional
+        autoDetectSpell = true,
+        dispelSpell = "",     -- Eigener Zaubername oder Spell-ID (leer = automatische Klassenerkennung)
     },
     buffBar = {
         enabled = true,
@@ -150,6 +158,9 @@ R4L.Config.ClassDefaults = {
             combatRezSpell = 20484, -- Rebirth / Wiedergeburt
             normalRezSpell = 50769, -- Revive / Wiederbeleben
         },
+        smartDispel = {
+            dispelSpell = 88423,    -- Nature's Cure / Heilung der Natur
+        },
         bindings = {
             ["1"] = { action = "spell", spell = 774 },   -- Rejuvenation / Verjüngung
             ["2"] = { action = "spell", spell = 8936 },  -- Regrowth / Nachwachsen
@@ -172,6 +183,9 @@ R4L.Config.ClassDefaults = {
             combatRezSpell = "",
             normalRezSpell = 2006, -- Resurrection / Auferstehung
         },
+        smartDispel = {
+            dispelSpell = 527,     -- Purify / Läutern
+        },
         bindings = {
             ["1"] = { action = "spell", spell = 2061 },  -- Flash Heal / Blitzheilung
             ["2"] = { action = "spell", spell = 17 },    -- Power Word: Shield / Machtwort: Schild
@@ -193,6 +207,9 @@ R4L.Config.ClassDefaults = {
             combatRezSpell = 391054, -- Intercession / Fürbitte
             normalRezSpell = 7328,   -- Redemption / Erlösung
         },
+        smartDispel = {
+            dispelSpell = 4987,      -- Cleanse / Reinigung des Glaubens
+        },
         bindings = {
             ["1"] = { action = "spell", spell = 20473 }, -- Holy Shock / Heiliger Schock
             ["2"] = { action = "spell", spell = 19750 }, -- Flash of Light / Lichtblitz
@@ -213,6 +230,9 @@ R4L.Config.ClassDefaults = {
             combatRezSpell = "",
             normalRezSpell = 2008, -- Ancestral Spirit / Geistläuterung
         },
+        smartDispel = {
+            dispelSpell = 77130,   -- Purify Spirit / Geistläuterung
+        },
         bindings = {
             ["1"] = { action = "spell", spell = 77472 }, -- Healing Wave / Welle der Heilung
             ["2"] = { action = "spell", spell = 8004 },  -- Healing Surge / Heilende Woge
@@ -232,6 +252,9 @@ R4L.Config.ClassDefaults = {
             combatRezSpell = "",
             normalRezSpell = 115178, -- Resuscitate / Wiedererwecken
         },
+        smartDispel = {
+            dispelSpell = 115450,    -- Detox / Entgiftung
+        },
         bindings = {
             ["1"] = { action = "spell", spell = 115175 }, -- Soothing Mist / Beruhigender Nebel
             ["2"] = { action = "spell", spell = 124682 }, -- Enveloping Mist / Einhüllender Nebel
@@ -250,6 +273,9 @@ R4L.Config.ClassDefaults = {
         smartRez = {
             combatRezSpell = "",
             normalRezSpell = 361227, -- Return / Rückkehr
+        },
+        smartDispel = {
+            dispelSpell = 360823,    -- Naturalize / Natürliche Säuberung
         },
         bindings = {
             ["1"] = { action = "spell", spell = 366155 }, -- Reversion / Rückverwandlung
