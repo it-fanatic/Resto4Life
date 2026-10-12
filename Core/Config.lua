@@ -87,9 +87,9 @@ R4L.Config.Defaults = {
         normalRezSpell = "",  -- e.g. "Revive" (Druid), "Redemption" (Paladin), "Resurrection" (Priest), "Ancestral Spirit" (Shaman)
     },
     smartDispel = {
-        enabled = false,      -- Deaktivierbar / optional
+        enabled = true,       -- Standardmäßig aktiv (in den Optionen jederzeit deaktivierbar)
         autoDetectSpell = true,
-        dispelSpell = "",     -- Eigener Zaubername oder Spell-ID (leer = automatische Klassenerkennung)
+        dispelSpell = "",     -- Eigener Zaubername oder Spell-ID (leer = automatische Erkennung nach Klasse & Debuff-Typ)
     },
     buffBar = {
         enabled = true,
@@ -159,7 +159,7 @@ R4L.Config.ClassDefaults = {
             normalRezSpell = 50769, -- Revive / Wiederbeleben
         },
         smartDispel = {
-            dispelSpell = 88423,    -- Nature's Cure / Heilung der Natur
+            dispelSpell = "",       -- Automatische Erkennung (Vergiftung aufheben / Fluch aufheben / Heilung der Natur)
         },
         bindings = {
             ["1"] = { action = "spell", spell = 774 },   -- Rejuvenation / Verjüngung
@@ -168,7 +168,7 @@ R4L.Config.ClassDefaults = {
             ["WheelUp"] = { action = "spell", spell = 33763 }, -- Lifebloom / Blühendes Leben
             ["WheelDown"] = { action = "spell", spell = 48438 }, -- Wild Growth / Wildwuchs
             ["KEY_1"] = { action = "spell", spell = 50464 }, -- Nourish / Pflege
-            ["KEY_2"] = { action = "spell", spell = 88423 }, -- Nature's Cure / Heilung der Natur
+            ["KEY_2"] = { action = "spell", spell = 2782 },  -- Fluch aufheben / Verderbnis entfernen
         },
         trackedHots = {
             774,    -- Verjüngung (Rejuvenation)
@@ -184,7 +184,7 @@ R4L.Config.ClassDefaults = {
             normalRezSpell = 2006, -- Resurrection / Auferstehung
         },
         smartDispel = {
-            dispelSpell = 527,     -- Purify / Läutern
+            dispelSpell = "",      -- Automatische Erkennung (Magiebannung / Krankheit aufheben / Läutern)
         },
         bindings = {
             ["1"] = { action = "spell", spell = 2061 },  -- Flash Heal / Blitzheilung
@@ -193,7 +193,7 @@ R4L.Config.ClassDefaults = {
             ["WheelUp"] = { action = "spell", spell = 33076 }, -- Prayer of Mending / Gebet der Besserung
             ["WheelDown"] = { action = "spell", spell = 34861 }, -- Circle of Healing / Kreis der Heilung
             ["KEY_1"] = { action = "spell", spell = 2060 }, -- Heal / Große Heilung
-            ["KEY_2"] = { action = "spell", spell = 527 },  -- Purify / Läutern
+            ["KEY_2"] = { action = "spell", spell = 527 },  -- Purify / Magiebannung
         },
         trackedHots = {
             139,    -- Erneuerung (Renew)
@@ -208,7 +208,7 @@ R4L.Config.ClassDefaults = {
             normalRezSpell = 7328,   -- Redemption / Erlösung
         },
         smartDispel = {
-            dispelSpell = 4987,      -- Cleanse / Reinigung des Glaubens
+            dispelSpell = "",        -- Automatische Erkennung (Reinigung des Glaubens / Läutern)
         },
         bindings = {
             ["1"] = { action = "spell", spell = 20473 }, -- Holy Shock / Heiliger Schock
@@ -228,10 +228,10 @@ R4L.Config.ClassDefaults = {
     ["SHAMAN"] = {
         smartRez = {
             combatRezSpell = "",
-            normalRezSpell = 2008, -- Ancestral Spirit / Geistläuterung
+            normalRezSpell = 2008, -- Ancestral Spirit / Geist der Ahnen
         },
         smartDispel = {
-            dispelSpell = 77130,   -- Purify Spirit / Geistläuterung
+            dispelSpell = "",      -- Automatische Erkennung (Geistreinigung / Vergiftung heilen / Krankheit heilen)
         },
         bindings = {
             ["1"] = { action = "spell", spell = 77472 }, -- Healing Wave / Welle der Heilung

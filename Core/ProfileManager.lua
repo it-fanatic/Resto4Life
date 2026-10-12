@@ -164,6 +164,16 @@ function PM:Initialize()
         end
     end
 
+    -- Einmalige Migration für bestehende Profile: Smart-Dispel aktivieren & alte Retail-IDs bereinigen
+    if Resto4LifeCharDB.smartDispel and not Resto4LifeCharDB.smartDispel._migratedV3 then
+        Resto4LifeCharDB.smartDispel.enabled = true
+        local ds = Resto4LifeCharDB.smartDispel.dispelSpell
+        if ds == 88423 or ds == "88423" or ds == 77130 or ds == "77130" or ds == 527 or ds == "527" then
+            Resto4LifeCharDB.smartDispel.dispelSpell = ""
+        end
+        Resto4LifeCharDB.smartDispel._migratedV3 = true
+    end
+
     R4L.db = Resto4LifeCharDB
 end
 

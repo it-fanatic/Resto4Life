@@ -391,21 +391,21 @@ function OUI:Initialize()
     end)
 
     -- Aggro- & Bedrohungsanzeige
-    local cbThreat = CreateCheckbox(p1, L["SHOW_THREAT"] or "Aggro- & Bedrohungsanzeige hervorheben", 20, -355, function(val)
+    local cbThreat = CreateCheckbox(p1, L["SHOW_THREAT"] or "Aggro- & Bedrohungsanzeige hervorheben", 20, -352, function(val)
         cfg.display.showThreat = val
         R4L.GroupHeader:UpdateAllFrames()
         if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
     end)
 
     -- Eingehende Heilung (Heal Prediction)
-    local cbHealPredict = CreateCheckbox(p1, L["SHOW_HEAL_PREDICTION"] or "Eingehende Heilung anzeigen (Heal Prediction)", 20, -390, function(val)
+    local cbHealPredict = CreateCheckbox(p1, L["SHOW_HEAL_PREDICTION"] or "Eingehende Heilung anzeigen (Heal Prediction)", 20, -384, function(val)
         cfg.display.showHealPrediction = val
         R4L.GroupHeader:UpdateAllFrames()
         if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
     end)
 
     -- Schilde & Absorbs
-    local cbAbsorbs = CreateCheckbox(p1, L["SHOW_ABSORBS"] or "Schilde & Absorbs anzeigen", 360, -390, function(val)
+    local cbAbsorbs = CreateCheckbox(p1, L["SHOW_ABSORBS"] or "Schilde & Absorbs anzeigen", 20, -416, function(val)
         cfg.display.showAbsorbs = val
         R4L.GroupHeader:UpdateAllFrames()
         if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
@@ -439,24 +439,24 @@ function OUI:Initialize()
     local p2 = frame.tabPanels[2]
 
     local p2Desc = p2:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    p2Desc:SetPoint("TOPLEFT", p2, "TOPLEFT", 20, -12)
+    p2Desc:SetPoint("TOPLEFT", p2, "TOPLEFT", 20, -10)
     p2Desc:SetText(L["BINDINGS_HEADER"])
 
     local currentMod = "NONE" -- "NONE", "CTRL", "ALT"
 
     -- 3 Modifikator-Umschalt-Buttons
     local btnModNone = CreateFrame("Button", nil, p2, "UIPanelButtonTemplate")
-    btnModNone:SetSize(140, 24)
-    btnModNone:SetPoint("TOPLEFT", p2, "TOPLEFT", 20, -32)
+    btnModNone:SetSize(140, 22)
+    btnModNone:SetPoint("TOPLEFT", p2, "TOPLEFT", 20, -28)
     btnModNone:SetText(L["MOD_NONE"] or "Standard")
 
     local btnModCtrl = CreateFrame("Button", nil, p2, "UIPanelButtonTemplate")
-    btnModCtrl:SetSize(140, 24)
+    btnModCtrl:SetSize(140, 22)
     btnModCtrl:SetPoint("LEFT", btnModNone, "RIGHT", 10, 0)
     btnModCtrl:SetText(L["MOD_CTRL"] or "STRG +")
 
     local btnModAlt = CreateFrame("Button", nil, p2, "UIPanelButtonTemplate")
-    btnModAlt:SetSize(140, 24)
+    btnModAlt:SetSize(140, 22)
     btnModAlt:SetPoint("LEFT", btnModCtrl, "RIGHT", 10, 0)
     btnModAlt:SetText(L["MOD_ALT"] or "ALT +")
 
@@ -492,31 +492,31 @@ function OUI:Initialize()
     end
 
     -- Linke Spalte (Mausaktionen): Linksklick, Rechtsklick, Mittlere Maustaste, Maus 4, Maus 5, Mausrad Hoch, Mausrad Runter
-    local ebLeft, titleLeft = CreateEditBox(p2, L["LEFT_CLICK"], 20, -64, 250, function(val)
+    local ebLeft, titleLeft = CreateEditBox(p2, L["LEFT_CLICK"], 20, -58, 250, function(val)
         SaveSpell("1", val)
     end)
 
-    local ebRight, titleRight = CreateEditBox(p2, L["RIGHT_CLICK"], 20, -104, 250, function(val)
+    local ebRight, titleRight = CreateEditBox(p2, L["RIGHT_CLICK"], 20, -95, 250, function(val)
         SaveSpell("2", val)
     end)
 
-    local ebMid, titleMid = CreateEditBox(p2, L["MID_CLICK"], 20, -144, 250, function(val)
+    local ebMid, titleMid = CreateEditBox(p2, L["MID_CLICK"], 20, -132, 250, function(val)
         SaveSpell("3", val)
     end)
 
-    local ebMouse4, titleMouse4 = CreateEditBox(p2, L["MOUSE_BTN4"] or "Maustaste 4 (Daumen):", 20, -184, 250, function(val)
+    local ebMouse4, titleMouse4 = CreateEditBox(p2, L["MOUSE_BTN4"] or "Maustaste 4 (Daumen):", 20, -169, 250, function(val)
         SaveSpell("4", val)
     end)
 
-    local ebMouse5, titleMouse5 = CreateEditBox(p2, L["MOUSE_BTN5"] or "Maustaste 5 (Daumen):", 20, -224, 250, function(val)
+    local ebMouse5, titleMouse5 = CreateEditBox(p2, L["MOUSE_BTN5"] or "Maustaste 5 (Daumen):", 20, -206, 250, function(val)
         SaveSpell("5", val)
     end)
 
-    local ebWheelUp, titleWheelUp = CreateEditBox(p2, L["WHEEL_UP"], 20, -264, 250, function(val)
+    local ebWheelUp, titleWheelUp = CreateEditBox(p2, L["WHEEL_UP"], 20, -243, 250, function(val)
         SaveSpell("WheelUp", val)
     end)
 
-    local ebWheelDown, titleWheelDown = CreateEditBox(p2, L["WHEEL_DOWN"], 20, -304, 250, function(val)
+    local ebWheelDown, titleWheelDown = CreateEditBox(p2, L["WHEEL_DOWN"], 20, -280, 250, function(val)
         SaveSpell("WheelDown", val)
     end)
 
@@ -524,7 +524,7 @@ function OUI:Initialize()
     local ebKeys = {}
     local titleKeys = {}
     for i = 1, 6 do
-        local posY = -64 - (i - 1) * 40
+        local posY = -58 - (i - 1) * 37
         local eb, title = CreateEditBox(p2, string.format(L["KEY_N_FMT"], i), 350, posY, 250, function(val)
             SaveSpell("KEY_" .. i, val)
         end)
@@ -534,7 +534,7 @@ function OUI:Initialize()
 
     -- Hinweistext unten rechts
     local hintText = p2:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    hintText:SetPoint("TOPLEFT", p2, "TOPLEFT", 350, -308)
+    hintText:SetPoint("TOPLEFT", p2, "TOPLEFT", 350, -282)
     hintText:SetWidth(280)
     hintText:SetJustifyH("LEFT")
     hintText:SetText("|cff00ccffTipp:|r Wähle oben |cff00ff00[Standard]|r, |cff00ff00[STRG +]|r oder |cff00ff00[ALT +]|r, um Tastenkombinationen zu belegen.")
@@ -602,37 +602,37 @@ function OUI:Initialize()
 
     -- Smart Battle Rez & Smart-Dispel Sektion (unten mit farbiger Überschrift)
     local rezHeader = p2:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    rezHeader:SetPoint("TOPLEFT", p2, "TOPLEFT", 20, -350)
+    rezHeader:SetPoint("TOPLEFT", p2, "TOPLEFT", 20, -322)
     rezHeader:SetText(L["SMART_REZ_HEADER"])
 
-    local cbSmartRez = CreateCheckbox(p2, L["SMART_REZ_ENABLE"], 20, -370, function(val)
+    local cbSmartRez = CreateCheckbox(p2, L["SMART_REZ_ENABLE"], 20, -342, function(val)
         cfg.smartRez.enabled = val
         R4L.ClickCast:ApplyAllBindings()
     end)
 
-    local cbSmartDispel = CreateCheckbox(p2, L["SMART_DISPEL_ENABLE"], 350, -370, function(val)
+    local cbSmartDispel = CreateCheckbox(p2, L["SMART_DISPEL_ENABLE"], 350, -342, function(val)
         if not cfg.smartDispel then cfg.smartDispel = {} end
         cfg.smartDispel.enabled = val
         R4L.ClickCast:ApplyAllBindings()
     end, L["SMART_DISPEL_DESC"])
 
-    local ebBattleRez = CreateEditBox(p2, L["COMBAT_REZ_SPELL"], 20, -408, 250, function(val)
+    local ebBattleRez = CreateEditBox(p2, L["COMBAT_REZ_SPELL"], 20, -384, 250, function(val)
         cfg.smartRez.combatRezSpell = val
         R4L.ClickCast:ApplyAllBindings()
     end)
 
-    local ebNormalRez = CreateEditBox(p2, L["NORMAL_REZ_SPELL"], 350, -408, 250, function(val)
+    local ebNormalRez = CreateEditBox(p2, L["NORMAL_REZ_SPELL"], 350, -384, 250, function(val)
         cfg.smartRez.normalRezSpell = val
         R4L.ClickCast:ApplyAllBindings()
     end)
 
-    local cbDisableSelfCast = CreateCheckbox(p2, L["DISABLE_SELF_CAST_KEY"], 20, -450, function(val)
+    local cbDisableSelfCast = CreateCheckbox(p2, L["DISABLE_SELF_CAST_KEY"], 20, -432, function(val)
         cfg.general.disableSelfCastKey = val
         R4L.ClickCast:ApplySelfCastPreference()
         R4L:Print(val and L["CHAT_SELF_CAST_KEY_DISABLED"] or L["CHAT_SELF_CAST_KEY_ENABLED"])
     end, L["DISABLE_SELF_CAST_KEY_DESC"])
 
-    local ebSmartDispel = CreateEditBox(p2, L["SMART_DISPEL_SPELL"], 350, -446, 250, function(val)
+    local ebSmartDispel = CreateEditBox(p2, L["SMART_DISPEL_SPELL"], 350, -426, 250, function(val)
         if not cfg.smartDispel then cfg.smartDispel = {} end
         cfg.smartDispel.dispelSpell = val
         R4L.ClickCast:ApplyAllBindings()

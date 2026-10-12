@@ -32,7 +32,18 @@ local RANGED_CLASSES = {
 function Sorting:GetUnitRole(unit)
     if not UnitExists(unit) then return "UNKNOWN", 99 end
 
-    local role = UnitGroupRolesAssigned and UnitGroupRolesAssigned(unit)
+    local role = nil
+    if UnitGroupRolesAssigned then
+        local okR, rVal = pcall(function()
+            local r = UnitGroupRolesAssigned(unit)
+            if r == "TANK" then return "TANK"
+            elseif r == "HEALER" then return "HEALER"
+            elseif r == "DAMAGER" then return "DAMAGER"
+            end
+            return nil
+        end)
+        if okR and rVal then role = rVal end
+    end
     if role == "TANK" then
         return "TANK", 1
     elseif role == "HEALER" then

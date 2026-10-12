@@ -7,7 +7,7 @@ local addonName, R4L = ...
 _G["Resto4Life"] = R4L
 
 R4L.addonName = addonName
-R4L.version = "0.2.11-beta"
+R4L.version = "0.2.12-beta"
 R4L.inCombat = false
 R4L.combatQueue = {}
 
@@ -158,38 +158,53 @@ end
 
 function R4L:IsUnitInRange(unit)
     if not unit or not UnitExists(unit) then return false end
-    if UnitIsUnit(unit, "player") then return true end
+    if unit == "player" then return true end
+    local okSelf, isSelf = pcall(function() return UnitIsUnit(unit, "player") == true end)
+    if okSelf and isSelf then return true end
 
     -- 1. Offline oder nicht in 3D-Sichtweite (> 100 Meter)
     if UnitIsConnected then
-        local okConn, isConn = pcall(UnitIsConnected, unit)
-        if okConn and isConn == false then return false end
+        local okConn, isOffline = pcall(function() return UnitIsConnected(unit) == false end)
+        if okConn and isOffline then return false end
     end
     if UnitIsVisible then
-        local okVis, isVis = pcall(UnitIsVisible, unit)
-        if okVis and isVis == false then return false end
+        local okVis, isInvisible = pcall(function() return UnitIsVisible(unit) == false end)
+        if okVis and isInvisible then return false end
     end
 
-    -- 2. Primäre 40-Meter Prüfung über Zauber (100% verlässlich auf jedem Client)
+    -- 2. Primäre 40-Meter Prüfung über Zauber (gesichert gegen Secret Values in WoW 12.0)
     local spell = self:GetRangeCheckSpell()
     if spell then
         if C_Spell and C_Spell.IsSpellInRange then
-            local okSpell, inSpell = pcall(C_Spell.IsSpellInRange, spell, unit)
-            if okSpell and inSpell ~= nil then
-                return (inSpell == true or inSpell == 1)
+            local okSpell, resSpell = pcall(function()
+                local inSpell = C_Spell.IsSpellInRange(spell, unit)
+                if inSpell == nil then return nil end
+                if inSpell == true or inSpell == 1 then return true end
+                if inSpell == false or inSpell == 0 then return false end
+                return nil
+            end)
+            if okSpell and resSpell ~= nil then
+                return resSpell
             end
         elseif IsSpellInRange then
-            local okSpell, inSpell = pcall(IsSpellInRange, spell, unit)
-            if okSpell and inSpell ~= nil then
-                return (inSpell == 1 or inSpell == true)
+            local okSpell, resSpell = pcall(function()
+                local inSpell = IsSpellInRange(spell, unit)
+                if inSpell == nil then return nil end
+                if inSpell == 1 or inSpell == true then return true end
+                if inSpell == 0 or inSpell == false then return false end
+                return nil
+            end)
+            if okSpell and resSpell ~= nil then
+                return resSpell
             end
         end
     end
 
-    -- 3. UnitInRange Fallback
+    -- 3. UnitInRange Fallback (gesichert gegen Secret Values in WoW 12.0)
     if UnitInRange then
-        local okRange, inRange, checked = pcall(UnitInRange, unit)
-        if okRange and inRange ~= nil then
+        local okRange, resRange = pcall(function()
+            local inRange, checked = UnitInRange(unit)
+            if inRange == nil then return nil end
             if checked == true or checked == 1 then
                 return (inRange == true or inRange == 1)
             elseif inRange == false or inRange == 0 then
@@ -197,13 +212,19 @@ function R4L:IsUnitInRange(unit)
             elseif inRange == true or inRange == 1 then
                 return true
             end
+            return nil
+        end)
+        if okRange and resRange ~= nil then
+            return resRange
         end
     end
 
     -- 4. CheckInteractDistance(unit, 4) = ca. 28 Meter
     if CheckInteractDistance then
-        local okDist, inDist = pcall(CheckInteractDistance, unit, 4)
-        if okDist and inDist == true then
+        local okDist, inDist = pcall(function()
+            return CheckInteractDistance(unit, 4) == true
+        end)
+        if okDist and inDist then
             return true
         end
     end

@@ -180,23 +180,58 @@ local CLASS_BUFFS = {
 
 -- Helper zur Erkennung von geheimen Strings / Werten in WoW Forever & 12.0
 local function IsSecret(val)
-    if val == nil then return false end
-    if R4L.IsSecret then return R4L.IsSecret(val) end
     if issecretvalue then
         local ok, res = pcall(issecretvalue, val)
-        if ok and res == true then return true end
+        if ok and res then return true end
+    end
+    local okNil, isN = pcall(function() return val == nil end)
+    if okNil and isN then return false end
+    if R4L.IsSecret then
+        local okR, resR = pcall(R4L.IsSecret, val)
+        if okR and resR then return true end
     end
     if issecrettable and type(val) == "table" then
         local ok, res = pcall(issecrettable, val)
-        if ok and res == true then return true end
+        if ok and res then return true end
     end
     if type(val) == "userdata" then return true end
+    local okTest = pcall(function()
+        if val == true or val == false then return true end
+        local _ = tostring(val)
+        return true
+    end)
+    if not okTest then return true end
     return false
+end
+
+local function SafeUnitIsPlayer(unit)
+    if unit == "player" then return true end
+    if UnitIsUnit then
+        local ok, res = pcall(function() return UnitIsUnit(unit, "player") == true end)
+        if ok and res then return true end
+    end
+    return false
+end
+
+local function SafeUnitIsDeadOrGhost(unit)
+    if UnitIsDeadOrGhost then
+        local ok, res = pcall(function() return UnitIsDeadOrGhost(unit) == true end)
+        if ok and res then return true end
+    end
+    return false
+end
+
+local function SafeUnitIsConnected(unit)
+    if UnitIsConnected then
+        local ok, res = pcall(function() return UnitIsConnected(unit) == false end)
+        if ok and res then return false end
+    end
+    return true
 end
 
 -- Bereinigt Zaubernamen von Rang-Zusätzen
 local function CleanSpellName(name)
-    if not name or IsSecret(name) then return "" end
+    if IsSecret(name) or type(name) ~= "string" then return "" end
     local base = name:match("^(.-)%s*%(")
     return base or name
 end
@@ -305,22 +340,22 @@ local function UnitMatchesFilter(unit, targetFilter)
     if targetFilter == "ALL" then return true end
 
     if targetFilter == "SELF" then
-        return UnitIsUnit(unit, "player")
+        return SafeUnitIsPlayer(unit)
     end
 
     if targetFilter == "TANK" then
         if UnitGroupRolesAssigned then
-            local ok, role = pcall(UnitGroupRolesAssigned, unit)
+            local ok, role = pcall(function() return UnitGroupRolesAssigned(unit) end)
             if ok and role == "TANK" then return true end
         end
         if GetPartyAssignment then
-            local ok, isTank = pcall(function() return GetPartyAssignment("MAINTANK", unit) or GetPartyAssignment("MAINASSIST", unit) end)
+            local ok, isTank = pcall(function() return (GetPartyAssignment("MAINTANK", unit) == true) or (GetPartyAssignment("MAINASSIST", unit) == true) end)
             if ok and isTank then return true end
         end
         -- In einer Gruppe oder Raid: Suche nach Krieger, Bär, Paladin
         if IsInGroup() or IsInRaid() then
             local _, uClass = UnitClass(unit)
-            if (uClass == "WARRIOR" or uClass == "PALADIN" or uClass == "DEATHKNIGHT") and not UnitIsUnit(unit, "player") then
+            if (uClass == "WARRIOR" or uClass == "PALADIN" or uClass == "DEATHKNIGHT") and not SafeUnitIsPlayer(unit) then
                 return true
             end
             return false
@@ -331,8 +366,8 @@ local function UnitMatchesFilter(unit, targetFilter)
     end
 
     if targetFilter == "MANA" then
-        local pType = UnitPowerType(unit)
-        return (pType == 0)
+        local okP, isMana = pcall(function() return UnitPowerType(unit) == 0 end)
+        return (not okP) or (isMana == true)
     end
 
     if targetFilter == "MELEE" then
@@ -341,10 +376,14 @@ local function UnitMatchesFilter(unit, targetFilter)
             return true
         end
         if UnitGroupRolesAssigned then
-            local role = UnitGroupRolesAssigned(unit)
-            if role == "DAMAGER" and (uClass == "PALADIN" or uClass == "SHAMAN" or uClass == "DRUID") then
-                return (UnitPowerType(unit) ~= 0)
-            end
+            local okR, isMelee = pcall(function()
+                local role = UnitGroupRolesAssigned(unit)
+                if role == "DAMAGER" and (uClass == "PALADIN" or uClass == "SHAMAN" or uClass == "DRUID") then
+                    return (UnitPowerType(unit) ~= 0)
+                end
+                return false
+            end)
+            if okR and isMelee then return true end
         end
         return false
     end
@@ -414,15 +453,12 @@ BB:InitSpellTextures()
 BB.activeBuffCache = {}
 
 local function GetUnitKey(unit)
-    if not unit then return nil end
-    local guid = nil
-    if UnitGUID then
-        local okG, gVal = pcall(UnitGUID, unit)
-        if okG and gVal and not IsSecret(gVal) then
-            guid = gVal
-        end
+    if not unit or type(unit) ~= "string" then return nil end
+    if unit == "player" or unit:match("^party%d+$") or unit:match("^raid%d+$") then
+        return unit
     end
-    return guid or unit
+    if SafeUnitIsPlayer(unit) then return "player" end
+    return unit
 end
 
 local function ClearUnitCache(unit)
@@ -469,9 +505,11 @@ local function SetBuffCached(unit, spellName, duration, expirationTime)
     if not BB.activeBuffCache[key] then
         BB.activeBuffCache[key] = {}
     end
-    local exp = expirationTime
-    if not exp or exp <= 0 then
-        local dur = (duration and duration > 0) and duration or 1800
+    local exp = nil
+    if not IsSecret(expirationTime) and type(expirationTime) == "number" and expirationTime > 0 then
+        exp = expirationTime
+    else
+        local dur = (not IsSecret(duration) and type(duration) == "number" and duration > 0) and duration or 1800
         exp = GetTime() + dur
     end
     BB.activeBuffCache[key][spellName] = exp
@@ -479,7 +517,7 @@ end
 
 local function IsBuffCached(unit, spellDef)
     if not unit or not spellDef then return false end
-    if UnitIsDeadOrGhost and UnitIsDeadOrGhost(unit) then
+    if SafeUnitIsDeadOrGhost(unit) then
         ClearUnitCache(unit)
         return false
     end
@@ -502,7 +540,7 @@ local function AuraMatchesSpellDef(auraName, auraSpellId, auraIcon, auraDuration
     if not spellDef then return false end
 
     -- 1. Spell-ID Treffer (geschützt gegen Secret Values)
-    if auraSpellId and type(auraSpellId) == "number" and not IsSecret(auraSpellId) then
+    if not IsSecret(auraSpellId) and type(auraSpellId) == "number" then
         if spellDef.id and auraSpellId == spellDef.id then
             return true
         end
@@ -514,7 +552,7 @@ local function AuraMatchesSpellDef(auraName, auraSpellId, auraIcon, auraDuration
         end
 
         local okName, sName = pcall(R4L.GetSpellName, R4L, auraSpellId)
-        if okName and sName and not IsSecret(sName) then
+        if okName and not IsSecret(sName) and type(sName) == "string" then
             local cleanS = CleanSpellName(sName)
             for _, alt in ipairs(spellDef.altNames or {}) do
                 if cleanS == alt or sName == alt then
@@ -525,7 +563,7 @@ local function AuraMatchesSpellDef(auraName, auraSpellId, auraIcon, auraDuration
     end
 
     -- 2. Namens-Treffer (nur wenn unmaskierter Text & mit pcall gesichert)
-    if auraName and not IsSecret(auraName) and type(auraName) == "string" then
+    if not IsSecret(auraName) and type(auraName) == "string" then
         local clean = CleanSpellName(auraName)
         if clean and clean ~= "" then
             for _, alt in ipairs(spellDef.altNames or {}) do
@@ -538,9 +576,9 @@ local function AuraMatchesSpellDef(auraName, auraSpellId, auraIcon, auraDuration
     end
 
     -- 3. Icon / Textur-Treffer (100% kampfsicher mit pcall)
-    if auraIcon and not IsSecret(auraIcon) then
+    if not IsSecret(auraIcon) and auraIcon ~= nil then
         -- Falls der Zauber eine Mindestdauer vorschreibt (z. B. Mal der Wildnis vs Verjüngung)
-        if spellDef.minDuration and auraDuration and type(auraDuration) == "number" and not IsSecret(auraDuration) then
+        if spellDef.minDuration and not IsSecret(auraDuration) and type(auraDuration) == "number" then
             if auraDuration > 0 and auraDuration < spellDef.minDuration then
                 return false
             end
@@ -602,7 +640,7 @@ end
 -- Prüft, ob eine Einheit den Buff bereits aktiv hat (mehrstufige Erkennung + intelligenter Cache)
 local function UnitHasBuff(unit, spellDef)
     if not unit or not UnitExists(unit) then return false end
-    if UnitIsDeadOrGhost and UnitIsDeadOrGhost(unit) then
+    if SafeUnitIsDeadOrGhost(unit) then
         ClearUnitCache(unit)
         return false
     end
@@ -619,11 +657,13 @@ local function UnitHasBuff(unit, spellDef)
             scanSucceeded = true
             for _, data in ipairs(auras) do
                 if type(data) == "table" then
-                    local aName = data.name
-                    local aId = data.spellId
-                    local aIcon = data.iconFileID or data.icon
-                    local aDur = data.duration
-                    local okMatch, isMatch = pcall(AuraMatchesSpellDef, aName, aId, aIcon, aDur, spellDef)
+                    local okMatch, isMatch = pcall(function()
+                        local aName = not IsSecret(data.name) and data.name or nil
+                        local aId = not IsSecret(data.spellId) and data.spellId or nil
+                        local aIcon = (not IsSecret(data.iconFileID) and data.iconFileID) or (not IsSecret(data.icon) and data.icon) or nil
+                        local aDur = not IsSecret(data.duration) and data.duration or nil
+                        return AuraMatchesSpellDef(aName, aId, aIcon, aDur, spellDef)
+                    end)
                     if okMatch and isMatch then
                         SetBuffCached(unit, spellDef.name, data.duration, data.expirationTime)
                         return true
@@ -686,11 +726,13 @@ local function UnitHasBuff(unit, spellDef)
                 break
             end
             if data and type(data) == "table" then
-                local aName = data.name
-                local aId = data.spellId
-                local aIcon = data.iconFileID or data.icon
-                local aDur = data.duration
-                local okMatch, isMatch = pcall(AuraMatchesSpellDef, aName, aId, aIcon, aDur, spellDef)
+                local okMatch, isMatch = pcall(function()
+                    local aName = not IsSecret(data.name) and data.name or nil
+                    local aId = not IsSecret(data.spellId) and data.spellId or nil
+                    local aIcon = (not IsSecret(data.iconFileID) and data.iconFileID) or (not IsSecret(data.icon) and data.icon) or nil
+                    local aDur = not IsSecret(data.duration) and data.duration or nil
+                    return AuraMatchesSpellDef(aName, aId, aIcon, aDur, spellDef)
+                end)
                 if okMatch and isMatch then
                     SetBuffCached(unit, spellDef.name, data.duration, data.expirationTime)
                     return true
@@ -708,23 +750,23 @@ local function UnitHasBuff(unit, spellDef)
         local okForEach = pcall(AuraUtil.ForEachAura, unit, "HELPFUL", 40, function(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11)
             local aName, aId, aIcon, aDur, aExp = nil, nil, nil, nil, nil
             if type(arg1) == "table" then
-                aName = arg1.name
-                aId = arg1.spellId
-                aIcon = arg1.iconFileID or arg1.icon
-                aDur = arg1.duration
-                aExp = arg1.expirationTime
+                aName = not IsSecret(arg1.name) and arg1.name or nil
+                aId = not IsSecret(arg1.spellId) and arg1.spellId or nil
+                aIcon = (not IsSecret(arg1.iconFileID) and arg1.iconFileID) or (not IsSecret(arg1.icon) and arg1.icon) or nil
+                aDur = not IsSecret(arg1.duration) and arg1.duration or nil
+                aExp = not IsSecret(arg1.expirationTime) and arg1.expirationTime or nil
             else
-                aName = arg1
-                if type(arg2) == "string" and not (arg2:find("^Interface") or arg2:find("^\\") or arg2:find("^/")) then
-                    aIcon = arg3
-                    aDur = (type(arg6) == "number") and arg6 or nil
-                    aExp = (type(arg7) == "number") and arg7 or nil
-                    aId = (type(arg11) == "number") and arg11 or nil
+                aName = not IsSecret(arg1) and arg1 or nil
+                if not IsSecret(arg2) and type(arg2) == "string" and not (arg2:find("^Interface") or arg2:find("^\\") or arg2:find("^/")) then
+                    aIcon = not IsSecret(arg3) and arg3 or nil
+                    aDur = (not IsSecret(arg6) and type(arg6) == "number") and arg6 or nil
+                    aExp = (not IsSecret(arg7) and type(arg7) == "number") and arg7 or nil
+                    aId = (not IsSecret(arg11) and type(arg11) == "number") and arg11 or nil
                 else
-                    aIcon = arg2
-                    aDur = (type(arg5) == "number") and arg5 or nil
-                    aExp = (type(arg6) == "number") and arg6 or nil
-                    aId = (type(arg10) == "number") and arg10 or nil
+                    aIcon = not IsSecret(arg2) and arg2 or nil
+                    aDur = (not IsSecret(arg5) and type(arg5) == "number") and arg5 or nil
+                    aExp = (not IsSecret(arg6) and type(arg6) == "number") and arg6 or nil
+                    aId = (not IsSecret(arg10) and type(arg10) == "number") and arg10 or nil
                 end
             end
             local okMatch, isMatch = pcall(AuraMatchesSpellDef, aName, aId, aIcon, aDur, spellDef)
@@ -750,22 +792,22 @@ local function UnitHasBuff(unit, spellDef)
                 uScanOk = false
                 break
             end
-            if a1 ~= nil then
+            if not IsSecret(a1) and a1 ~= nil then
                 local aName = a1
                 local aIcon = nil
                 local aId = nil
                 local aDur = nil
                 local aExp = nil
-                if type(a2) == "string" and not (a2:find("^Interface") or a2:find("^\\") or a2:find("^/")) then
-                    aIcon = a3
-                    aDur = (type(a6) == "number") and a6 or nil
-                    aExp = (type(a7) == "number") and a7 or nil
-                    aId = (type(a11) == "number") and a11 or nil
+                if not IsSecret(a2) and type(a2) == "string" and not (a2:find("^Interface") or a2:find("^\\") or a2:find("^/")) then
+                    aIcon = not IsSecret(a3) and a3 or nil
+                    aDur = (not IsSecret(a6) and type(a6) == "number") and a6 or nil
+                    aExp = (not IsSecret(a7) and type(a7) == "number") and a7 or nil
+                    aId = (not IsSecret(a11) and type(a11) == "number") and a11 or nil
                 else
-                    aIcon = a2
-                    aDur = (type(a5) == "number") and a5 or nil
-                    aExp = (type(a6) == "number") and a6 or nil
-                    aId = (type(a10) == "number") and a10 or nil
+                    aIcon = not IsSecret(a2) and a2 or nil
+                    aDur = (not IsSecret(a5) and type(a5) == "number") and a5 or nil
+                    aExp = (not IsSecret(a6) and type(a6) == "number") and a6 or nil
+                    aId = (not IsSecret(a10) and type(a10) == "number") and a10 or nil
                 end
                 local okMatch, isMatch = pcall(AuraMatchesSpellDef, aName, aId, aIcon, aDur, spellDef)
                 if okMatch and isMatch then
@@ -788,22 +830,22 @@ local function UnitHasBuff(unit, spellDef)
                 bScanOk = false
                 break
             end
-            if a1 ~= nil then
+            if not IsSecret(a1) and a1 ~= nil then
                 local aName = a1
                 local aIcon = nil
                 local aId = nil
                 local aDur = nil
                 local aExp = nil
-                if type(a2) == "string" and not (a2:find("^Interface") or a2:find("^\\") or a2:find("^/")) then
-                    aIcon = a3
-                    aDur = (type(a6) == "number") and a6 or nil
-                    aExp = (type(a7) == "number") and a7 or nil
-                    aId = (type(a11) == "number") and a11 or nil
+                if not IsSecret(a2) and type(a2) == "string" and not (a2:find("^Interface") or a2:find("^\\") or a2:find("^/")) then
+                    aIcon = not IsSecret(a3) and a3 or nil
+                    aDur = (not IsSecret(a6) and type(a6) == "number") and a6 or nil
+                    aExp = (not IsSecret(a7) and type(a7) == "number") and a7 or nil
+                    aId = (not IsSecret(a11) and type(a11) == "number") and a11 or nil
                 else
-                    aIcon = a2
-                    aDur = (type(a5) == "number") and a5 or nil
-                    aExp = (type(a6) == "number") and a6 or nil
-                    aId = (type(a10) == "number") and a10 or nil
+                    aIcon = not IsSecret(a2) and a2 or nil
+                    aDur = (not IsSecret(a5) and type(a5) == "number") and a5 or nil
+                    aExp = (not IsSecret(a6) and type(a6) == "number") and a6 or nil
+                    aId = (not IsSecret(a10) and type(a10) == "number") and a10 or nil
                 end
                 local okMatch, isMatch = pcall(AuraMatchesSpellDef, aName, aId, aIcon, aDur, spellDef)
                 if okMatch and isMatch then
@@ -844,7 +886,7 @@ local function GetRosterUnits()
     if IsInRaid() then
         for i = 1, 40 do
             local u = "raid" .. i
-            if UnitExists(u) and not UnitIsUnit(u, "player") then
+            if UnitExists(u) and not SafeUnitIsPlayer(u) then
                 table.insert(units, u)
             end
         end
@@ -864,13 +906,14 @@ end
 -- 1. Tank -> 2. Heiler (Spieler selbst) -> 3. Nahkämpfer -> 4. Fernkämpfer/Rest
 local function GetUnitPriority(unit)
     if UnitGroupRolesAssigned then
-        local role = UnitGroupRolesAssigned(unit)
-        if role == "TANK" then return 1 end
+        local okR, role = pcall(function() return UnitGroupRolesAssigned(unit) end)
+        if okR and role == "TANK" then return 1 end
     end
-    if GetPartyAssignment and (GetPartyAssignment("MAINTANK", unit) or GetPartyAssignment("MAINASSIST", unit)) then
-        return 1
+    if GetPartyAssignment then
+        local okMT, isMT = pcall(function() return (GetPartyAssignment("MAINTANK", unit) == true) or (GetPartyAssignment("MAINASSIST", unit) == true) end)
+        if okMT and isMT then return 1 end
     end
-    if UnitIsUnit(unit, "player") then return 2 end
+    if SafeUnitIsPlayer(unit) then return 2 end
 
     local _, uClass = UnitClass(unit)
     if uClass == "WARRIOR" or uClass == "ROGUE" or uClass == "DEATHKNIGHT" then
@@ -975,7 +1018,7 @@ function BB:Update()
                 local missingUnits = {}
 
                 for _, u in ipairs(units) do
-                    if UnitExists(u) and UnitIsConnected(u) and not UnitIsDeadOrGhost(u) then
+                    if UnitExists(u) and SafeUnitIsConnected(u) and not SafeUnitIsDeadOrGhost(u) then
                         if UnitMatchesFilter(u, targetFilter) then
                             local inRange = R4L:IsUnitInRange(u)
                             if inRange then
@@ -1484,7 +1527,7 @@ R4L:RegisterEvent("PLAYER_REGEN_DISABLED", function()
 end)
 
 R4L:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED", function(unit, castGUID, spellID)
-    if unit == "player" and spellID then
+    if unit == "player" and not IsSecret(spellID) and type(spellID) == "number" then
         local _, pClass = UnitClass("player")
         local classList = CLASS_BUFFS[pClass] or {}
         for _, def in ipairs(classList) do
