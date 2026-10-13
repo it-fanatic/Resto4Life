@@ -659,49 +659,43 @@ function OUI:Initialize()
         if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
     end)
 
-    local cbOnlyMyHots = CreateCheckbox(p3, L["ONLY_MY_HOTS_CB"], 40, -50, function(val)
-        cfg.auras.onlyMyHots = val
-        R4L.GroupHeader:UpdateAllFrames()
-        if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
-    end)
-
-    local cbDebuffs = CreateCheckbox(p3, L["COLOR_DEBUFFS_CB"], 20, -90, function(val)
+    local cbDebuffs = CreateCheckbox(p3, L["COLOR_DEBUFFS_CB"], 20, -60, function(val)
         cfg.auras.showDebuffs = val
         R4L.GroupHeader:UpdateAllFrames()
         if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
     end)
 
-    local cbDispOnly = CreateCheckbox(p3, L["DISP_ONLY_CB"], 40, -120, function(val)
+    local cbDispOnly = CreateCheckbox(p3, L["DISP_ONLY_CB"], 40, -90, function(val)
         cfg.auras.highlightDispellableOnly = val
         R4L.GroupHeader:UpdateAllFrames()
         if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
     end)
 
-    local cbIncludeGroup = CreateCheckbox(p3, L["INCLUDE_GROUP_DISPELS_CB"], 60, -150, function(val)
+    local cbIncludeGroup = CreateCheckbox(p3, L["INCLUDE_GROUP_DISPELS_CB"], 60, -120, function(val)
         cfg.auras.includeGroupDispels = val
         R4L.GroupHeader:UpdateAllFrames()
         if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
     end, L["INCLUDE_GROUP_DISPELS_DESC"])
 
-    local cbCurse = CreateCheckbox(p3, L["HIGHLIGHT_CURSE"], 40, -180, function(val)
+    local cbCurse = CreateCheckbox(p3, L["HIGHLIGHT_CURSE"], 40, -150, function(val)
         cfg.auras.showCurse = val
         R4L.GroupHeader:UpdateAllFrames()
         if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
     end)
 
-    local cbPoison = CreateCheckbox(p3, L["HIGHLIGHT_POISON"], 40, -210, function(val)
+    local cbPoison = CreateCheckbox(p3, L["HIGHLIGHT_POISON"], 40, -180, function(val)
         cfg.auras.showPoison = val
         R4L.GroupHeader:UpdateAllFrames()
         if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
     end)
 
-    local cbDisease = CreateCheckbox(p3, L["HIGHLIGHT_DISEASE"], 40, -240, function(val)
+    local cbDisease = CreateCheckbox(p3, L["HIGHLIGHT_DISEASE"], 40, -210, function(val)
         cfg.auras.showDisease = val
         R4L.GroupHeader:UpdateAllFrames()
         if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
     end)
 
-    local cbMagic = CreateCheckbox(p3, L["HIGHLIGHT_MAGIC"], 40, -270, function(val)
+    local cbMagic = CreateCheckbox(p3, L["HIGHLIGHT_MAGIC"], 40, -240, function(val)
         cfg.auras.showMagic = val
         R4L.GroupHeader:UpdateAllFrames()
         if R4L.RaidHeader then R4L.RaidHeader:UpdateAllFrames() end
@@ -709,7 +703,7 @@ function OUI:Initialize()
 
     -- Test-Modus für Debuffs (Klick aktiviert, erneuter Klick deaktiviert)
     local testHeader = p3:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    testHeader:SetPoint("TOPLEFT", p3, "TOPLEFT", 20, -310)
+    testHeader:SetPoint("TOPLEFT", p3, "TOPLEFT", 20, -285)
     testHeader:SetText(L["DEBUFF_TEST_HEADER"])
 
     local btnTestPoison = CreateFrame("Button", nil, p3, "UIPanelButtonTemplate")
@@ -812,7 +806,6 @@ function OUI:Initialize()
 
     p3:SetScript("OnShow", function()
         cbHots:SetChecked(cfg.auras.showHots)
-        cbOnlyMyHots:SetChecked(cfg.auras.onlyMyHots ~= false)
         cbDebuffs:SetChecked(cfg.auras.showDebuffs)
         cbDispOnly:SetChecked(cfg.auras.highlightDispellableOnly)
         cbIncludeGroup:SetChecked(cfg.auras.includeGroupDispels == true)

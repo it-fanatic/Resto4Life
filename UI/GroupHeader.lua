@@ -572,9 +572,6 @@ function GH:ApplySimulation()
             hots = {
                 { icon = 136081, cd = "11", count = "" }, -- Eigene Verjüngung (rechts)
             },
-            otherHots = {
-                { icon = 135944, cd = "8", count = "" }, -- Fremde Erneuerung (links)
-            },
         },
         {
             name = "Shadowfang",
@@ -621,13 +618,11 @@ function GH:ApplySimulation()
             class = "DRUID",
             role = "HEALER",
             hp = 100,
+            absorbs = 20, -- Simuliert: Schild bei 100% Leben (Overshield-Glow rechts)
             power = 72,
             pr = 0.0, pg = 0.5, pb = 1.0,
             hots = {
                 { icon = 136081, cd = "14", count = "" },
-            },
-            otherHots = {
-                { icon = 135944, cd = "5", count = "" }, -- Fremde Erneuerung (links)
             },
         },
     }

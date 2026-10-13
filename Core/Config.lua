@@ -167,6 +167,8 @@ R4L.Config.ClassDefaults = {
             ["3"] = { action = "spell", spell = 18562 }, -- Swiftmend / Rasche Heilung
             ["WheelUp"] = { action = "spell", spell = 33763 }, -- Lifebloom / Blühendes Leben
             ["WheelDown"] = { action = "spell", spell = 48438 }, -- Wild Growth / Wildwuchs
+            ["CTRL_1"] = { action = "spell", spell = 2782 }, -- Fluch aufheben / Remove Curse
+            ["CTRL_2"] = { action = "spell", spell = 2893 }, -- Vergiftung aufheben / Abolish Poison
             ["KEY_1"] = { action = "spell", spell = 50464 }, -- Nourish / Pflege
             ["KEY_2"] = { action = "spell", spell = 2782 },  -- Fluch aufheben / Verderbnis entfernen
         },
@@ -192,6 +194,8 @@ R4L.Config.ClassDefaults = {
             ["3"] = { action = "spell", spell = 139 },   -- Renew / Erneuerung
             ["WheelUp"] = { action = "spell", spell = 33076 }, -- Prayer of Mending / Gebet der Besserung
             ["WheelDown"] = { action = "spell", spell = 34861 }, -- Circle of Healing / Kreis der Heilung
+            ["CTRL_1"] = { action = "spell", spell = 527 },  -- Magiebannung / Dispel Magic
+            ["CTRL_2"] = { action = "spell", spell = 552 },  -- Krankheit aufheben / Abolish Disease
             ["KEY_1"] = { action = "spell", spell = 2060 }, -- Heal / Große Heilung
             ["KEY_2"] = { action = "spell", spell = 527 },  -- Purify / Magiebannung
         },
@@ -216,6 +220,7 @@ R4L.Config.ClassDefaults = {
             ["3"] = { action = "spell", spell = 85673 }, -- Word of Glory / Wort der Herrlichkeit
             ["WheelUp"] = { action = "spell", spell = 85222 }, -- Light of Dawn / Licht der Morgendämmerung
             ["WheelDown"] = { action = "spell", spell = 82326 }, -- Holy Light / Heiliges Licht
+            ["CTRL_1"] = { action = "spell", spell = 4987 },  -- Cleanse / Reinigung des Glaubens
             ["KEY_1"] = { action = "spell", spell = 53563 }, -- Beacon of Light / Flamme des Glaubens
             ["KEY_2"] = { action = "spell", spell = 4987 },  -- Cleanse / Reinigung des Glaubens
         },
@@ -239,6 +244,8 @@ R4L.Config.ClassDefaults = {
             ["3"] = { action = "spell", spell = 61295 }, -- Riptide / Springflut
             ["WheelUp"] = { action = "spell", spell = 974 }, -- Earth Shield / Erdschild
             ["WheelDown"] = { action = "spell", spell = 1064 }, -- Chain Heal / Kettenheilung
+            ["CTRL_1"] = { action = "spell", spell = 526 },   -- Vergiftung heilen / Cure Poison
+            ["CTRL_2"] = { action = "spell", spell = 2870 },  -- Krankheit heilen / Cure Disease
             ["KEY_1"] = { action = "spell", spell = 52127 }, -- Water Shield / Wasserschild
             ["KEY_2"] = { action = "spell", spell = 77130 }, -- Purify Spirit / Geistläuterung
         },

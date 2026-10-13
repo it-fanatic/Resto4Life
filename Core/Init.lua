@@ -7,7 +7,7 @@ local addonName, R4L = ...
 _G["Resto4Life"] = R4L
 
 R4L.addonName = addonName
-R4L.version = "0.2.12-beta"
+R4L.version = "0.3.0-beta"
 R4L.inCombat = false
 R4L.combatQueue = {}
 

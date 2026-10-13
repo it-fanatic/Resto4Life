@@ -1348,167 +1348,41 @@ function AT:HasActiveShield(unit)
     return false
 end
 
-function AT:ApplyMetaHotToUnit(unit, meta, isMineOverride)
-    if not unit or not meta or not meta.isHot then return end
-    local okEx, exists = pcall(function() return UnitExists(unit) == true end)
-    if not okEx or not exists then return end
-    if UnitIsDeadOrGhost then
-        local okD, isD = pcall(function() return UnitIsDeadOrGhost(unit) == true end)
-        if okD and isD then return end
-    end
-
-    local isMine = false
-    if isMineOverride ~= nil then
-        isMine = (isMineOverride == true) and IsPlayerClassSpell(meta.names[1], meta.spellId, meta.icon)
-    else
-        isMine = IsPlayerClassSpell(meta.names[1], meta.spellId, meta.icon)
-    end
-
-    local now = GetTime()
-    local dur = meta.duration or 15
-    self:SetCachedHot(unit, {
-        name = meta.names[1] or "",
-        icon = meta.icon,
-        count = meta.defaultCount or (meta.stacks and 1 or 0),
-        stacks = meta.stacks,
-        maxStacks = meta.maxStacks,
-        duration = dur,
-        expirationTime = now + dur,
-        spellId = meta.spellId or 0,
-        isMine = isMine,
-        isShield = meta.isShield,
-        forceRefresh = true,
-    })
-end
-
--- Wird von ClickCast (PreClick) und UNIT_SPELLCAST_SENT / SUCCEEDED aufgerufen
+-- No-Op Kompatibilitätshook (nativ ersetzt durch Blizzard AuraContainer & UnitHealPredictionCalculator)
 function AT:OnPlayerClickCast(unit, spell, isMineOverride)
-    if not unit or unit == "OUTSIDER" or not spell then return end
-    local okEx, exists = pcall(function() return UnitExists(unit) == true end)
-    if not okEx or not exists then return end
-    if UnitIsDeadOrGhost then
-        local okD, isD = pcall(function() return UnitIsDeadOrGhost(unit) == true end)
-        if okD and isD then return end
-    end
-
-    local meta = FindSpellMeta(spell)
-    if not meta then return end
-
-    local key = GetUnitKey(unit) or tostring(unit)
-    local debounceKey = key .. ":" .. tostring(meta.icon) .. ":" .. tostring(isMineOverride ~= false)
-    local now = GetTime()
-    if self._lastClickCastTime[debounceKey] and (now - self._lastClickCastTime[debounceKey]) < 0.20 then
-        return
-    end
-    self._lastClickCastTime[debounceKey] = now
-
-    if meta.castTime and meta.castTime > 0 then
-        -- Zauber mit Zauberzeit (z. B. Nachwachsen, Blitzheilung, Große Heilung, Heilende Berührung)
-        if meta.isDirectHeal then
-            if meta.isAoE then
-                self:SetIncomingHeal("player", meta.castTime)
-                for i = 1, 4 do
-                    local pU = "party" .. i
-                    local okP, exP = pcall(function() return UnitExists(pU) == true end)
-                    if okP and exP then
-                        self:SetIncomingHeal(pU, meta.castTime)
-                    end
-                end
-            else
-                self:SetIncomingHeal(unit, meta.castTime)
-            end
-        end
-        self._pendingCast = {
-            unit = unit,
-            meta = meta,
-            isMine = isMineOverride,
-            endTime = now + meta.castTime,
-        }
-        if C_Timer and C_Timer.After and meta.isHot then
-            local expectedCast = self._pendingCast
-            C_Timer.After(meta.castTime, function()
-                if AT._pendingCast == expectedCast then
-                    AT._pendingCast = nil
-                    AT:ApplyMetaHotToUnit(unit, meta, isMineOverride)
-                end
-            end)
-        end
-    else
-        -- Sofortzauber HoT oder Schild (Verjüngung, Erneuerung, Machtwort: Schild, Blühendes Leben, Wildwuchs, Springflut, Erdschild)
-        if meta.isAoE then
-            self:ApplyMetaHotToUnit("player", meta, isMineOverride)
-            for i = 1, 4 do
-                local pU = "party" .. i
-                local okP, exP = pcall(function() return UnitExists(pU) == true end)
-                if okP and exP then
-                    self:ApplyMetaHotToUnit(pU, meta, isMineOverride)
-                end
-            end
-        else
-            self:ApplyMetaHotToUnit(unit, meta, isMineOverride)
-        end
-    end
+    -- In v0.3.0+ übernimmt Blizzards C++ AuraContainer ("HELPFUL|PLAYER") und
+    -- CreateUnitHealPredictionCalculator die Anzeige nativ und 100% präzise.
 end
 
--- Holt alle aktiven HoTs (eigene HoTs und fremde HoTs getrennt) auf der Zieleinheit
+-- Holt alle aktiven eigenen HoTs auf der Zieleinheit (Fallback für ältere Clients ohne AuraContainer)
 function AT:GetPlayerHots(unit)
     local ownHots = {}
-    local otherHots = {}
-    if not unit or IsSecret(unit) then return ownHots, otherHots end
+    if not unit or IsSecret(unit) then return ownHots end
     local okEx, exists = pcall(function() return UnitExists(unit) == true end)
-    if not okEx or not exists then return ownHots, otherHots end
+    if not okEx or not exists then return ownHots end
 
     if UnitIsDeadOrGhost then
         local okDead, isDead = pcall(function() return UnitIsDeadOrGhost(unit) == true end)
         if okDead and isDead then
-            self:ClearHotCache(unit)
-            return ownHots, otherHots
+            return ownHots
         end
     end
 
     local maxOwnHots = 4
-    local maxOtherHots = 3
     if R4L.ProfileManager then
         local cfg = R4L.ProfileManager:GetConfig()
-        if cfg and cfg.auras then
-            if cfg.auras.maxHots then maxOwnHots = cfg.auras.maxHots end
-            if cfg.auras.maxOtherHots then maxOtherHots = cfg.auras.maxOtherHots end
+        if cfg and cfg.auras and cfg.auras.maxHots then
+            maxOwnHots = cfg.auras.maxHots
         end
     end
 
     local allOwn = {}
-    local allOther = {}
     local seenOwn = {}
-    local seenOther = {}
-    local secretPlayerAuras = {}
-    local secretAllAuras = {}
-    local totalPlayerHelpful = 0
-    local totalAllHelpful = 0
     local now = GetTime()
-    local key = GetUnitKey(unit)
 
-    local inCombat = false
-    if InCombatLockdown and InCombatLockdown() then
-        inCombat = true
-    end
-    if not inCombat and UnitAffectingCombat then
-        local okC1, c1 = pcall(function() return UnitAffectingCombat(unit) == true end)
-        local okC2, c2 = pcall(function() return UnitAffectingCombat("player") == true end)
-        if (okC1 and c1) or (okC2 and c2) then
-            inCombat = true
-        end
-    end
-
-    local function TryAddAura(rawAura, fromPlayerFilter, slotIdx)
-        if not rawAura or type(rawAura) ~= "table" then return false end
-        local aura = rawAura
-        if aura.iconIsSecret == nil then
-            aura = SanitizeAuraDataTable(rawAura)
-            if not aura then return false end
-        end
-        if fromPlayerFilter then
-            aura._fromPlayerFilter = true
-        end
+    for i = 1, 40 do
+        local aura = GetUnitAuraByIndex(unit, i, "HELPFUL|PLAYER")
+        if not aura then break end
 
         local name = SafeString(aura.name, "")
         local rawIconVal = SafeNumber(aura.icon, nil) or SafeString(aura.icon, nil)
@@ -1517,224 +1391,21 @@ function AT:GetPlayerHots(unit)
         local expirationTime = SafeNumber(aura.expirationTime, 0)
         local spellId = SafeNumber(aura.spellId, 0)
 
-        -- Falls Icon irrtümlich als Rang-String ankam, Textur über Zaubernamen auflösen
-        if type(rawIconVal) == "string" and (rawIconVal:find("Rang") or rawIconVal:find("Rank")) then
-            local sTex = SafeGetSpellTexture((spellId ~= 0 and spellId) or (name ~= "" and name))
-            if sTex then rawIconVal = sTex end
-        end
-
         local icon = NormalizeHotIcon(name, spellId, rawIconVal)
-
-        if not icon then
-            if aura.iconIsSecret and aura.rawIcon then
-                if fromPlayerFilter then
-                    table.insert(secretPlayerAuras, { slot = slotIdx or (#secretPlayerAuras + 1), rawIcon = aura.rawIcon })
-                else
-                    table.insert(secretAllAuras, { slot = slotIdx or (#secretAllAuras + 1), rawIcon = aura.rawIcon })
-                end
-            end
-            return false
-        end
-
-        -- Prüfe, ob es sich um einen HoT / Schild handelt
-        if not IsHotAura(name, spellId, duration, icon) then return false end
-
-        -- Eigene HoTs MÜSSEN zwingend zur Klasse des Spielers gehören
-        local isMine = false
-        if IsPlayerClassSpell(name, spellId, icon) then
-            if fromPlayerFilter then
-                isMine = true
-            else
-                isMine = IsPlayerAura(aura, unit)
-            end
-        end
-
-        local hasRealExp = (expirationTime > 0)
-        local safeDur = (duration > 0) and duration or GetDefaultHotDuration(spellId, name, icon)
-
-        local safeExp = 0
-        if hasRealExp then
-            safeExp = expirationTime
-        else
-            local existing = key and self.hotCache[key] and self.hotCache[key][icon]
-            if existing and existing.expirationTime and existing.expirationTime > now then
-                safeExp = existing.expirationTime
-            else
-                safeExp = now + (safeDur > 0 and safeDur or 15)
-            end
-        end
-
-        local hotKey = icon
-        local hotData = {
-            name = name,
-            icon = icon,
-            rawIcon = aura.rawIcon or icon,
-            count = count,
-            duration = safeDur,
-            expirationTime = safeExp,
-            hasRealExpiration = hasRealExp,
-            spellId = spellId,
-            isMine = isMine,
-            isShield = SHIELD_ICONS[icon] or false,
-        }
-
-        if isMine then
-            if not seenOwn[hotKey] and not seenOther[hotKey] then
-                seenOwn[hotKey] = true
-                table.insert(allOwn, hotData)
-            end
-        else
-            if not seenOther[hotKey] and not seenOwn[hotKey] then
-                seenOther[hotKey] = true
-                table.insert(allOther, hotData)
-            end
-        end
-
-        -- Im Cache sichern
-        self:SetCachedHot(unit, hotData)
-        return true
-    end
-
-    -- Pass 1: Direkter Index-Scan für eigene Auren mit "HELPFUL|PLAYER" Filter
-    for i = 1, 40 do
-        local aura = GetUnitAuraByIndex(unit, i, "HELPFUL|PLAYER")
-        if not aura then break end
-        totalPlayerHelpful = totalPlayerHelpful + 1
-        pcall(TryAddAura, aura, true, i)
-    end
-
-    -- Pass 2: Direkter Index-Scan für alle "HELPFUL" Auren
-    for i = 1, 40 do
-        local aura = GetUnitAuraByIndex(unit, i, "HELPFUL")
-        if not aura then break end
-        totalAllHelpful = totalAllHelpful + 1
-        pcall(TryAddAura, aura, false, i)
-    end
-
-    -- Falls GetUnitAuraByIndex 0 Auren fand, probiere C_UnitAuras.GetUnitAuras als Fallback
-    if totalAllHelpful == 0 and C_UnitAuras and C_UnitAuras.GetUnitAuras then
-        local ok, res = pcall(C_UnitAuras.GetUnitAuras, unit, "HELPFUL", 40, 0, 0)
-        if not ok or not res or type(res) ~= "table" then
-            ok, res = pcall(C_UnitAuras.GetUnitAuras, unit, "HELPFUL")
-        end
-        if ok and res and type(res) == "table" then
-            for idx, rawAura in ipairs(res) do
-                totalAllHelpful = totalAllHelpful + 1
-                pcall(TryAddAura, rawAura, false, idx)
-            end
-        end
-    end
-
-    local prevHelpful = key and self._lastHelpfulCount[key] or totalAllHelpful
-    if key then
-        self._lastHelpfulCount[key] = totalAllHelpful
-    end
-
-    -- Prüfe ob UnitGetTotalAbsorbs eindeutig 0 liefert (Schild wurde gebrochen!)
-    local unitHasZeroAbsorbs = false
-    if UnitGetTotalAbsorbs then
-        local okAbs, aVal = pcall(UnitGetTotalAbsorbs, unit)
-        if okAbs and not IsSecret(aVal) and type(aVal) == "number" and aVal == 0 then
-            unitHasZeroAbsorbs = true
-        end
-    end
-
-    if key and self.hotCache[key] then
-        local allIconsReadable = (#secretAllAuras == 0 and #secretPlayerAuras == 0)
-        local buffsDropped = (totalAllHelpful < prevHelpful)
-        for hotKey, cached in pairs(self.hotCache[key]) do
-            if not seenOwn[hotKey] and not seenOther[hotKey] then
-                local age = now - (cached.castTime or 0)
-                if not inCombat and age > 0.6 then
-                    -- Außerhalb des Kampfes: Nicht mehr vorhandene HoTs / Schilde sofort aus dem Cache entfernen!
-                    self.hotCache[key][hotKey] = nil
-                elseif inCombat and age > 0.8 then
-                    -- Im Kampf: Wenn die Einheit 0 Buffs hat, alle Icons lesbar waren und der Buff fehlt, oder ein Schild gebrochen wurde
-                    if totalAllHelpful == 0 or allIconsReadable then
-                        self.hotCache[key][hotKey] = nil
-                    elseif (cached.isShield or SHIELD_ICONS[hotKey]) and (unitHasZeroAbsorbs or buffsDropped) then
-                        self.hotCache[key][hotKey] = nil
-                    end
-                end
-            end
-        end
-    end
-
-    -- Außerhalb des Kampfes: Aktualisiere Baseline für Nicht-HoT-Buffs
-    if not inCombat and key then
-        self.baselineOwnNonHot[key] = math.max(0, totalPlayerHelpful - #allOwn)
-        local otherTotal = math.max(0, totalAllHelpful - totalPlayerHelpful)
-        self.baselineOtherNonHot[key] = math.max(0, otherTotal - #allOther)
-        self.combatSlotTimers[key] = nil
-    end
-
-    -- Merge aktive HoTs aus dem Cache (z. B. durch ClickCast / Spellcast oder Vor-Kampf-HoTs)
-    local uHots = (key and self.hotCache[key]) or self.hotCache[unit]
-    if uHots then
-        for hotKey, cached in pairs(uHots) do
-            if cached.expirationTime and cached.expirationTime > now then
-                local isReallyMine = (cached.isMine == true) and IsPlayerClassSpell(cached.name, cached.spellId, cached.icon)
-                if isReallyMine then
-                    if not seenOwn[hotKey] and not seenOther[hotKey] then
-                        seenOwn[hotKey] = true
-                        table.insert(allOwn, cached)
-                    end
-                else
-                    if not seenOther[hotKey] and not seenOwn[hotKey] then
-                        seenOther[hotKey] = true
-                        table.insert(allOther, cached)
-                    end
-                end
-            else
-                uHots[hotKey] = nil
-            end
-        end
-    end
-
-    -- Im Kampf: Falls fremde Gruppenheiler-Auren geheime Icons liefern (#secretAllAuras > 0), zeige neue fremde Kampf-HoTs LINKS oben an
-    if inCombat and key and #secretAllAuras > 0 then
-        if not self.combatSlotTimers[key] then
-            self.combatSlotTimers[key] = {}
-        end
-        local slotTimers = self.combatSlotTimers[key]
-
-        local otherTotal = math.max(0, totalAllHelpful - totalPlayerHelpful)
-        local baseOther = self.baselineOtherNonHot[key] or 0
-        local extraOther = (otherTotal - baseOther) - #allOther
-        if extraOther > 0 then
-            local fallbackIcon = GetPartyHealerDefaultIcon()
-            local dur = 15
-            local isSh = false
-            if self._lastPartyHealerMeta and (now - (self._lastPartyHealerMeta.time or 0)) < 2.0 then
-                fallbackIcon = self._lastPartyHealerMeta.meta.icon or fallbackIcon
-                dur = self._lastPartyHealerMeta.meta.duration or 15
-                isSh = self._lastPartyHealerMeta.meta.isShield or false
-            end
-            local startIdx = math.max(1, #secretAllAuras - extraOther + 1)
-            for idx = startIdx, #secretAllAuras do
-                local sEntry = secretAllAuras[idx]
-                if sEntry then
-                    local tKey = "other_" .. tostring(sEntry.slot)
-                    local timer = slotTimers[tKey]
-                    if not timer or timer.expirationTime <= now then
-                        timer = { expirationTime = now + dur, duration = dur, icon = fallbackIcon, isShield = isSh }
-                        slotTimers[tKey] = timer
-                    end
-                    table.insert(allOther, {
-                        name = "",
-                        icon = timer.icon or fallbackIcon,
-                        rawIcon = sEntry.rawIcon,
-                        count = 0,
-                        duration = timer.duration,
-                        expirationTime = timer.expirationTime,
-                        isMine = false,
-                        isShield = timer.isShield or false,
-                    })
-                end
-            end
-        else
-            for kSlot in pairs(slotTimers) do
-                slotTimers[kSlot] = nil
+        if icon and IsHotAura(name, spellId, duration, icon) and IsPlayerClassSpell(name, spellId, icon) then
+            if not seenOwn[icon] then
+                seenOwn[icon] = true
+                table.insert(allOwn, {
+                    name = name,
+                    icon = icon,
+                    rawIcon = aura.rawIcon or icon,
+                    count = count,
+                    duration = duration,
+                    expirationTime = expirationTime,
+                    spellId = spellId,
+                    isMine = true,
+                    isShield = SHIELD_ICONS[icon] or false,
+                })
             end
         end
     end
@@ -1745,20 +1416,16 @@ function AT:GetPlayerHots(unit)
         return timeA < timeB
     end
     pcall(table.sort, allOwn, CompareHots)
-    pcall(table.sort, allOther, CompareHots)
 
     for i = 1, math.min(#allOwn, maxOwnHots) do
         table.insert(ownHots, allOwn[i])
     end
-    for i = 1, math.min(#allOther, maxOtherHots) do
-        table.insert(otherHots, allOther[i])
-    end
-    return ownHots, otherHots
+    return ownHots
 end
 
 -- Ermittelt den primären Dispel-Typ des Spielers/der Gruppe als Fallback für geheime Kampf-Debuffs
 local function GetPrimaryDispelTypeForCombat(playerDispels, groupDispels, cfgAuras)
-    local order = { "Poison", "Curse", "Magic", "Disease" }
+    local order = { "Magic", "Poison", "Curse", "Disease" }
     for _, dt in ipairs(order) do
         local allowed = (dt == "Poison" and cfgAuras.showPoison ~= false)
             or (dt == "Curse" and cfgAuras.showCurse ~= false)
@@ -1777,7 +1444,7 @@ local function GetPrimaryDispelTypeForCombat(playerDispels, groupDispels, cfgAur
             return dt
         end
     end
-    return "Poison"
+    return "Magic"
 end
 
 -- Findet den wichtigsten reinigbaren Debuff auf einer Einheit (gesichert im Kampf)
@@ -1814,7 +1481,6 @@ function AT:GetDispellableDebuff(unit)
         local canPlayerDispel = (playerDispels and playerDispels[dt] == true)
         local canGroupDispel = (groupDispels and groupDispels[dt] == true)
 
-        -- Wenn "Nur bannbare anzeigen" aktiv ist:
         if cfg.auras.highlightDispellableOnly then
             local canDispel = canPlayerDispel
             if cfg.auras.includeGroupDispels and canGroupDispel then
@@ -1826,25 +1492,17 @@ function AT:GetDispellableDebuff(unit)
         end
 
         local color = self.DebuffColors[dt] or self.DebuffColors["None"]
-        -- Priorität: 2 = Eigene Klasse kann bannen, 1 = Gruppe kann bannen, 0 = Allgemeiner Debuff
         local priority = canPlayerDispel and 2 or (canGroupDispel and 1 or 0)
         return true, color, priority
     end
 
     local bestDebuff, bestColor, bestPriority = nil, nil, -1
     local totalHarmfulScanned = 0
-    local secretHarmfulAura = nil
-    local scanSucceeded = false
 
-    -- 1. Direkter Scan über GetUnitAuraByIndex (nutzt SanitizeAuraDataTable & ParseUnitAuraArgs 100% Secret-Safe)
-    local mError = false
+    -- 1. Direkter Scan über GetUnitAuraByIndex (außerhalb des Kampfes sind dispelName/name offen lesbar)
     for i = 1, 40 do
         local okAura, aura = pcall(GetUnitAuraByIndex, unit, i, "HARMFUL")
-        if not okAura then
-            mError = true
-            break
-        end
-        if not aura then break end
+        if not okAura or not aura then break end
         totalHarmfulScanned = totalHarmfulScanned + 1
 
         local isMatch, color, prio = EvaluateDebuff(aura)
@@ -1853,113 +1511,46 @@ function AT:GetDispellableDebuff(unit)
             bestColor = color
             bestPriority = prio
             if prio == 2 then break end
-        elseif not aura.dispelType and (aura.dispelTypeIsSecret or aura.nameIsSecret or aura.iconIsSecret) then
-            secretHarmfulAura = aura
         end
     end
-    if not mError then scanSucceeded = true end
 
-    -- Wenn ein passender aktiver Debuff mit lesbarem DispelType gefunden wurde -> Cache auffrischen & zurückgeben
     if bestDebuff and bestColor then
         self:SetCachedDebuff(unit, bestDebuff, bestColor)
         return bestDebuff, bestColor
     end
 
-    -- Status ob Einheit oder Spieler im Kampf ist
-    local inCombat = false
-    if InCombatLockdown and InCombatLockdown() then
-        inCombat = true
-    end
-    if not inCombat and UnitAffectingCombat then
-        local okComb, cVal = pcall(function() return UnitAffectingCombat(unit) == true end)
-        if okComb and cVal then inCombat = true end
-        if not inCombat then
-            local okPComb, pVal = pcall(function() return UnitAffectingCombat("player") == true end)
-            if okPComb and pVal then inCombat = true end
+    -- 2. In WoW Forever (16001) liefert der Filter "HARMFUL|RAID" im Kampf exakt die Debuffs,
+    --    die der eigene Charakter bannen kann!
+    local okRaid, auraRaid = pcall(GetUnitAuraByIndex, unit, 1, "HARMFUL|RAID")
+    if okRaid and auraRaid then
+        local isMatch, color = EvaluateDebuff(auraRaid)
+        if isMatch and color then
+            self:SetCachedDebuff(unit, auraRaid, color)
+            return auraRaid, color
         end
-    end
-
-    -- 2. Im Kampf: Wenn Debuff-Felder (dispelName / name) als Secret Value maskiert sind, prüfe C++ Filter HARMFUL|RAID_PLAYER_DISPELLABLE & secretHarmfulAura!
-    if inCombat and totalHarmfulScanned > 0 then
-        local dispellableSecretAura = nil
-        local okRaidP, auraRaidP = pcall(GetUnitAuraByIndex, unit, 1, "HARMFUL|RAID_PLAYER_DISPELLABLE")
-        if okRaidP and auraRaidP then
-            dispellableSecretAura = auraRaidP
-        end
-        if not dispellableSecretAura then
-            local okRaid, auraRaid = pcall(GetUnitAuraByIndex, unit, 1, "HARMFUL|RAID")
-            if okRaid and auraRaid then
-                dispellableSecretAura = auraRaid
-            end
-        end
-        if not dispellableSecretAura and secretHarmfulAura and secretHarmfulAura.dispelTypeIsSecret then
-            -- In WoW 12.0 ist data.dispelName nur dann ein Secret String (nicht nil!), wenn der Debuff tatsächlich einen DispelType besitzt!
-            dispellableSecretAura = secretHarmfulAura
-        end
-
-        if dispellableSecretAura then
-            local fallbackDT = GetPrimaryDispelTypeForCombat(playerDispels, groupDispels, cfg.auras)
-            local fallbackColor = self.DebuffColors[fallbackDT] or self.DebuffColors["Poison"]
-            local synDebuff = {
-                name = dispellableSecretAura.name or "Debuff",
-                icon = dispellableSecretAura.icon or 0,
-                dispelType = fallbackDT,
-                duration = dispellableSecretAura.duration or 15,
-                expirationTime = dispellableSecretAura.expirationTime or 0,
-            }
-            self:SetCachedDebuff(unit, synDebuff, fallbackColor)
-            return synDebuff, fallbackColor
-        end
+        local fallbackDT = GetPrimaryDispelTypeForCombat(playerDispels, groupDispels, cfg.auras)
+        local fallbackColor = self.DebuffColors[fallbackDT] or self.DebuffColors["Magic"]
+        local synDebuff = {
+            name = auraRaid.name or "Debuff",
+            icon = auraRaid.icon or 0,
+            dispelType = fallbackDT,
+            duration = auraRaid.duration or 15,
+            expirationTime = auraRaid.expirationTime or 0,
+        }
+        return synDebuff, fallbackColor
     end
 
-    if not inCombat and scanSucceeded then
-        self:ClearDebuffCache(unit)
-        return nil, nil
-    end
-
-    if inCombat then
-        if scanSucceeded and totalHarmfulScanned == 0 then
-            self:ClearDebuffCache(unit)
-            return nil, nil
-        end
-        local cached, cachedColor = self:GetCachedDebuff(unit)
-        if cached and cachedColor then
-            local now = GetTime()
-            local exp = SafeNumber(cached.expirationTime, 0)
-            if exp <= 0 or exp > now then
-                return cached, cachedColor
-            end
-        end
-    else
-        self:ClearDebuffCache(unit)
-    end
-
+    self:ClearDebuffCache(unit)
     return nil, nil
 end
 
 -- =========================================================================
--- Sichere Event-Registrierung für Cache-Management (ohne CLEU / Taint-frei)
+-- Sichere Event-Registrierung für Cache-Management
 -- =========================================================================
 if R4L and R4L.RegisterEvent then
     R4L:RegisterEvent("PLAYER_REGEN_ENABLED", function()
-        -- Kampf beendet: Säubere abgelaufene Debuffs und HoTs
-        local now = GetTime()
-        for k, v in pairs(AT.debuffCache) do
-            local exp = SafeNumber(v.expirationTime, 0)
-            if exp > 0 and now >= exp then
-                AT.debuffCache[k] = nil
-            end
-        end
-        for uKey, uMap in pairs(AT.hotCache) do
-            for hKey, hData in pairs(uMap) do
-                local exp = SafeNumber(hData.expirationTime, 0)
-                if exp > 0 and now >= exp then
-                    uMap[hKey] = nil
-                end
-            end
-        end
-        for k in pairs(AT.combatSlotTimers) do
-            AT.combatSlotTimers[k] = nil
+        for k in pairs(AT.debuffCache) do
+            AT.debuffCache[k] = nil
         end
         AT._cachedCombined = nil
     end)
@@ -1968,191 +1559,12 @@ if R4L and R4L.RegisterEvent then
         for k in pairs(AT.debuffCache) do
             AT.debuffCache[k] = nil
         end
-        for k in pairs(AT.hotCache) do
-            AT.hotCache[k] = nil
-        end
-        for k in pairs(AT.combatSlotTimers) do
-            AT.combatSlotTimers[k] = nil
-        end
         AT._cachedCombined = nil
     end)
 
     R4L:RegisterEvent("GROUP_ROSTER_UPDATE", function()
         AT._cachedCombined = nil
     end)
-
-    -- Hilfsfunktion: Löst Gruppen-Unit aus Zielname oder aktuellem Hover/Target auf.
-    -- Gibt "OUTSIDER" zurück, wenn das Ziel ein freundlicher Spieler/NPC außerhalb der eigenen Gruppe ist!
-    local function ResolveGroupUnitFromTargetName(targetName)
-        local tStr = SafeString(targetName, nil)
-        if tStr and tStr ~= "" then
-            local cleanTarget = tStr:match("^([^%-]+)") or tStr
-            local pName = SafeString(UnitName("player"), nil)
-            if pName and (pName == tStr or pName == cleanTarget) then
-                return "player"
-            end
-            for i = 1, 4 do
-                local u = "party" .. i
-                local okEx, ex = pcall(function() return UnitExists(u) == true end)
-                if okEx and ex then
-                    local uName = SafeString(UnitName(u), nil)
-                    if uName and (uName == tStr or uName == cleanTarget) then
-                        return u
-                    end
-                end
-            end
-            local inRd = false
-            if IsInRaid then
-                local okR, rVal = pcall(function() return IsInRaid() == true end)
-                if okR and rVal then inRd = true end
-            end
-            if inRd then
-                local num = (GetNumGroupMembers and GetNumGroupMembers()) or 0
-                for i = 1, num do
-                    local u = "raid" .. i
-                    local okEx, ex = pcall(function() return UnitExists(u) == true end)
-                    if okEx and ex then
-                        local uName = SafeString(UnitName(u), nil)
-                        if uName and (uName == tStr or uName == cleanTarget) then
-                            return u
-                        end
-                    end
-                end
-            end
-            -- Zielname war angegeben, gehört aber zu keinem Gruppen-/Raidmitglied!
-            return "OUTSIDER"
-        end
-
-        if AT.hoveredUnit then
-            local okH, exH = pcall(function() return UnitExists(AT.hoveredUnit) == true end)
-            if okH and exH then return AT.hoveredUnit end
-        end
-
-        local okMO, moUnit = pcall(function()
-            if UnitExists("mouseover") == true and UnitIsFriend("player", "mouseover") == true then
-                if UnitIsUnit("mouseover", "player") == true then return "player" end
-                for i = 1, 4 do
-                    local pU = "party" .. i
-                    if UnitExists(pU) == true and UnitIsUnit("mouseover", pU) == true then
-                        return pU
-                    end
-                end
-                if IsInRaid and IsInRaid() == true then
-                    local num = (GetNumGroupMembers and GetNumGroupMembers()) or 0
-                    for i = 1, num do
-                        local rU = "raid" .. i
-                        if UnitExists(rU) == true and UnitIsUnit("mouseover", rU) == true then
-                            return rU
-                        end
-                    end
-                end
-                return "OUTSIDER"
-            end
-            return nil
-        end)
-        if okMO and moUnit then return moUnit end
-
-        local okTgt, tgtUnit = pcall(function()
-            if UnitExists("target") == true and UnitIsFriend("player", "target") == true then
-                if UnitIsUnit("target", "player") == true then return "player" end
-                for i = 1, 4 do
-                    local pU = "party" .. i
-                    if UnitExists(pU) == true and UnitIsUnit("target", pU) == true then
-                        return pU
-                    end
-                end
-                if IsInRaid and IsInRaid() == true then
-                    local num = (GetNumGroupMembers and GetNumGroupMembers()) or 0
-                    for i = 1, num do
-                        local rU = "raid" .. i
-                        if UnitExists(rU) == true and UnitIsUnit("target", rU) == true then
-                            return rU
-                        end
-                    end
-                end
-                -- Freundliches Ziel ist NICHT in unserer Gruppe/Raid!
-                return "OUTSIDER"
-            end
-            return nil
-        end)
-        if okTgt and tgtUnit then return tgtUnit end
-
-        return "player"
-    end
-
-    R4L:RegisterEvent("UNIT_SPELLCAST_SENT", function(_, unit, arg2, arg3, arg4)
-        local uStr = SafeString(unit, nil)
-        if uStr ~= "player" then return end
-        -- Prüfe flexibel sowohl Retail/Forever (unit, target, castGUID, spellID) als auch 3.3.5 (unit, spell, rank, target)
-        local meta = FindSpellMeta(arg4)
-        local targetName = nil
-        local spellIdentifier = nil
-        if meta then
-            spellIdentifier = arg4
-            targetName = arg2
-        else
-            meta = FindSpellMeta(arg2)
-            if meta then
-                spellIdentifier = arg2
-                targetName = arg4
-            end
-        end
-        if spellIdentifier then
-            local targetUnit = ResolveGroupUnitFromTargetName(targetName)
-            AT._lastSentTargetUnit = targetUnit
-            AT._lastSentTime = GetTime()
-            if targetUnit and targetUnit ~= "OUTSIDER" then
-                AT:OnPlayerClickCast(targetUnit, spellIdentifier, true)
-            end
-        end
-    end)
-
-    R4L:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED", function(_, unit, arg2, arg3, arg4, arg5)
-        local uStr = SafeString(unit, nil)
-        if not uStr then return end
-        local meta = FindSpellMeta(arg3) or FindSpellMeta(arg2) or FindSpellMeta(arg5) or FindSpellMeta(arg4)
-        if not meta then return end
-
-        if uStr == "player" then
-            local now = GetTime()
-            local targetUnit = nil
-            if AT._lastSentTime and (now - AT._lastSentTime) < 4.0 and AT._lastSentTargetUnit ~= nil then
-                targetUnit = AT._lastSentTargetUnit
-            else
-                targetUnit = ResolveGroupUnitFromTargetName(nil)
-            end
-            if targetUnit and targetUnit ~= "OUTSIDER" then
-                AT:OnPlayerClickCast(targetUnit, meta.spellId or meta.names[1], true)
-            end
-        elseif uStr:match("^party%d+$") then
-            AT._lastPartyHealerMeta = {
-                meta = meta,
-                time = GetTime(),
-                caster = uStr,
-            }
-        end
-    end)
-
-    local function OnSpellcastCancelled(_, unit)
-        local uStr = SafeString(unit, nil)
-        if uStr ~= "player" then return end
-        local now = GetTime()
-        if AT._pendingCast and AT._pendingCast.endTime and (now < AT._pendingCast.endTime - 0.15) then
-            local u = AT._pendingCast.unit
-            AT._pendingCast = nil
-            if u then
-                local key = GetUnitKey(u)
-                if key then AT.incomingHealCache[key] = nil end
-            end
-            for k in pairs(AT.incomingHealCache) do
-                AT.incomingHealCache[k] = nil
-            end
-        end
-    end
-
-    R4L:RegisterEvent("UNIT_SPELLCAST_FAILED", OnSpellcastCancelled)
-    R4L:RegisterEvent("UNIT_SPELLCAST_INTERRUPTED", OnSpellcastCancelled)
-    R4L:RegisterEvent("UNIT_SPELLCAST_STOP", OnSpellcastCancelled)
 end
 
 -- =========================================================================

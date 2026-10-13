@@ -1,0 +1,46 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+  <!-- Native WoW Forever (16001) AuraContainer Templates.
+       Wenn Auren im Kampf als Secret Values gesperrt sind, zeichnet die C++-Engine
+       eigene HoTs (HELPFUL|PLAYER) und bannbare Debuffs (HARMFUL|RAID) inkl. Dispel-Farben selbst. -->
+  <ScopedModifier useForbiddenObjectTable="true">
+    <AuraButton name="Resto4LifeAuraIconTemplate" inherits="CustomAuraButtonTemplate" virtual="true">
+      <Size x="15" y="15"/>
+      <Layers>
+        <Layer level="ARTWORK">
+          <Texture parentKey="Icon" setAllPoints="true">
+            <TexCoords left="0.08" right="0.92" top="0.08" bottom="0.92"/>
+          </Texture>
+        </Layer>
+      </Layers>
+      <Frames>
+        <Cooldown parentKey="Cooldown" inherits="CooldownFrameTemplate" setAllPoints="true"
+          reverse="true" hideCountdownNumbers="true" drawEdge="false" drawBling="false"/>
+      </Frames>
+    </AuraButton>
+    <AuraButton name="Resto4LifeDispelIconTemplate" inherits="CustomAuraButtonTemplate" virtual="true">
+      <Size x="16" y="16"/>
+      <Layers>
+        <Layer level="BACKGROUND">
+          <Texture parentKey="DispelBorder">
+            <Anchors>
+              <Anchor point="TOPLEFT" x="-2" y="2"/>
+              <Anchor point="BOTTOMRIGHT" x="2" y="-2"/>
+            </Anchors>
+          </Texture>
+        </Layer>
+        <Layer level="ARTWORK">
+          <Texture parentKey="Icon" setAllPoints="true">
+            <TexCoords left="0.08" right="0.92" top="0.08" bottom="0.92"/>
+          </Texture>
+        </Layer>
+        <Layer level="OVERLAY">
+          <Texture parentKey="DispelGlow" alphaMode="BLEND"/>
+        </Layer>
+      </Layers>
+      <Frames>
+        <Cooldown parentKey="Cooldown" inherits="CooldownFrameTemplate" setAllPoints="true"
+          reverse="true" hideCountdownNumbers="true" drawEdge="false" drawBling="false"/>
+      </Frames>
+    </AuraButton>
+  </ScopedModifier>
+</Ui>

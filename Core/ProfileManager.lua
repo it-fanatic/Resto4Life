@@ -174,6 +174,24 @@ function PM:Initialize()
         Resto4LifeCharDB.smartDispel._migratedV3 = true
     end
 
+    -- Migration v0.3.0: Standard-Kampf-Dispel auf CTRL_1 / CTRL_2 vorbelegen, falls noch leer
+    if not Resto4LifeCharDB._migratedV030 and playerClass and R4L.Config.ClassDefaults[playerClass] then
+        local cDef = R4L.Config.ClassDefaults[playerClass]
+        if cDef.bindings and Resto4LifeCharDB.bindings then
+            for _, modKey in ipairs({ "CTRL_1", "CTRL_2" }) do
+                local defB = cDef.bindings[modKey]
+                local curB = Resto4LifeCharDB.bindings[modKey]
+                if defB and defB.spell and (not curB or not curB.spell or curB.spell == "") then
+                    Resto4LifeCharDB.bindings[modKey] = {
+                        action = "spell",
+                        spell = ResolveSpellName(defB.spell) or defB.spell,
+                    }
+                end
+            end
+        end
+        Resto4LifeCharDB._migratedV030 = true
+    end
+
     R4L.db = Resto4LifeCharDB
 end
 
