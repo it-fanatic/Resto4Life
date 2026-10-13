@@ -45,101 +45,6 @@ local function IsPlayerSpellKnown(spellId)
     return false
 end
 
-local function FirstKnownSpellName(spellIdList)
-    if not spellIdList then return nil end
-    for _, id in ipairs(spellIdList) do
-        if IsPlayerSpellKnown(id) then
-            local name = ResolveSpellName(id)
-            if name and name ~= "" then return name end
-        end
-    end
-    -- Fallback: Ersten auflösbaren Zaubernamen zurückgeben
-    for _, id in ipairs(spellIdList) do
-        local name = ResolveSpellName(id)
-        if name and name ~= "" then return name end
-    end
-    return nil
-end
-
--- Ermittelt den passenden Reinigungszauber für die Heiler-Klasse & den aktuellen Debuff-Typ (Classic, Forever, WotLK & Retail)
-function CC:GetDispelSpell(dispelType)
-    local cfg = R4L.ProfileManager:GetConfig()
-    local sd = cfg.smartDispel or {}
-    if not sd.enabled then return nil end
-
-    -- Falls ein benutzerdefinierter Zauber eingetragen ist (und im Zauberbuch existiert)
-    if sd.dispelSpell and sd.dispelSpell ~= "" then
-        local custom = sd.dispelSpell
-        local numId = tonumber(custom)
-        if numId then
-            if IsPlayerSpellKnown(numId) then
-                return ResolveSpellName(numId)
-            end
-        else
-            local customStr = tostring(custom)
-            -- Ignoriere veraltete Retail-Standardnamen, falls der Zauber in Classic/Forever nicht existiert
-            if IsPlayerSpellKnown(customStr) then
-                return customStr
-            end
-        end
-    end
-
-    local _, engClass = UnitClass("player")
-    local cls = engClass or "DRUID"
-
-    if cls == "DRUID" then
-        -- Retail: Heilung der Natur (88423) bannt Magie, Fluch & Gift
-        if IsPlayerSpellKnown(88423) then
-            return ResolveSpellName(88423)
-        end
-        if dispelType == "Poison" then
-            -- Classic / WotLK / Forever: Vergiftung aufheben (2893) oder Vergiftung heilen (8946)
-            return FirstKnownSpellName({ 2893, 8946, 2782 })
-        elseif dispelType == "Curse" then
-            -- Classic / WotLK / Forever: Fluch aufheben (2782)
-            return FirstKnownSpellName({ 2782, 2893, 8946 })
-        else
-            return FirstKnownSpellName({ 2893, 2782, 8946, 88423 })
-        end
-    elseif cls == "PRIEST" then
-        if dispelType == "Disease" then
-            -- Classic / WotLK / Forever: Krankheit aufheben (552) oder Krankheit heilen (528) oder Läutern (527)
-            return FirstKnownSpellName({ 552, 528, 527 })
-        elseif dispelType == "Magic" then
-            -- Magiebannung (527 / 988)
-            return FirstKnownSpellName({ 527, 988, 552, 528 })
-        else
-            return FirstKnownSpellName({ 527, 552, 528 })
-        end
-    elseif cls == "PALADIN" then
-        if dispelType == "Poison" or dispelType == "Disease" then
-            return FirstKnownSpellName({ 4987, 1152 })
-        else
-            return FirstKnownSpellName({ 4987, 1152 })
-        end
-    elseif cls == "SHAMAN" then
-        if IsPlayerSpellKnown(77130) then
-            return ResolveSpellName(77130)
-        end
-        if dispelType == "Curse" then
-            return FirstKnownSpellName({ 51886, 77130 })
-        elseif dispelType == "Disease" then
-            return FirstKnownSpellName({ 51886, 2870, 526 })
-        elseif dispelType == "Poison" then
-            return FirstKnownSpellName({ 51886, 526, 2870 })
-        else
-            return FirstKnownSpellName({ 51886, 526, 2870, 77130 })
-        end
-    elseif cls == "MAGE" then
-        return FirstKnownSpellName({ 475 })
-    elseif cls == "MONK" then
-        return FirstKnownSpellName({ 115450, 218164 })
-    elseif cls == "EVOKER" then
-        return FirstKnownSpellName({ 360823, 374251 })
-    end
-
-    return nil
-end
 
 -- Erstellt einen sicheren Macrotext unter Berücksichtigung von Smart Battle Rez
 function CC:BuildMacroText(unit, actionType, spellName, isLeftClick)
@@ -193,47 +98,6 @@ function CC:BuildMacroText(unit, actionType, spellName, isLeftClick)
     end
 end
 
--- Smart-Dispel: Außerhalb des Kampfes bei Klick auf debuffte Einheit Zauber dynamisch anpassen
-function CC:ApplySmartDispel(frame, debuffColor, debuff)
-    if not frame or not frame.unit then return end
-    local cfg = R4L.ProfileManager:GetConfig()
-    local sd = cfg.smartDispel or {}
-
-    if not sd.enabled then
-        if frame._smartDispelApplied then
-            frame._smartDispelApplied = nil
-            if not InCombatLockdown() then
-                self:ApplyBindingsToFrame(frame)
-            end
-        end
-        return
-    end
-
-    if InCombatLockdown() then return end
-
-    local isDead = false
-    local okDead, deadVal = pcall(UnitIsDead, frame.unit)
-    if okDead and deadVal == true then isDead = true end
-
-    local dispelType = (debuff and debuff.dispelType) or R4L.testDebuff or nil
-    local dispelSpell = debuffColor and self:GetDispelSpell(dispelType) or nil
-    if debuffColor and dispelSpell and dispelSpell ~= "" and not isDead then
-        local targetCmd = (cfg.general and cfg.general.targetOnCast) and ("/target [@" .. frame.unit .. "]\n") or ""
-        local macro = targetCmd .. "/cast [@" .. frame.unit .. "] " .. dispelSpell
-        if frame._smartDispelApplied ~= dispelSpell or frame:GetAttribute("macrotext1") ~= macro then
-            frame._smartDispelApplied = dispelSpell
-            frame:SetAttribute("*type1", "macro")
-            frame:SetAttribute("*macrotext1", macro)
-            frame:SetAttribute("type1", "macro")
-            frame:SetAttribute("macrotext1", macro)
-            frame:SetAttribute("unit1", nil)
-            frame:SetAttribute("*unit1", nil)
-        end
-    elseif frame._smartDispelApplied then
-        frame._smartDispelApplied = nil
-        self:ApplyBindingsToFrame(frame)
-    end
-end
 
 
 -- Erstellt dedizierte SecureActionButton-Kinder für Mausrad & Tasten 1-6 (Standard, STRG, ALT)
@@ -331,7 +195,6 @@ function CC:ApplyBindingsToFrame(frame)
         return
     end
 
-    frame._smartDispelApplied = nil
     self:SetupChildButtons(frame)
 
     local cfg = R4L.ProfileManager:GetConfig()
@@ -463,25 +326,6 @@ function CC:ApplyBindingsToFrame(frame)
 
     -- Richte Hover-Bindings ein
     self:SetupSecureHover(frame)
-
-    -- Falls aktuell ein Debuff auf dem Frame aktiv ist, Smart-Dispel sofort wieder anwenden
-    if cfg.smartDispel and cfg.smartDispel.enabled then
-        local debuffColor = nil
-        local activeDebuff = nil
-        if R4L.testDebuff then
-            debuffColor = R4L.AuraTracker and R4L.AuraTracker.DebuffColors[R4L.testDebuff]
-            activeDebuff = { dispelType = R4L.testDebuff }
-        elseif cfg.auras and cfg.auras.showDebuffs and R4L.AuraTracker and UnitExists(unit) then
-            local debuff, color = R4L.AuraTracker:GetDispellableDebuff(unit)
-            if debuff and color then
-                debuffColor = color
-                activeDebuff = debuff
-            end
-        end
-        if debuffColor then
-            self:ApplySmartDispel(frame, debuffColor, activeDebuff)
-        end
-    end
 end
 
 -- Richtet die dynamischen Tastatur- und Mausrad-Bindings bei Mausüberfahrung ein
@@ -506,11 +350,6 @@ function CC:SetupSecureHover(frame)
             modPrefix = "CTRL_"
         elseif IsAltKeyDown and IsAltKeyDown() then
             modPrefix = "ALT_"
-        end
-
-        -- Falls Smart-Dispel auf Linksklick aktiv ist, wird ein Reinigungszauber und kein HoT gewirkt
-        if bId == "1" and modPrefix == "" and self._smartDispelApplied then
-            return
         end
 
         local cfg = R4L.ProfileManager and R4L.ProfileManager:GetConfig()
@@ -620,27 +459,5 @@ R4L:RegisterEvent("PLAYER_ENTERING_WORLD", function()
     CC:ApplySelfCastPreference()
 end)
 
--- Beim Kampfeintritt sicherstellen, dass alle Smart-Dispel Modifikationen zurückgesetzt sind
-R4L:RegisterEvent("PLAYER_REGEN_DISABLED", function()
-    if R4L.GroupHeader and R4L.GroupHeader.frames then
-        for _, frame in ipairs(R4L.GroupHeader.frames) do
-            if frame._smartDispelApplied then
-                frame._smartDispelApplied = nil
-                CC:ApplyBindingsToFrame(frame)
-            end
-        end
-    end
-    if R4L.RaidHeader and R4L.RaidHeader.containers then
-        for _, container in ipairs(R4L.RaidHeader.containers) do
-            if container.frames then
-                for _, frame in ipairs(container.frames) do
-                    if frame._smartDispelApplied then
-                        frame._smartDispelApplied = nil
-                        CC:ApplyBindingsToFrame(frame)
-                    end
-                end
-            end
-        end
-    end
-end)
+
 

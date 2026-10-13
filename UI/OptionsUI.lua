@@ -600,7 +600,7 @@ function OUI:Initialize()
         UpdateBindingsTab()
     end)
 
-    -- Smart Battle Rez & Smart-Dispel Sektion (unten mit farbiger Überschrift)
+    -- Smart Battle Rez Sektion (unten mit farbiger Überschrift)
     local rezHeader = p2:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     rezHeader:SetPoint("TOPLEFT", p2, "TOPLEFT", 20, -322)
     rezHeader:SetText(L["SMART_REZ_HEADER"])
@@ -609,12 +609,6 @@ function OUI:Initialize()
         cfg.smartRez.enabled = val
         R4L.ClickCast:ApplyAllBindings()
     end)
-
-    local cbSmartDispel = CreateCheckbox(p2, L["SMART_DISPEL_ENABLE"], 350, -342, function(val)
-        if not cfg.smartDispel then cfg.smartDispel = {} end
-        cfg.smartDispel.enabled = val
-        R4L.ClickCast:ApplyAllBindings()
-    end, L["SMART_DISPEL_DESC"])
 
     local ebBattleRez = CreateEditBox(p2, L["COMBAT_REZ_SPELL"], 20, -384, 250, function(val)
         cfg.smartRez.combatRezSpell = val
@@ -632,19 +626,11 @@ function OUI:Initialize()
         R4L:Print(val and L["CHAT_SELF_CAST_KEY_DISABLED"] or L["CHAT_SELF_CAST_KEY_ENABLED"])
     end, L["DISABLE_SELF_CAST_KEY_DESC"])
 
-    local ebSmartDispel = CreateEditBox(p2, L["SMART_DISPEL_SPELL"], 350, -426, 250, function(val)
-        if not cfg.smartDispel then cfg.smartDispel = {} end
-        cfg.smartDispel.dispelSpell = val
-        R4L.ClickCast:ApplyAllBindings()
-    end)
-
     p2:SetScript("OnShow", function()
         UpdateBindingsTab()
         cbSmartRez:SetChecked(cfg.smartRez.enabled)
         ebBattleRez:SetText(cfg.smartRez.combatRezSpell or "")
         ebNormalRez:SetText(cfg.smartRez.normalRezSpell or "")
-        cbSmartDispel:SetChecked(cfg.smartDispel and cfg.smartDispel.enabled or false)
-        ebSmartDispel:SetText((cfg.smartDispel and cfg.smartDispel.dispelSpell) or "")
         cbDisableSelfCast:SetChecked(cfg.general and cfg.general.disableSelfCastKey ~= false)
     end)
 

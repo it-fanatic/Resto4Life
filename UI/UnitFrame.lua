@@ -1190,11 +1190,6 @@ function UF:_UpdateFrameInternal(frame)
         frame.border:SetBackdropBorderColor(0, 0, 0, 0.9)
     end
 
-    -- 8b. Smart-Dispel (Außerhalb des Kampfes Linksklick automatisch auf den passenden Reinigungszauber setzen)
-    if R4L.ClickCast and R4L.ClickCast.ApplySmartDispel then
-        R4L.ClickCast:ApplySmartDispel(frame, debuffColor, activeDebuff)
-    end
-
     -- 9. Rollen-Icon (Tank, Heiler, DD)
     local role = nil
     local okR, rAssigned = pcall(function()

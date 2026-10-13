@@ -86,11 +86,6 @@ R4L.Config.Defaults = {
         combatRezSpell = "",  -- e.g. "Rebirth" (Druid), "Soulstone" (Warlock), "Intercession" (Paladin), "Raise Ally" (Death Knight)
         normalRezSpell = "",  -- e.g. "Revive" (Druid), "Redemption" (Paladin), "Resurrection" (Priest), "Ancestral Spirit" (Shaman)
     },
-    smartDispel = {
-        enabled = true,       -- Standardmäßig aktiv (in den Optionen jederzeit deaktivierbar)
-        autoDetectSpell = true,
-        dispelSpell = "",     -- Eigener Zaubername oder Spell-ID (leer = automatische Erkennung nach Klasse & Debuff-Typ)
-    },
     buffBar = {
         enabled = true,
         scale = 1.0,
@@ -158,17 +153,12 @@ R4L.Config.ClassDefaults = {
             combatRezSpell = 20484, -- Rebirth / Wiedergeburt
             normalRezSpell = 50769, -- Revive / Wiederbeleben
         },
-        smartDispel = {
-            dispelSpell = "",       -- Automatische Erkennung (Vergiftung aufheben / Fluch aufheben / Heilung der Natur)
-        },
         bindings = {
             ["1"] = { action = "spell", spell = 774 },   -- Rejuvenation / Verjüngung
             ["2"] = { action = "spell", spell = 8936 },  -- Regrowth / Nachwachsen
             ["3"] = { action = "spell", spell = 18562 }, -- Swiftmend / Rasche Heilung
             ["WheelUp"] = { action = "spell", spell = 33763 }, -- Lifebloom / Blühendes Leben
             ["WheelDown"] = { action = "spell", spell = 48438 }, -- Wild Growth / Wildwuchs
-            ["CTRL_1"] = { action = "spell", spell = 2782 }, -- Fluch aufheben / Remove Curse
-            ["CTRL_2"] = { action = "spell", spell = 2893 }, -- Vergiftung aufheben / Abolish Poison
             ["KEY_1"] = { action = "spell", spell = 50464 }, -- Nourish / Pflege
             ["KEY_2"] = { action = "spell", spell = 2782 },  -- Fluch aufheben / Verderbnis entfernen
         },
@@ -185,17 +175,12 @@ R4L.Config.ClassDefaults = {
             combatRezSpell = "",
             normalRezSpell = 2006, -- Resurrection / Auferstehung
         },
-        smartDispel = {
-            dispelSpell = "",      -- Automatische Erkennung (Magiebannung / Krankheit aufheben / Läutern)
-        },
         bindings = {
             ["1"] = { action = "spell", spell = 2061 },  -- Flash Heal / Blitzheilung
             ["2"] = { action = "spell", spell = 17 },    -- Power Word: Shield / Machtwort: Schild
             ["3"] = { action = "spell", spell = 139 },   -- Renew / Erneuerung
             ["WheelUp"] = { action = "spell", spell = 33076 }, -- Prayer of Mending / Gebet der Besserung
             ["WheelDown"] = { action = "spell", spell = 34861 }, -- Circle of Healing / Kreis der Heilung
-            ["CTRL_1"] = { action = "spell", spell = 527 },  -- Magiebannung / Dispel Magic
-            ["CTRL_2"] = { action = "spell", spell = 552 },  -- Krankheit aufheben / Abolish Disease
             ["KEY_1"] = { action = "spell", spell = 2060 }, -- Heal / Große Heilung
             ["KEY_2"] = { action = "spell", spell = 527 },  -- Purify / Magiebannung
         },
@@ -211,16 +196,12 @@ R4L.Config.ClassDefaults = {
             combatRezSpell = 391054, -- Intercession / Fürbitte
             normalRezSpell = 7328,   -- Redemption / Erlösung
         },
-        smartDispel = {
-            dispelSpell = "",        -- Automatische Erkennung (Reinigung des Glaubens / Läutern)
-        },
         bindings = {
             ["1"] = { action = "spell", spell = 20473 }, -- Holy Shock / Heiliger Schock
             ["2"] = { action = "spell", spell = 19750 }, -- Flash of Light / Lichtblitz
             ["3"] = { action = "spell", spell = 85673 }, -- Word of Glory / Wort der Herrlichkeit
             ["WheelUp"] = { action = "spell", spell = 85222 }, -- Light of Dawn / Licht der Morgendämmerung
             ["WheelDown"] = { action = "spell", spell = 82326 }, -- Holy Light / Heiliges Licht
-            ["CTRL_1"] = { action = "spell", spell = 4987 },  -- Cleanse / Reinigung des Glaubens
             ["KEY_1"] = { action = "spell", spell = 53563 }, -- Beacon of Light / Flamme des Glaubens
             ["KEY_2"] = { action = "spell", spell = 4987 },  -- Cleanse / Reinigung des Glaubens
         },
@@ -235,17 +216,12 @@ R4L.Config.ClassDefaults = {
             combatRezSpell = "",
             normalRezSpell = 2008, -- Ancestral Spirit / Geist der Ahnen
         },
-        smartDispel = {
-            dispelSpell = "",      -- Automatische Erkennung (Geistreinigung / Vergiftung heilen / Krankheit heilen)
-        },
         bindings = {
             ["1"] = { action = "spell", spell = 77472 }, -- Healing Wave / Welle der Heilung
             ["2"] = { action = "spell", spell = 8004 },  -- Healing Surge / Heilende Woge
             ["3"] = { action = "spell", spell = 61295 }, -- Riptide / Springflut
             ["WheelUp"] = { action = "spell", spell = 974 }, -- Earth Shield / Erdschild
             ["WheelDown"] = { action = "spell", spell = 1064 }, -- Chain Heal / Kettenheilung
-            ["CTRL_1"] = { action = "spell", spell = 526 },   -- Vergiftung heilen / Cure Poison
-            ["CTRL_2"] = { action = "spell", spell = 2870 },  -- Krankheit heilen / Cure Disease
             ["KEY_1"] = { action = "spell", spell = 52127 }, -- Water Shield / Wasserschild
             ["KEY_2"] = { action = "spell", spell = 77130 }, -- Purify Spirit / Geistläuterung
         },
@@ -258,9 +234,6 @@ R4L.Config.ClassDefaults = {
         smartRez = {
             combatRezSpell = "",
             normalRezSpell = 115178, -- Resuscitate / Wiedererwecken
-        },
-        smartDispel = {
-            dispelSpell = 115450,    -- Detox / Entgiftung
         },
         bindings = {
             ["1"] = { action = "spell", spell = 115175 }, -- Soothing Mist / Beruhigender Nebel
@@ -280,9 +253,6 @@ R4L.Config.ClassDefaults = {
         smartRez = {
             combatRezSpell = "",
             normalRezSpell = 361227, -- Return / Rückkehr
-        },
-        smartDispel = {
-            dispelSpell = 360823,    -- Naturalize / Natürliche Säuberung
         },
         bindings = {
             ["1"] = { action = "spell", spell = 366155 }, -- Reversion / Rückverwandlung

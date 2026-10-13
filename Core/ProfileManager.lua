@@ -164,32 +164,31 @@ function PM:Initialize()
         end
     end
 
-    -- Einmalige Migration für bestehende Profile: Smart-Dispel aktivieren & alte Retail-IDs bereinigen
-    if Resto4LifeCharDB.smartDispel and not Resto4LifeCharDB.smartDispel._migratedV3 then
-        Resto4LifeCharDB.smartDispel.enabled = true
-        local ds = Resto4LifeCharDB.smartDispel.dispelSpell
-        if ds == 88423 or ds == "88423" or ds == 77130 or ds == "77130" or ds == 527 or ds == "527" then
-            Resto4LifeCharDB.smartDispel.dispelSpell = ""
-        end
-        Resto4LifeCharDB.smartDispel._migratedV3 = true
-    end
+    -- Bereinigung: Veraltetes Smart-Dispel entfernen
+    Resto4LifeCharDB.smartDispel = nil
 
-    -- Migration v0.3.0: Standard-Kampf-Dispel auf CTRL_1 / CTRL_2 vorbelegen, falls noch leer
-    if not Resto4LifeCharDB._migratedV030 and playerClass and R4L.Config.ClassDefaults[playerClass] then
-        local cDef = R4L.Config.ClassDefaults[playerClass]
-        if cDef.bindings and Resto4LifeCharDB.bindings then
-            for _, modKey in ipairs({ "CTRL_1", "CTRL_2" }) do
-                local defB = cDef.bindings[modKey]
-                local curB = Resto4LifeCharDB.bindings[modKey]
-                if defB and defB.spell and (not curB or not curB.spell or curB.spell == "") then
-                    Resto4LifeCharDB.bindings[modKey] = {
-                        action = "spell",
-                        spell = ResolveSpellName(defB.spell) or defB.spell,
-                    }
+    -- Bereinigung: Falls v0.3.0 zuvor ungefragt CTRL_1 / CTRL_2 mit Dispel belegt hatte, diese wieder freigeben
+    if not Resto4LifeCharDB._cleanedV030Dispel then
+        local dispelSpells = {
+            [2782] = true, [2893] = true, [527] = true, [552] = true,
+            [4987] = true, [526] = true, [2870] = true,
+            ["Fluch aufheben"] = true, ["Remove Curse"] = true,
+            ["Vergiftung aufheben"] = true, ["Abolish Poison"] = true,
+            ["Magiebannung"] = true, ["Dispel Magic"] = true,
+            ["Krankheit aufheben"] = true, ["Abolish Disease"] = true,
+            ["Reinigung des Glaubens"] = true, ["Cleanse"] = true,
+            ["Vergiftung heilen"] = true, ["Cure Poison"] = true,
+            ["Krankheit heilen"] = true, ["Cure Disease"] = true,
+        }
+        if Resto4LifeCharDB.bindings then
+            for _, k in ipairs({ "CTRL_1", "CTRL_2" }) do
+                local b = Resto4LifeCharDB.bindings[k]
+                if b and b.spell and dispelSpells[b.spell] then
+                    Resto4LifeCharDB.bindings[k] = { action = "spell", spell = "" }
                 end
             end
         end
-        Resto4LifeCharDB._migratedV030 = true
+        Resto4LifeCharDB._cleanedV030Dispel = true
     end
 
     R4L.db = Resto4LifeCharDB
