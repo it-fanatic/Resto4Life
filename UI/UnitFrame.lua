@@ -65,8 +65,9 @@ local FALLBACK_CLASS_COLORS = {
     ["RUFER"]       = { r = 0.20, g = 0.58, b = 0.50 },
 }
 
--- Ermittelt Klassenfarben zuverlässig für Retail & Classic
-local function GetClassColorRGB(class)
+-- Ermittelt Klassenfarben zuverlässig für Retail & Classic (inkl. Pet-Farbton)
+local function GetClassColorRGB(class, isPet)
+    if isPet then return 0.22, 0.75, 0.35 end
     if not class or IsSecret(class) then return 0.7, 0.7, 0.7 end
     local upperClass = string.upper(tostring(class))
     if C_ClassColor and C_ClassColor.GetClassColor then
@@ -966,7 +967,8 @@ function UF:_UpdateFrameInternal(frame)
             r, g, b = 0.15, 0.85, 0.25
         end
     else
-        r, g, b = GetClassColorRGB(class)
+        local isPet = (UnitIsPlayer and UnitIsPlayer(unit) == false)
+        r, g, b = GetClassColorRGB(class, isPet)
     end
 
     local isReverse = (cfg.display.healthOrientation == "REVERSE")

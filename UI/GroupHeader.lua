@@ -521,6 +521,10 @@ function GH:UpdateRoster()
             frame:Hide()
         end
     end
+
+    if R4L.RaidHeader and R4L.RaidHeader.UpdatePets then
+        R4L.RaidHeader:UpdatePets()
+    end
 end
 
 function GH:UpdateAllFrames()
@@ -533,6 +537,10 @@ function GH:UpdateAllFrames()
         if frame:IsShown() and frame.unit then
             R4L.UnitFrame:UpdateFrame(frame)
         end
+    end
+
+    if R4L.RaidHeader and R4L.RaidHeader.UpdatePets then
+        R4L.RaidHeader:UpdatePets()
     end
 end
 

@@ -133,10 +133,11 @@ function MB:Initialize()
                 end
             end
         elseif btn == "RightButton" then
-            if (IsInRaid() or (R4L.RaidHeader and R4L.RaidHeader.isSimulating)) and R4L.RaidHeader then
-                R4L.RaidHeader:ToggleLock()
-            elseif R4L.GroupHeader then
+            if R4L.GroupHeader then
                 R4L.GroupHeader:ToggleLock()
+            end
+            if R4L.RaidHeader then
+                R4L.RaidHeader:ToggleLock()
             end
             if R4L.BuffBar then
                 R4L.BuffBar:ToggleLock()

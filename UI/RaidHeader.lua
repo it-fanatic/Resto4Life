@@ -458,7 +458,14 @@ function RH:Initialize()
     R4L:RegisterEvent("UNIT_NAME_UPDATE", OnRaidUnitChange)
 
     R4L:RegisterEvent("UNIT_PET", function()
-        if cfg.raid and cfg.raid.showPets then
+        local c = R4L.ProfileManager:GetConfig()
+        if c.raid and c.raid.showPets then
+            RH:RequestRosterUpdate()
+        end
+    end)
+    R4L:RegisterEvent("PET_UI_UPDATE", function()
+        local c = R4L.ProfileManager:GetConfig()
+        if c.raid and c.raid.showPets then
             RH:RequestRosterUpdate()
         end
     end)
@@ -488,13 +495,17 @@ function RH:UpdateMovers()
                 else
                     c.mover:Hide()
                     if not inRaid and not self.isSimulating then
-                        c:Hide()
+                        if c ~= self.petContainer then
+                            c:Hide()
+                        end
                     end
                 end
             else
                 c.mover:Hide()
                 if not inRaid and not self.isSimulating then
-                    c:Hide()
+                    if c ~= self.petContainer then
+                        c:Hide()
+                    end
                 end
             end
         end
@@ -557,6 +568,87 @@ function RH:UpdateLayout()
     end
 end
 
+-- Hilfsfunktionen für Begleiter (Pets) in Raid & 5er-Gruppe / Solo
+local function SafeUnitIsUnit(u1, u2)
+    if not u1 or not u2 then return false end
+    local ok, res = pcall(UnitIsUnit, u1, u2)
+    return ok and (res == 1 or res == true)
+end
+
+local function GetActivePetUnits(maxCount)
+    local petUnits = {}
+    local maxFrames = maxCount or 10
+
+    local function AddPet(unit)
+        if #petUnits >= maxFrames then return end
+        if unit and UnitExists(unit) then
+            for _, existing in ipairs(petUnits) do
+                if SafeUnitIsUnit(existing, unit) then
+                    return
+                end
+            end
+            table.insert(petUnits, unit)
+        end
+    end
+
+    if IsInRaid() then
+        local numMembers = GetNumGroupMembers() or 0
+        for i = 1, numMembers do
+            AddPet("raidpet" .. i)
+        end
+        AddPet("pet")
+    else
+        -- 5er-Gruppe oder Solo:
+        AddPet("pet")
+        for i = 1, 4 do
+            AddPet("partypet" .. i)
+        end
+    end
+
+    return petUnits
+end
+
+-- Aktualisiert den Begleiter-Container (Pets) sowohl im Raid als auch in 5er-Gruppe / Solo
+function RH:UpdatePets()
+    if not self.petContainer then return end
+    if self.isSimulating then return end
+
+    if InCombatLockdown() then
+        R4L:QueueOutOfCombat(function()
+            RH:UpdatePets()
+        end)
+        return
+    end
+
+    local cfg = R4L.ProfileManager:GetConfig()
+    local showPets = cfg.raid and cfg.raid.showPets
+
+    local petUnits = {}
+    if showPets then
+        petUnits = GetActivePetUnits(self.petContainer.maxFrames)
+    end
+
+    for i = 1, self.petContainer.maxFrames do
+        local frame = self.petContainer.frames[i]
+        local unit = petUnits[i]
+        if unit and UnitExists(unit) and showPets then
+            frame.unit = unit
+            frame:SetAttribute("unit", unit)
+            R4L.UnitFrame:RegisterUnitEvents(frame, unit)
+            R4L.ClickCast:ApplyBindingsToFrame(frame)
+            frame:Show()
+            R4L.UnitFrame:UpdateFrame(frame)
+        else
+            frame.unit = nil
+            frame:SetAttribute("unit", nil)
+            R4L.UnitFrame:RegisterUnitEvents(frame, nil)
+            frame:Hide()
+        end
+    end
+
+    self.petContainer:SetShown(showPets and #petUnits > 0)
+end
+
 -- Hauptfunktion: Weist Einheiten den passenden Containern zu (inkl. Deduplizierung)
 function RH:UpdateRoster()
     if not self.initialized then return end
@@ -571,13 +663,17 @@ function RH:UpdateRoster()
 
     -- Wenn wir nicht im Raid sind (und keine Simulation aktiv ist):
     if not inRaid then
-        for _, c in ipairs(self.containers) do
-            c:Hide()
-        end
+        if self.tankContainer then self.tankContainer:Hide() end
+        if self.myGroupContainer then self.myGroupContainer:Hide() end
+        if self.raidContainer then self.raidContainer:Hide() end
+
         if R4L.GroupHeader and R4L.GroupHeader.container then
             R4L.GroupHeader.container:Show()
             R4L.GroupHeader:UpdateRoster()
         end
+
+        self:UpdatePets()
+        self:UpdateMovers()
         return
     end
 
@@ -693,34 +789,7 @@ function RH:UpdateRoster()
     self.raidContainer:SetShown(cfg.raid.showRaid and #remainingUnits > 0)
 
     -- 5. Begleiter (Pets)
-    local petUnits = {}
-    if cfg.raid.showPets then
-        for i = 1, numMembers do
-            local petUnit = "raidpet" .. i
-            if UnitExists(petUnit) then
-                table.insert(petUnits, petUnit)
-                if #petUnits >= self.petContainer.maxFrames then break end
-            end
-        end
-    end
-
-    for i = 1, self.petContainer.maxFrames do
-        local frame = self.petContainer.frames[i]
-        local unit = petUnits[i]
-        if unit and UnitExists(unit) and cfg.raid.showPets then
-            frame.unit = unit
-            frame:SetAttribute("unit", unit)
-            R4L.UnitFrame:RegisterUnitEvents(frame, unit)
-            R4L.ClickCast:ApplyBindingsToFrame(frame)
-            frame:Show()
-            R4L.UnitFrame:UpdateFrame(frame)
-        else
-            frame.unit = nil
-            frame:SetAttribute("unit", nil)
-            frame:Hide()
-        end
-    end
-    self.petContainer:SetShown(cfg.raid.showPets and #petUnits > 0)
+    self:UpdatePets()
     self:UpdateMovers()
 
     -- Gestaffelter Retry-Mechanismus für Raids:

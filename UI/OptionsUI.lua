@@ -170,6 +170,7 @@ function OUI:Initialize()
     -- Rahmen entsperren
     local cbLock = CreateCheckbox(p1, L["UNLOCK_FRAME"], 20, -20, function(val)
         R4L.GroupHeader:ToggleLock(not val)
+        if R4L.RaidHeader then R4L.RaidHeader:ToggleLock(not val) end
         if R4L.BuffBar then R4L.BuffBar:ToggleLock(not val) end
     end)
 

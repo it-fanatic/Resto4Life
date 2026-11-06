@@ -309,29 +309,31 @@ SlashCmdList["RESTO4LIFE"] = function(msg)
         end
         return
     elseif cmd == "unlock" or cmd == "move" then
-        if (IsInRaid() or (R4L.RaidHeader and R4L.RaidHeader.isSimulating)) and R4L.RaidHeader then
-            R4L.RaidHeader:ToggleLock(false)
-        elseif R4L.GroupHeader then
+        if R4L.GroupHeader then
             R4L.GroupHeader:ToggleLock(false)
+        end
+        if R4L.RaidHeader then
+            R4L.RaidHeader:ToggleLock(false)
         end
         if R4L.BuffBar then
             R4L.BuffBar:ToggleLock(false)
         end
     elseif cmd == "lock" then
-        if R4L.RaidHeader then
-            R4L.RaidHeader:ToggleLock(true)
-        end
         if R4L.GroupHeader then
             R4L.GroupHeader:ToggleLock(true)
+        end
+        if R4L.RaidHeader then
+            R4L.RaidHeader:ToggleLock(true)
         end
         if R4L.BuffBar then
             R4L.BuffBar:ToggleLock(true)
         end
     elseif cmd == "reset" or cmd == "center" then
-        if (IsInRaid() or (R4L.RaidHeader and R4L.RaidHeader.isSimulating)) and R4L.RaidHeader then
-            R4L.RaidHeader:ResetPositions()
-        elseif R4L.GroupHeader then
+        if R4L.GroupHeader then
             R4L.GroupHeader:ResetPosition()
+        end
+        if R4L.RaidHeader then
+            R4L.RaidHeader:ResetPositions()
         end
         if R4L.BuffBar then
             R4L.BuffBar:ResetPosition()
