@@ -53,7 +53,7 @@ Designed from the ground up for healers who want crystal-clear visibility, zero 
   * Left Click, Right Click, Middle Click (Mouse 3), Mouse 4, Mouse 5
   * Mouse Wheel Up and Mouse Wheel Down
   * Hover Keys 1 through 6
-* Full support for **CTRL** and **ALT** modifier combinations for every button.
+* Full support for **CTRL**, **SHIFT**, and **ALT** modifier combinations for every button.
 
 ### 💾 Profile Management
 * Character-specific profiles saved independently (`Resto4LifeCharDB`).

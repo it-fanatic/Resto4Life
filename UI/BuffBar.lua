@@ -923,6 +923,42 @@ local function GetUnitPriority(unit)
     return 4
 end
 
+-- Prüft zuverlässig, ob eine Einheit in Reichweite für einen konkreten Buff-Zauber ist
+local function IsUnitInRangeForSpell(unit, spellDef)
+    if not unit or not UnitExists(unit) then return false end
+    if SafeUnitIsPlayer(unit) then return true end
+    if not SafeUnitIsConnected(unit) then return false end
+    if SafeUnitIsDeadOrGhost(unit) then return false end
+    if UnitIsVisible and UnitIsVisible(unit) == false then return false end
+
+    -- 1. Direkte Prüfung mit dem konkreten Buff-Zauber (Name oder ID)
+    local castSpell = spellDef.name
+    if spellDef.id then
+        local realName = R4L:GetSpellName(spellDef.id)
+        if realName and realName ~= "" then castSpell = realName end
+    end
+
+    if castSpell then
+        if C_Spell and C_Spell.IsSpellInRange then
+            local ok, inRange = pcall(C_Spell.IsSpellInRange, spellDef.id or castSpell, unit)
+            if ok and inRange ~= nil then
+                if inRange == true or inRange == 1 then return true end
+                if inRange == false or inRange == 0 then return false end
+            end
+        end
+        if IsSpellInRange then
+            local ok, inRange = pcall(IsSpellInRange, castSpell, unit)
+            if ok and inRange ~= nil then
+                if inRange == 1 or inRange == true then return true end
+                if inRange == 0 or inRange == false then return false end
+            end
+        end
+    end
+
+    -- 2. Fallback auf allgemeinen Gruppen-Reichweitencheck
+    return R4L:IsUnitInRange(unit)
+end
+
 -- Aktualisiert das statische Layout der Buttons (ausschließlich außerhalb des Kampfes erlaubt!)
 function BB:UpdateLayout()
     if not container or not buttons then return end
@@ -1016,27 +1052,38 @@ function BB:Update()
 
             if targetFilter ~= "OFF" then
                 local missingUnits = {}
+                local inRangeMissing = {}
 
                 for _, u in ipairs(units) do
                     if UnitExists(u) and SafeUnitIsConnected(u) and not SafeUnitIsDeadOrGhost(u) then
                         if UnitMatchesFilter(u, targetFilter) then
-                            local inRange = R4L:IsUnitInRange(u)
-                            if inRange then
-                                if not UnitHasBuff(u, spellDef) then
-                                    table.insert(missingUnits, u)
+                            if not UnitHasBuff(u, spellDef) then
+                                table.insert(missingUnits, u)
+                                if IsUnitInRangeForSpell(u, spellDef) then
+                                    table.insert(inRangeMissing, u)
                                 end
                             end
                         end
                     end
                 end
 
-                -- Sortiere die fehlenden Einheiten nach Priorität (Tank > Heiler > Melee > Rest)
+                -- Sortiere inRangeMissing nach Priorität (Tank > Heiler > Melee > Rest)
+                table.sort(inRangeMissing, function(a, b)
+                    return GetUnitPriority(a) < GetUnitPriority(b)
+                end)
+
+                -- Sortiere alle fehlenden Einheiten (Einheiten in Reichweite immer zuerst!)
                 table.sort(missingUnits, function(a, b)
+                    local aIn = IsUnitInRangeForSpell(a, spellDef)
+                    local bIn = IsUnitInRangeForSpell(b, spellDef)
+                    if aIn ~= bIn then
+                        return aIn == true
+                    end
                     return GetUnitPriority(a) < GetUnitPriority(b)
                 end)
 
                 local missingCount = #missingUnits
-                local bestUnit = missingUnits[1]
+                local bestUnit = inRangeMissing[1]
 
                 -- Visuelles Feedback (ohne Taint, nur Backdrop & Font)
                 if missingCount > 0 then
@@ -1094,6 +1141,7 @@ function BB:Update()
                 end
 
                 btn.missingUnits = missingUnits
+                btn.bestUnit = bestUnit
             end
         end
     end
@@ -1335,11 +1383,21 @@ function BB:Initialize()
                 GameTooltip:AddLine("|cffff4444Fehlt bei (" .. #self.missingUnits .. "):|r", 1, 0.3, 0.3)
                 for _, u in ipairs(self.missingUnits) do
                     local uName = UnitName(u) or u
-                    GameTooltip:AddLine(" • " .. uName, 1, 0.8, 0.8)
+                    local inR = IsUnitInRangeForSpell(u, spellDef)
+                    if inR then
+                        GameTooltip:AddLine(" • " .. uName .. " |cff00ff00(in Reichweite)|r", 1, 0.9, 0.9)
+                    else
+                        GameTooltip:AddLine(" • " .. uName .. " |cff888888(außer Reichweite)|r", 0.6, 0.6, 0.6)
+                    end
                 end
-                local nextTarget = UnitName(self.missingUnits[1]) or self.missingUnits[1]
-                GameTooltip:AddLine(" ", 1, 1, 1)
-                GameTooltip:AddLine("|cff00ff00Linksklick: Zaubert auf " .. nextTarget .. "|r", 0, 1, 0)
+                if self.bestUnit then
+                    local nextTarget = UnitName(self.bestUnit) or self.bestUnit
+                    GameTooltip:AddLine(" ", 1, 1, 1)
+                    GameTooltip:AddLine("|cff00ff00Linksklick: Zaubert auf " .. nextTarget .. "|r", 0, 1, 0)
+                else
+                    GameTooltip:AddLine(" ", 1, 1, 1)
+                    GameTooltip:AddLine("|cffffaa00Keine fehlende Einheit in Reichweite|r", 1, 0.7, 0)
+                end
             else
                 GameTooltip:AddLine(" ", 1, 1, 1)
                 GameTooltip:AddLine("|cff00ff00Alle Einheiten gebufft (OK)|r", 0, 1, 0)

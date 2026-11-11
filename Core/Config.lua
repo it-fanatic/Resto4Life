@@ -47,6 +47,7 @@ R4L.Config.Defaults = {
         showMyGroup = true,
         showRaid = true,
         showPets = false,
+        hideBlizzardFrames = false, -- Standard Blizzard-Frames (Gruppe & Raid) ausblenden
         tankWidth = 120,
         tankHeight = 44,
         raidWidth = 90,
@@ -111,20 +112,28 @@ R4L.Config.Defaults = {
         ["CTRL_3"] = { action = "spell", spell = "" },
         ["CTRL_4"] = { action = "spell", spell = "" },
         ["CTRL_5"] = { action = "spell", spell = "" },
+        -- SHIFT + Maustasten
+        ["SHIFT_1"] = { action = "spell", spell = "" },
+        ["SHIFT_2"] = { action = "spell", spell = "" },
+        ["SHIFT_3"] = { action = "spell", spell = "" },
+        ["SHIFT_4"] = { action = "spell", spell = "" },
+        ["SHIFT_5"] = { action = "spell", spell = "" },
         -- ALT + Maustasten
         ["ALT_1"] = { action = "spell", spell = "" },
         ["ALT_2"] = { action = "spell", spell = "" },
         ["ALT_3"] = { action = "spell", spell = "" },
         ["ALT_4"] = { action = "spell", spell = "" },
         ["ALT_5"] = { action = "spell", spell = "" },
-        -- Mausrad (Standard, STRG, ALT)
+        -- Mausrad (Standard, STRG, SHIFT, ALT)
         ["WheelUp"] = { action = "spell", spell = "" },
         ["WheelDown"] = { action = "spell", spell = "" },
         ["CTRL_WheelUp"] = { action = "spell", spell = "" },
         ["CTRL_WheelDown"] = { action = "spell", spell = "" },
+        ["SHIFT_WheelUp"] = { action = "spell", spell = "" },
+        ["SHIFT_WheelDown"] = { action = "spell", spell = "" },
         ["ALT_WheelUp"] = { action = "spell", spell = "" },
         ["ALT_WheelDown"] = { action = "spell", spell = "" },
-        -- Tasten 1 - 6 (Standard, STRG, ALT)
+        -- Tasten 1 - 6 (Standard, STRG, SHIFT, ALT)
         ["KEY_1"] = { action = "spell", spell = "" },
         ["KEY_2"] = { action = "spell", spell = "" },
         ["KEY_3"] = { action = "spell", spell = "" },
@@ -137,6 +146,12 @@ R4L.Config.Defaults = {
         ["CTRL_KEY_4"] = { action = "spell", spell = "" },
         ["CTRL_KEY_5"] = { action = "spell", spell = "" },
         ["CTRL_KEY_6"] = { action = "spell", spell = "" },
+        ["SHIFT_KEY_1"] = { action = "spell", spell = "" },
+        ["SHIFT_KEY_2"] = { action = "spell", spell = "" },
+        ["SHIFT_KEY_3"] = { action = "spell", spell = "" },
+        ["SHIFT_KEY_4"] = { action = "spell", spell = "" },
+        ["SHIFT_KEY_5"] = { action = "spell", spell = "" },
+        ["SHIFT_KEY_6"] = { action = "spell", spell = "" },
         ["ALT_KEY_1"] = { action = "spell", spell = "" },
         ["ALT_KEY_2"] = { action = "spell", spell = "" },
         ["ALT_KEY_3"] = { action = "spell", spell = "" },

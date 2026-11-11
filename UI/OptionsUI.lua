@@ -124,7 +124,7 @@ function OUI:Initialize()
         L["TAB_BINDINGS"] or "Tastenbelegung",
         L["TAB_HOTS"] or "Auren & HoTs",
         L["TAB_BUFFBAR"] or "Buff-Bar",
-        L["TAB_RAID"] or "Raid-Frames",
+        L["TAB_FRAMES"] or L["TAB_RAID"] or "Frames",
         L["TAB_PROFILES"] or "Profile",
     }
     frame.tabButtons = {}
@@ -443,22 +443,27 @@ function OUI:Initialize()
     p2Desc:SetPoint("TOPLEFT", p2, "TOPLEFT", 20, -10)
     p2Desc:SetText(L["BINDINGS_HEADER"])
 
-    local currentMod = "NONE" -- "NONE", "CTRL", "ALT"
+    local currentMod = "NONE" -- "NONE", "CTRL", "SHIFT", "ALT"
 
-    -- 3 Modifikator-Umschalt-Buttons
+    -- 4 Modifikator-Umschalt-Buttons
     local btnModNone = CreateFrame("Button", nil, p2, "UIPanelButtonTemplate")
-    btnModNone:SetSize(140, 22)
+    btnModNone:SetSize(135, 22)
     btnModNone:SetPoint("TOPLEFT", p2, "TOPLEFT", 20, -28)
     btnModNone:SetText(L["MOD_NONE"] or "Standard")
 
     local btnModCtrl = CreateFrame("Button", nil, p2, "UIPanelButtonTemplate")
-    btnModCtrl:SetSize(140, 22)
-    btnModCtrl:SetPoint("LEFT", btnModNone, "RIGHT", 10, 0)
+    btnModCtrl:SetSize(135, 22)
+    btnModCtrl:SetPoint("LEFT", btnModNone, "RIGHT", 8, 0)
     btnModCtrl:SetText(L["MOD_CTRL"] or "STRG +")
 
+    local btnModShift = CreateFrame("Button", nil, p2, "UIPanelButtonTemplate")
+    btnModShift:SetSize(135, 22)
+    btnModShift:SetPoint("LEFT", btnModCtrl, "RIGHT", 8, 0)
+    btnModShift:SetText(L["MOD_SHIFT"] or "SHIFT +")
+
     local btnModAlt = CreateFrame("Button", nil, p2, "UIPanelButtonTemplate")
-    btnModAlt:SetSize(140, 22)
-    btnModAlt:SetPoint("LEFT", btnModCtrl, "RIGHT", 10, 0)
+    btnModAlt:SetSize(135, 22)
+    btnModAlt:SetPoint("LEFT", btnModShift, "RIGHT", 8, 0)
     btnModAlt:SetText(L["MOD_ALT"] or "ALT +")
 
     local function GetBindingKey(baseKey)
@@ -538,27 +543,37 @@ function OUI:Initialize()
     hintText:SetPoint("TOPLEFT", p2, "TOPLEFT", 350, -282)
     hintText:SetWidth(280)
     hintText:SetJustifyH("LEFT")
-    hintText:SetText("|cff00ccffTipp:|r Wähle oben |cff00ff00[Standard]|r, |cff00ff00[STRG +]|r oder |cff00ff00[ALT +]|r, um Tastenkombinationen zu belegen.")
+    hintText:SetText("|cff00ccffTipp:|r Wähle oben |cff00ff00[Standard]|r, |cff00ff00[STRG +]|r, |cff00ff00[SHIFT +]|r oder |cff00ff00[ALT +]|r, um Tastenkombinationen zu belegen.")
 
     local function UpdateBindingsTab()
         -- Button-Zustände optisch hervorheben
         if currentMod == "NONE" then
             btnModNone:SetText("|cff00ff00[ " .. (L["MOD_NONE"] or "Standard") .. " ]|r")
             btnModCtrl:SetText(L["MOD_CTRL"] or "STRG +")
+            btnModShift:SetText(L["MOD_SHIFT"] or "SHIFT +")
             btnModAlt:SetText(L["MOD_ALT"] or "ALT +")
         elseif currentMod == "CTRL" then
             btnModNone:SetText(L["MOD_NONE"] or "Standard")
             btnModCtrl:SetText("|cff00ff00[ " .. (L["MOD_CTRL"] or "STRG +") .. " ]|r")
+            btnModShift:SetText(L["MOD_SHIFT"] or "SHIFT +")
+            btnModAlt:SetText(L["MOD_ALT"] or "ALT +")
+        elseif currentMod == "SHIFT" then
+            btnModNone:SetText(L["MOD_NONE"] or "Standard")
+            btnModCtrl:SetText(L["MOD_CTRL"] or "STRG +")
+            btnModShift:SetText("|cff00ff00[ " .. (L["MOD_SHIFT"] or "SHIFT +") .. " ]|r")
             btnModAlt:SetText(L["MOD_ALT"] or "ALT +")
         elseif currentMod == "ALT" then
             btnModNone:SetText(L["MOD_NONE"] or "Standard")
             btnModCtrl:SetText(L["MOD_CTRL"] or "STRG +")
+            btnModShift:SetText(L["MOD_SHIFT"] or "SHIFT +")
             btnModAlt:SetText("|cff00ff00[ " .. (L["MOD_ALT"] or "ALT +") .. " ]|r")
         end
 
         local pfx = ""
         if currentMod == "CTRL" then
             pfx = "STRG + "
+        elseif currentMod == "SHIFT" then
+            pfx = "SHIFT + "
         elseif currentMod == "ALT" then
             pfx = "ALT + "
         end
@@ -594,6 +609,10 @@ function OUI:Initialize()
     end)
     btnModCtrl:SetScript("OnClick", function()
         currentMod = "CTRL"
+        UpdateBindingsTab()
+    end)
+    btnModShift:SetScript("OnClick", function()
+        currentMod = "SHIFT"
         UpdateBindingsTab()
     end)
     btnModAlt:SetScript("OnClick", function()
@@ -1150,6 +1169,14 @@ function OUI:Initialize()
     btnPetRow:SetSize(75, 22)
     btnPetRow:SetPoint("LEFT", btnPetCol, "RIGHT", 10, 0)
 
+    -- Standard Blizzard-Frames ausblenden
+    local cbHideBlizz = CreateCheckbox(p5, L["RAID_HIDE_BLIZZARD"], 20, -190, function(val)
+        cfg.raid.hideBlizzardFrames = val
+        if R4L.UpdateBlizzardFramesVisibility then
+            R4L:UpdateBlizzardFramesVisibility()
+        end
+    end, L["RAID_HIDE_BLIZZARD_DESC"])
+
     -- Aktualisierung der Orientierungs-Buttons
     local function UpdateOrientationButtons()
         local r = cfg.raid
@@ -1259,7 +1286,7 @@ function OUI:Initialize()
 
     -- Mover Sektion
     local moverHeader = p5:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    moverHeader:SetPoint("TOPLEFT", p5, "TOPLEFT", 20, -195)
+    moverHeader:SetPoint("TOPLEFT", p5, "TOPLEFT", 20, -230)
     moverHeader:SetText(L["RAID_MOVERS_HEADER"])
 
     local btnUnlockRaid = CreateFrame("Button", nil, p5, "UIPanelButtonTemplate")
@@ -1294,7 +1321,7 @@ function OUI:Initialize()
 
     -- Simulations Sektion (Umschaltung per Klick / erneuter Klick beendet)
     local simHeader = p5:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    simHeader:SetPoint("TOPLEFT", p5, "TOPLEFT", 20, -260)
+    simHeader:SetPoint("TOPLEFT", p5, "TOPLEFT", 20, -295)
     simHeader:SetText(L["RAID_SIM_HEADER"])
 
     local btnSim10 = CreateFrame("Button", nil, p5, "UIPanelButtonTemplate")
@@ -1374,6 +1401,7 @@ function OUI:Initialize()
         cbMyGroup:SetChecked(cfg.raid.showMyGroup)
         cbRaidRem:SetChecked(cfg.raid.showRaid)
         cbPets:SetChecked(cfg.raid.showPets)
+        cbHideBlizz:SetChecked(cfg.raid.hideBlizzardFrames or false)
         UpdateRaidLockBtn()
         UpdateOrientationButtons()
         UpdateSimButtons()

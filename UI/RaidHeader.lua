@@ -367,6 +367,142 @@ local function CreateSubContainer(name, count, titleKey, posKey, defaultWidth, d
     return container
 end
 
+-- =========================================================================
+-- Standard Blizzard-Frames (Gruppe & Raid) verwalten
+-- =========================================================================
+local hookedBlizz = false
+local registeredDrivers = {}
+
+local function GetBlizzardFrames()
+    local frames = {}
+    -- Nur die eigentlichen Spieler-Frames ausblenden (CompactRaidFrameManager bleibt für ReadyCheck/Marker sichtbar!)
+    if CompactRaidFrameContainer then table.insert(frames, CompactRaidFrameContainer) end
+    if CompactPartyFrame then table.insert(frames, CompactPartyFrame) end
+    if PartyFrame then table.insert(frames, PartyFrame) end
+    for i = 1, 4 do
+        local f = _G["PartyMemberFrame" .. i]
+        if f then table.insert(frames, f) end
+    end
+    if PartyMemberBackground then table.insert(frames, PartyMemberBackground) end
+    return frames
+end
+
+local function HookBlizzardUpdates()
+    if hookedBlizz then return end
+    if type(CompactRaidFrameContainer_UpdateShown) == "function" then
+        hooksecurefunc("CompactRaidFrameContainer_UpdateShown", function()
+            local cfg = R4L.ProfileManager:GetConfig()
+            if cfg and cfg.raid and cfg.raid.hideBlizzardFrames then
+                if not InCombatLockdown() and CompactRaidFrameContainer and CompactRaidFrameContainer:IsShown() then
+                    CompactRaidFrameContainer:Hide()
+                end
+            end
+        end)
+        hookedBlizz = true
+    end
+end
+
+function RH:UpdateBlizzardFrames()
+    if InCombatLockdown() then
+        R4L:QueueOutOfCombat(function()
+            RH:UpdateBlizzardFrames()
+        end)
+        return
+    end
+
+    -- Falls Blizzard_CompactRaidFrames noch nicht geladen ist, versuchen zu laden
+    if not CompactRaidFrameContainer then
+        if C_AddOns and C_AddOns.LoadAddOn then
+            pcall(C_AddOns.LoadAddOn, "Blizzard_CompactRaidFrames")
+        elseif UIParentLoadAddOn then
+            pcall(UIParentLoadAddOn, "Blizzard_CompactRaidFrames")
+        end
+    end
+
+    HookBlizzardUpdates()
+
+    local cfg = R4L.ProfileManager:GetConfig()
+    local hide = cfg.raid and cfg.raid.hideBlizzardFrames
+
+    local blizzFrames = GetBlizzardFrames()
+
+    if hide then
+        for _, frame in ipairs(blizzFrames) do
+            if not registeredDrivers[frame] then
+                if RegisterStateDriver then
+                    RegisterStateDriver(frame, "visibility", "hide")
+                end
+                registeredDrivers[frame] = true
+            end
+            frame:Hide()
+        end
+    else
+        local hadRegistered = false
+        for frame, _ in pairs(registeredDrivers) do
+            if UnregisterStateDriver then
+                UnregisterStateDriver(frame, "visibility")
+            end
+            frame:Show()
+            hadRegistered = true
+        end
+        registeredDrivers = {}
+
+        if hadRegistered then
+            if CompactRaidFrameContainer then
+                CompactRaidFrameContainer:Show()
+                if CompactRaidFrameContainer_UpdateDisplayedUnits then
+                    pcall(CompactRaidFrameContainer_UpdateDisplayedUnits, CompactRaidFrameContainer)
+                end
+                if CompactRaidFrameContainer_TryUpdate then
+                    pcall(CompactRaidFrameContainer_TryUpdate, CompactRaidFrameContainer)
+                end
+                if CompactRaidFrameContainer_UpdateShown then
+                    pcall(CompactRaidFrameContainer_UpdateShown, CompactRaidFrameContainer)
+                end
+            end
+            if CompactPartyFrame then
+                CompactPartyFrame:Show()
+                if CompactPartyFrame_UpdateShown then
+                    pcall(CompactPartyFrame_UpdateShown, CompactPartyFrame)
+                end
+            end
+            if PartyFrame then
+                PartyFrame:Show()
+                if PartyFrame.UpdatePaddingAndLayout then
+                    pcall(PartyFrame.UpdatePaddingAndLayout, PartyFrame)
+                end
+            end
+            if CompactRaidFrameManager and CompactRaidFrameManager_UpdateShown then
+                pcall(CompactRaidFrameManager_UpdateShown, CompactRaidFrameManager)
+            end
+            if ShowPartyFrame then
+                pcall(ShowPartyFrame)
+            end
+            for i = 1, 4 do
+                local f = _G["PartyMemberFrame" .. i]
+                if f then
+                    f:Show()
+                    if PartyMemberFrame_UpdateMember then
+                        pcall(PartyMemberFrame_UpdateMember, f)
+                    end
+                    if PartyMemberFrame_UpdateArt then
+                        pcall(PartyMemberFrame_UpdateArt, f)
+                    end
+                end
+            end
+            if UpdatePartyMemberBackground then
+                pcall(UpdatePartyMemberBackground)
+            end
+        end
+    end
+end
+
+function R4L:UpdateBlizzardFramesVisibility()
+    if RH.UpdateBlizzardFrames then
+        RH:UpdateBlizzardFrames()
+    end
+end
+
 function RH:Initialize()
     if self.initialized then return end
     self.initialized = true
@@ -470,8 +606,16 @@ function RH:Initialize()
         end
     end)
 
+    R4L:RegisterEvent("ADDON_LOADED", function(event, addonName)
+        if addonName == "Blizzard_CompactRaidFrames" then
+            HookBlizzardUpdates()
+            RH:UpdateBlizzardFrames()
+        end
+    end)
+
     self:UpdateLayout()
     self:UpdateRoster()
+    self:UpdateBlizzardFrames()
 end
 
 -- Aktualisiert Sichtbarkeit und Text aller Mover passend zu Lock-Status und aktiven Modulen
@@ -660,6 +804,10 @@ function RH:UpdateRoster()
 
     local inRaid = IsInRaid()
     local cfg = R4L.ProfileManager:GetConfig()
+
+    if cfg.raid and cfg.raid.hideBlizzardFrames then
+        self:UpdateBlizzardFrames()
+    end
 
     -- Wenn wir nicht im Raid sind (und keine Simulation aktiv ist):
     if not inRaid then

@@ -7,7 +7,7 @@ local addonName, R4L = ...
 _G["Resto4Life"] = R4L
 
 R4L.addonName = addonName
-R4L.version = "0.3.1-beta"
+R4L.version = "0.3.2-beta"
 R4L.inCombat = false
 R4L.combatQueue = {}
 
@@ -128,33 +128,9 @@ local FRIENDLY_RANGE_SPELLS = {
     ["SHAMAN"]      = { 8004, 77472, 61295 },   -- Heilende Woge, Welle der Heilung, Springflut
     ["MONK"]        = { 116670, 115175 },       -- Vivat / Beleben, Beruhigender Nebel
     ["EVOKER"]      = { 361469, 366155 },       -- Lebende Flamme, Zurückspulen
-    ["MAGE"]        = { 475 },                  -- Fluch aufheben
-    ["WARLOCK"]     = { 5697 },                 -- Unendlicher Atem
+    ["MAGE"]        = { 475, 1459 },            -- Fluch aufheben, Arkane Intelligenz
+    ["WARLOCK"]     = { 5697, 132 },            -- Unendlicher Atem, Seelenstein
 }
-
-function R4L:GetRangeCheckSpell()
-    if self.rangeCheckSpell ~= nil then return self.rangeCheckSpell end
-    local _, englishClass = UnitClass("player")
-    local candidates = englishClass and FRIENDLY_RANGE_SPELLS[englishClass]
-    if candidates then
-        for _, id in ipairs(candidates) do
-            local exists = false
-            if C_Spell and C_Spell.DoesSpellExist then
-                local ok, ex = pcall(C_Spell.DoesSpellExist, id)
-                if ok and ex then exists = true end
-            elseif GetSpellInfo then
-                local ok, name = pcall(GetSpellInfo, id)
-                if ok and name then exists = true end
-            end
-            if exists then
-                self.rangeCheckSpell = id
-                return id
-            end
-        end
-    end
-    self.rangeCheckSpell = false
-    return false
-end
 
 function R4L:IsUnitInRange(unit)
     if not unit or not UnitExists(unit) then return false end
@@ -172,30 +148,25 @@ function R4L:IsUnitInRange(unit)
         if okVis and isInvisible then return false end
     end
 
-    -- 2. Primäre 40-Meter Prüfung über Zauber (gesichert gegen Secret Values in WoW 12.0)
-    local spell = self:GetRangeCheckSpell()
-    if spell then
-        if C_Spell and C_Spell.IsSpellInRange then
-            local okSpell, resSpell = pcall(function()
-                local inSpell = C_Spell.IsSpellInRange(spell, unit)
-                if inSpell == nil then return nil end
-                if inSpell == true or inSpell == 1 then return true end
-                if inSpell == false or inSpell == 0 then return false end
-                return nil
-            end)
-            if okSpell and resSpell ~= nil then
-                return resSpell
+    -- 2. Primäre 40-Meter Prüfung über bekannte freundliche Zauber (per Zaubername & ID)
+    local _, englishClass = UnitClass("player")
+    local candidates = englishClass and FRIENDLY_RANGE_SPELLS[englishClass]
+    if candidates then
+        for _, id in ipairs(candidates) do
+            local sName = self:GetSpellName(id)
+            if C_Spell and C_Spell.IsSpellInRange then
+                local okSpell, resSpell = pcall(C_Spell.IsSpellInRange, id, unit)
+                if okSpell and resSpell ~= nil then
+                    if resSpell == true or resSpell == 1 then return true end
+                    if resSpell == false or resSpell == 0 then return false end
+                end
             end
-        elseif IsSpellInRange then
-            local okSpell, resSpell = pcall(function()
-                local inSpell = IsSpellInRange(spell, unit)
-                if inSpell == nil then return nil end
-                if inSpell == 1 or inSpell == true then return true end
-                if inSpell == 0 or inSpell == false then return false end
-                return nil
-            end)
-            if okSpell and resSpell ~= nil then
-                return resSpell
+            if IsSpellInRange and sName and sName ~= "" then
+                local okSpell, resSpell = pcall(IsSpellInRange, sName, unit)
+                if okSpell and resSpell ~= nil then
+                    if resSpell == 1 or resSpell == true then return true end
+                    if resSpell == 0 or resSpell == false then return false end
+                end
             end
         end
     end
@@ -229,7 +200,8 @@ function R4L:IsUnitInRange(unit)
         end
     end
 
-    return true
+    -- Falls weder 28m noch 40m bestätigt werden können, befindet sich die Einheit außer Reichweite
+    return false
 end
 
 function R4L:Print(msg, ...)

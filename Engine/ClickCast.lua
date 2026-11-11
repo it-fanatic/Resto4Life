@@ -115,6 +115,10 @@ function CC:SetupChildButtons(frame)
             UP = CreateFrame("Button", name .. "_WheelUp_Ctrl", frame, "SecureActionButtonTemplate"),
             DOWN = CreateFrame("Button", name .. "_WheelDown_Ctrl", frame, "SecureActionButtonTemplate"),
         },
+        SHIFT = {
+            UP = CreateFrame("Button", name .. "_WheelUp_Shift", frame, "SecureActionButtonTemplate"),
+            DOWN = CreateFrame("Button", name .. "_WheelDown_Shift", frame, "SecureActionButtonTemplate"),
+        },
         ALT = {
             UP = CreateFrame("Button", name .. "_WheelUp_Alt", frame, "SecureActionButtonTemplate"),
             DOWN = CreateFrame("Button", name .. "_WheelDown_Alt", frame, "SecureActionButtonTemplate"),
@@ -152,6 +156,7 @@ function CC:SetupChildButtons(frame)
     frame.keyBtns = {
         NONE = {},
         CTRL = {},
+        SHIFT = {},
         ALT = {},
     }
 
@@ -173,6 +178,15 @@ function CC:SetupChildButtons(frame)
         btnCtrl:SetAttribute("checkfocuscast", false)
         HookChildClick(btnCtrl)
         frame.keyBtns.CTRL[i] = btnCtrl
+
+        local btnShift = CreateFrame("Button", name .. "_Key" .. i .. "_Shift", frame, "SecureActionButtonTemplate")
+        btnShift:SetSize(1, 1)
+        btnShift:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+        btnShift:RegisterForClicks("AnyUp", "AnyDown")
+        btnShift:SetAttribute("checkselfcast", false)
+        btnShift:SetAttribute("checkfocuscast", false)
+        HookChildClick(btnShift)
+        frame.keyBtns.SHIFT[i] = btnShift
 
         local btnAlt = CreateFrame("Button", name .. "_Key" .. i .. "_Alt", frame, "SecureActionButtonTemplate")
         btnAlt:SetSize(1, 1)
@@ -237,6 +251,7 @@ function CC:ApplyBindingsToFrame(frame)
     local modifiers = {
         { prefix = "",      cfgPrefix = "",     isMod = false },
         { prefix = "ctrl-", cfgPrefix = "CTRL_", isMod = true },
+        { prefix = "shift-", cfgPrefix = "SHIFT_", isMod = true },
         { prefix = "alt-",  cfgPrefix = "ALT_",  isMod = true },
     }
 
@@ -303,7 +318,7 @@ function CC:ApplyBindingsToFrame(frame)
         end
     end
 
-    -- 2. Mausrad (WheelUp, WheelDown) auf Child-Buttons (Standard, STRG, ALT)
+    -- 2. Mausrad (WheelUp, WheelDown) auf Child-Buttons (Standard, STRG, SHIFT, ALT)
     if frame.wheelBtns then
         ConfigureButton(frame.wheelBtns.NONE.UP, bindings["WheelUp"] and bindings["WheelUp"].spell)
         ConfigureButton(frame.wheelBtns.NONE.DOWN, bindings["WheelDown"] and bindings["WheelDown"].spell)
@@ -311,15 +326,19 @@ function CC:ApplyBindingsToFrame(frame)
         ConfigureButton(frame.wheelBtns.CTRL.UP, bindings["CTRL_WheelUp"] and bindings["CTRL_WheelUp"].spell)
         ConfigureButton(frame.wheelBtns.CTRL.DOWN, bindings["CTRL_WheelDown"] and bindings["CTRL_WheelDown"].spell)
 
+        ConfigureButton(frame.wheelBtns.SHIFT.UP, bindings["SHIFT_WheelUp"] and bindings["SHIFT_WheelUp"].spell)
+        ConfigureButton(frame.wheelBtns.SHIFT.DOWN, bindings["SHIFT_WheelDown"] and bindings["SHIFT_WheelDown"].spell)
+
         ConfigureButton(frame.wheelBtns.ALT.UP, bindings["ALT_WheelUp"] and bindings["ALT_WheelUp"].spell)
         ConfigureButton(frame.wheelBtns.ALT.DOWN, bindings["ALT_WheelDown"] and bindings["ALT_WheelDown"].spell)
     end
 
-    -- 3. Tasten 1 bis 6 auf Child-Buttons (Standard, STRG, ALT)
+    -- 3. Tasten 1 bis 6 auf Child-Buttons (Standard, STRG, SHIFT, ALT)
     if frame.keyBtns then
         for i = 1, 6 do
             ConfigureButton(frame.keyBtns.NONE[i], bindings["KEY_" .. i] and bindings["KEY_" .. i].spell)
             ConfigureButton(frame.keyBtns.CTRL[i], bindings["CTRL_KEY_" .. i] and bindings["CTRL_KEY_" .. i].spell)
+            ConfigureButton(frame.keyBtns.SHIFT[i], bindings["SHIFT_KEY_" .. i] and bindings["SHIFT_KEY_" .. i].spell)
             ConfigureButton(frame.keyBtns.ALT[i], bindings["ALT_KEY_" .. i] and bindings["ALT_KEY_" .. i].spell)
         end
     end
@@ -348,6 +367,8 @@ function CC:SetupSecureHover(frame)
         local modPrefix = ""
         if IsControlKeyDown and IsControlKeyDown() then
             modPrefix = "CTRL_"
+        elseif IsShiftKeyDown and IsShiftKeyDown() then
+            modPrefix = "SHIFT_"
         elseif IsAltKeyDown and IsAltKeyDown() then
             modPrefix = "ALT_"
         end
@@ -369,7 +390,7 @@ function CC:SetupSecureHover(frame)
             R4L.AuraTracker.hoveredUnit = self.unit
         end
         if not InCombatLockdown() then
-            -- Mausrad (Standard, STRG, ALT)
+            -- Mausrad (Standard, STRG, SHIFT, ALT)
             if self.wheelBtns then
                 SetOverrideBindingClick(self, true, "MOUSEWHEELUP", self.wheelBtns.NONE.UP:GetName())
                 SetOverrideBindingClick(self, true, "MOUSEWHEELDOWN", self.wheelBtns.NONE.DOWN:GetName())
@@ -377,11 +398,14 @@ function CC:SetupSecureHover(frame)
                 SetOverrideBindingClick(self, true, "CTRL-MOUSEWHEELUP", self.wheelBtns.CTRL.UP:GetName())
                 SetOverrideBindingClick(self, true, "CTRL-MOUSEWHEELDOWN", self.wheelBtns.CTRL.DOWN:GetName())
 
+                SetOverrideBindingClick(self, true, "SHIFT-MOUSEWHEELUP", self.wheelBtns.SHIFT.UP:GetName())
+                SetOverrideBindingClick(self, true, "SHIFT-MOUSEWHEELDOWN", self.wheelBtns.SHIFT.DOWN:GetName())
+
                 SetOverrideBindingClick(self, true, "ALT-MOUSEWHEELUP", self.wheelBtns.ALT.UP:GetName())
                 SetOverrideBindingClick(self, true, "ALT-MOUSEWHEELDOWN", self.wheelBtns.ALT.DOWN:GetName())
             end
 
-            -- Tasten 1 bis 6 (Standard, STRG, ALT)
+            -- Tasten 1 bis 6 (Standard, STRG, SHIFT, ALT)
             if self.keyBtns then
                 for i = 1, 6 do
                     if self.keyBtns.NONE[i] then
@@ -389,6 +413,9 @@ function CC:SetupSecureHover(frame)
                     end
                     if self.keyBtns.CTRL[i] then
                         SetOverrideBindingClick(self, true, "CTRL-" .. i, self.keyBtns.CTRL[i]:GetName())
+                    end
+                    if self.keyBtns.SHIFT[i] then
+                        SetOverrideBindingClick(self, true, "SHIFT-" .. i, self.keyBtns.SHIFT[i]:GetName())
                     end
                     if self.keyBtns.ALT[i] then
                         SetOverrideBindingClick(self, true, "ALT-" .. i, self.keyBtns.ALT[i]:GetName())

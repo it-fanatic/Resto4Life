@@ -1,4 +1,4 @@
-# Resto4Life - World of Warcraft Heiler-Addon (v0.2.11-beta)
+# Resto4Life - World of Warcraft Heiler-Addon (v0.3.2-beta)
 
 **Resto4Life** ist ein modernes, leichtgewichtiges und hochgradig anpassbares Heiler-, Gruppen- und Raidframe-Addon – entwickelt speziell für **WoW Forever** (Interface 16001 / Build 1.60.1) und kompatibel mit **Retail**.
 
@@ -60,7 +60,7 @@
   * **Maustaste 5** (Vordere Daumentaste)
   * **Mausrad Hoch & Runter** (MouseWheelUp / MouseWheelDown)
   * **Schnelltasten 1 bis 6** beim Überfahren des Gruppenmitglieds (Hover-Cast)
-  * **Multiplikator-Tasten (Modifier):** Volle Unterstützung für **STRG** und **ALT** für alle Klicks, Tasten und das Mausrad (jede Kombination kann mit einem eigenen Zauber belegt werden!)
+  * **Multiplikator-Tasten (Modifier):** Volle Unterstützung für **STRG**, **SHIFT** und **ALT** für alle Klicks, Tasten und das Mausrad (jede Kombination kann mit einem eigenen Zauber belegt werden!)
 * **Profile & Datenverwaltung:**
   * Alle Einstellungen werden **pro Charakter separat gespeichert** (`Resto4LifeCharDB`).
   * **Import- und Exportfunktion:** Einstellungen können als kompakte Zeichenkette exportiert und mit Freunden oder Twinks geteilt werden.
