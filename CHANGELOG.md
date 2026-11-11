@@ -4,7 +4,7 @@ All notable changes to **Resto4Life** are documented in this file.
 
 ---
 
-## [v0.3.3-beta] - 2026-11-11
+## [v0.3.4-beta] - 2026-11-11
 
 ### 🇩🇪 Deutsch
 
@@ -17,7 +17,7 @@ All notable changes to **Resto4Life** are documented in this file.
   * Spieler können nun gezielt mana-sparende Ränge eingeben oder auswählen, z. B. `Nachwachsen (Rang 3)` oder `Heilende Berührung (Rang 4)`.
   * Leerzeichen vor Klammern werden für die WoW-Makro-Engine automatisch normalisiert (`Nachwachsen(Rang 3)`), sodass Makros immer fehlerfrei auslösen.
 
-#### ✨ Neue Funktion: Interaktives Zauberauswahl-Dropdown `[ ▼ ]`
+#### ✨ Neue Funktion: Interaktives Zauberauswahl-Dropdown `[ ▼ ]` & Ingame-Hilfen
 * **Dropdown-Button an jedem Belegungsfeld:**
   * Neben jedem Eingabefeld für Mausklicks, Mausrad, Zifferntasten 1 bis 6 und Wiederbelebung befindet sich nun ein kompakter `[ ▼ ]`-Button.
   * Ein Klick öffnet ein aufgeräumtes Menü mit allen relevanten **Heil-, Schild- und Support-Zaubern der eigenen Klasse**.
@@ -27,6 +27,8 @@ All notable changes to **Resto4Life** are documented in this file.
   * **Feld leeren:** Enthält am Ende eine praktische rote Option zum schnellen Löschen der Belegung.
 * **Automatisches Bereinigen von Zauberbuch-Links:**
   * Wird ein Zauber per Shift-Klick aus dem Zauberbuch in das Textfeld eingefügt, werden WoW-Farb- und Hyperlink-Codes (`|Hspell:...`) automatisch herausgefiltert und der reine Zaubername gespeichert.
+* **Sichtbare Ingame-Hinweise & Tooltips:**
+  * Direkter Hinweiskasten im Reiter „Tastenbelegung“ sowie im Tooltip des `[ ▼ ]`-Buttons mit Erklärungen zum automatischen höchsten Rang und zum Downranking.
 
 ---
 
@@ -41,7 +43,7 @@ All notable changes to **Resto4Life** are documented in this file.
   * Players can explicitly specify ranks to conserve mana (e.g., `Regrowth (Rank 3)`).
   * Automatically normalizes spaces before parentheses for WoW's macro parser (`Regrowth(Rank 3)`).
 
-#### ✨ New Feature: Interactive Spell Picker Dropdown `[ ▼ ]`
+#### ✨ New Feature: Interactive Spell Picker Dropdown `[ ▼ ]` & In-Game Hints
 * **Dropdown Button on Every Binding Field:**
   * Every spell input box (Mouse Clicks, Mouse Wheel, Keys 1–6, Smart Rez) now features a compact `[ ▼ ]` button.
   * Displays a curated list of all **healing, shielding, and support spells for the player's class**.
@@ -51,6 +53,8 @@ All notable changes to **Resto4Life** are documented in this file.
     * A quick `[Clear Field]` button to reset the binding.
 * **Spellbook Link Sanitizer:**
   * Shift-clicking a spell from the spellbook into an input field automatically strips WoW hyperlink formatting (`|Hspell:...`) leaving only the clean spell name.
+* **In-Game Tips & Tooltips:**
+  * Added visible notes in the Key Bindings tab and hover tooltips explaining automatic max rank behavior and how to downrank.
 
 ---
 
