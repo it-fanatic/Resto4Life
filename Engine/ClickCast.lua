@@ -481,6 +481,55 @@ function CC:ApplyBindingsToFrame(frame)
         end
     end
 
+    -- 4. Sichere Hover-Bindings (Mausrad & Tasten 1-6) für 100% In-Combat-Funktionalität
+    -- Verhindert Kamerazoom im Kampf durch native SecureHandlerEnterLeaveTemplate-Bindings
+    local name = frame:GetName()
+    local onEnterLines = {}
+
+    local wheelMap = {
+        { cfg = "WheelUp",        bind = "MOUSEWHEELUP",        btn = "_WheelUp" },
+        { cfg = "WheelDown",      bind = "MOUSEWHEELDOWN",      btn = "_WheelDown" },
+        { cfg = "CTRL_WheelUp",   bind = "CTRL-MOUSEWHEELUP",   btn = "_WheelUp_Ctrl" },
+        { cfg = "CTRL_WheelDown", bind = "CTRL-MOUSEWHEELDOWN", btn = "_WheelDown_Ctrl" },
+        { cfg = "SHIFT_WheelUp",  bind = "SHIFT-MOUSEWHEELUP",  btn = "_WheelUp_Shift" },
+        { cfg = "SHIFT_WheelDown",bind = "SHIFT-MOUSEWHEELDOWN",btn = "_WheelDown_Shift" },
+        { cfg = "ALT_WheelUp",    bind = "ALT-MOUSEWHEELUP",    btn = "_WheelUp_Alt" },
+        { cfg = "ALT_WheelDown",  bind = "ALT-MOUSEWHEELDOWN",  btn = "_WheelDown_Alt" },
+    }
+
+    for _, w in ipairs(wheelMap) do
+        local bConf = bindings[w.cfg]
+        if bConf and bConf.spell and bConf.spell ~= "" then
+            table.insert(onEnterLines, string.format('self:SetBindingClick(true, "%s", "%s%s");', w.bind, name, w.btn))
+        end
+    end
+
+    local keyMods = {
+        { pfx = "",       btnSfx = "" },
+        { pfx = "CTRL-",  btnSfx = "_Ctrl" },
+        { pfx = "SHIFT-", btnSfx = "_Shift" },
+        { pfx = "ALT-",   btnSfx = "_Alt" },
+    }
+    local cfgPrefixes = { "", "CTRL_", "SHIFT_", "ALT_" }
+
+    for i = 1, 6 do
+        for m = 1, 4 do
+            local cfgKey = cfgPrefixes[m] .. "KEY_" .. i
+            local bConf = bindings[cfgKey]
+            if bConf and bConf.spell and bConf.spell ~= "" then
+                table.insert(onEnterLines, string.format('self:SetBindingClick(true, "%s%d", "%s_Key%d%s");', keyMods[m].pfx, i, name, i, keyMods[m].btnSfx))
+            end
+        end
+    end
+
+    if #onEnterLines > 0 then
+        frame:SetAttribute("_onenter", table.concat(onEnterLines, "\n"))
+        frame:SetAttribute("_onleave", "self:ClearBindings();")
+    else
+        frame:SetAttribute("_onenter", nil)
+        frame:SetAttribute("_onleave", "self:ClearBindings();")
+    end
+
     -- Richte Hover-Bindings ein
     self:SetupSecureHover(frame)
 end
@@ -528,34 +577,52 @@ function CC:SetupSecureHover(frame)
             R4L.AuraTracker.hoveredUnit = self.unit
         end
         if not InCombatLockdown() then
+            local cfg = R4L.ProfileManager and R4L.ProfileManager:GetConfig()
+            local bindings = cfg and cfg.bindings or {}
             -- Mausrad (Standard, STRG, SHIFT, ALT)
             if self.wheelBtns then
-                SetOverrideBindingClick(self, true, "MOUSEWHEELUP", self.wheelBtns.NONE.UP:GetName())
-                SetOverrideBindingClick(self, true, "MOUSEWHEELDOWN", self.wheelBtns.NONE.DOWN:GetName())
+                if bindings["WheelUp"] and bindings["WheelUp"].spell ~= "" then
+                    SetOverrideBindingClick(self, true, "MOUSEWHEELUP", self.wheelBtns.NONE.UP:GetName())
+                end
+                if bindings["WheelDown"] and bindings["WheelDown"].spell ~= "" then
+                    SetOverrideBindingClick(self, true, "MOUSEWHEELDOWN", self.wheelBtns.NONE.DOWN:GetName())
+                end
 
-                SetOverrideBindingClick(self, true, "CTRL-MOUSEWHEELUP", self.wheelBtns.CTRL.UP:GetName())
-                SetOverrideBindingClick(self, true, "CTRL-MOUSEWHEELDOWN", self.wheelBtns.CTRL.DOWN:GetName())
+                if bindings["CTRL_WheelUp"] and bindings["CTRL_WheelUp"].spell ~= "" then
+                    SetOverrideBindingClick(self, true, "CTRL-MOUSEWHEELUP", self.wheelBtns.CTRL.UP:GetName())
+                end
+                if bindings["CTRL_WheelDown"] and bindings["CTRL_WheelDown"].spell ~= "" then
+                    SetOverrideBindingClick(self, true, "CTRL-MOUSEWHEELDOWN", self.wheelBtns.CTRL.DOWN:GetName())
+                end
 
-                SetOverrideBindingClick(self, true, "SHIFT-MOUSEWHEELUP", self.wheelBtns.SHIFT.UP:GetName())
-                SetOverrideBindingClick(self, true, "SHIFT-MOUSEWHEELDOWN", self.wheelBtns.SHIFT.DOWN:GetName())
+                if bindings["SHIFT_WheelUp"] and bindings["SHIFT_WheelUp"].spell ~= "" then
+                    SetOverrideBindingClick(self, true, "SHIFT-MOUSEWHEELUP", self.wheelBtns.SHIFT.UP:GetName())
+                end
+                if bindings["SHIFT_WheelDown"] and bindings["SHIFT_WheelDown"].spell ~= "" then
+                    SetOverrideBindingClick(self, true, "SHIFT-MOUSEWHEELDOWN", self.wheelBtns.SHIFT.DOWN:GetName())
+                end
 
-                SetOverrideBindingClick(self, true, "ALT-MOUSEWHEELUP", self.wheelBtns.ALT.UP:GetName())
-                SetOverrideBindingClick(self, true, "ALT-MOUSEWHEELDOWN", self.wheelBtns.ALT.DOWN:GetName())
+                if bindings["ALT_WheelUp"] and bindings["ALT_WheelUp"].spell ~= "" then
+                    SetOverrideBindingClick(self, true, "ALT-MOUSEWHEELUP", self.wheelBtns.ALT.UP:GetName())
+                end
+                if bindings["ALT_WheelDown"] and bindings["ALT_WheelDown"].spell ~= "" then
+                    SetOverrideBindingClick(self, true, "ALT-MOUSEWHEELDOWN", self.wheelBtns.ALT.DOWN:GetName())
+                end
             end
 
             -- Tasten 1 bis 6 (Standard, STRG, SHIFT, ALT)
             if self.keyBtns then
                 for i = 1, 6 do
-                    if self.keyBtns.NONE[i] then
+                    if bindings["KEY_" .. i] and bindings["KEY_" .. i].spell ~= "" then
                         SetOverrideBindingClick(self, true, tostring(i), self.keyBtns.NONE[i]:GetName())
                     end
-                    if self.keyBtns.CTRL[i] then
+                    if bindings["CTRL_KEY_" .. i] and bindings["CTRL_KEY_" .. i].spell ~= "" then
                         SetOverrideBindingClick(self, true, "CTRL-" .. i, self.keyBtns.CTRL[i]:GetName())
                     end
-                    if self.keyBtns.SHIFT[i] then
+                    if bindings["SHIFT_KEY_" .. i] and bindings["SHIFT_KEY_" .. i].spell ~= "" then
                         SetOverrideBindingClick(self, true, "SHIFT-" .. i, self.keyBtns.SHIFT[i]:GetName())
                     end
-                    if self.keyBtns.ALT[i] then
+                    if bindings["ALT_KEY_" .. i] and bindings["ALT_KEY_" .. i].spell ~= "" then
                         SetOverrideBindingClick(self, true, "ALT-" .. i, self.keyBtns.ALT[i]:GetName())
                     end
                 end

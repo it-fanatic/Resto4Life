@@ -483,8 +483,10 @@ end
 
 -- Erstellt einen einzelnen Frame
 function UF:CreateUnitFrame(name, parent, unit)
-    local frame = CreateFrame("Button", name, parent, "SecureActionButtonTemplate")
+    local frame = CreateFrame("Button", name, parent, "SecureActionButtonTemplate,SecureHandlerEnterLeaveTemplate")
     frame.unit = unit
+    frame:EnableMouse(true)
+    frame:EnableMouseWheel(true)
     frame:SetAttribute("checkselfcast", false)
     frame:SetAttribute("checkfocuscast", false)
 

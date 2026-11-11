@@ -4,6 +4,30 @@ All notable changes to **Resto4Life** are documented in this file.
 
 ---
 
+## [v0.3.5-beta] - 2026-11-11
+
+### 🇩🇪 Deutsch
+
+#### 🔧 Dringliche Fehlerbehebung: Mausrad & Tastenbelegung im Kampf (In-Combat Hover)
+* **Behebt unerwünschtes Zoomen im Kampf:**
+  * Bisher konnte WoW bei Mausrad-Aktionen oder Zifferntasten im Kampf (`InCombatLockdown`) die Hover-Bindings nicht per Lua (`SetOverrideBindingClick`) setzen, da diese Funktion während des Kampfes von Blizzard geschützt und blockiert wird. Das Mausrad fiel dadurch beim Bewegen über Unit-Frames im Kampf auf den Standard-Kamerazoom zurück.
+  * **Native SecureHandlerEnterLeaveTemplate-Integration:** Alle Unit-Frames erben nun Blizzards sicheres `SecureHandlerEnterLeaveTemplate` mit `_onenter` und `_onleave` Snippets.
+  * Die Zuweisung von `MOUSEWHEELUP`, `MOUSEWHEELDOWN` und Tasten 1–6 (inkl. STRG, SHIFT, ALT) läuft nun **vollständig geschützt im C++-Combat-Environment** (`self:SetBindingClick(true, ...)` / `self:ClearBindings()`).
+  * Zudem wurde `frame:EnableMouseWheel(true)` direkt auf allen Unit-Frames aktiviert, wodurch das Mausrad im Kampf nun zuverlässig Zauber auf das anvisierte Gruppenmitglied wirkt, ohne die Kamera zu verstellen.
+
+---
+
+### 🇬🇧 English
+
+#### 🔧 Urgent Fix: Mouse Wheel & Hover Keybindings In Combat
+* **Fixed In-Combat Camera Zooming:**
+  * Standard Lua `SetOverrideBindingClick` calls are blocked by Blizzard's combat security lockdown (`InCombatLockdown`), causing mouse wheel scrolls over party frames to fall back to the game's default camera zoom behavior during combat.
+  * **Native SecureHandlerEnterLeaveTemplate Support:** All unit frames now inherit Blizzard's secure `SecureHandlerEnterLeaveTemplate` with restricted `_onenter` and `_onleave` snippets.
+  * Hover key and mouse wheel bindings (`MOUSEWHEELUP`, `MOUSEWHEELDOWN`, Keys 1–6 and modifiers) are now bound and cleared natively within Blizzard's **restricted combat execution environment** (`self:SetBindingClick(true, ...)` / `self:ClearBindings()`).
+  * Explicitly enabled `frame:EnableMouseWheel(true)` on unit frames, ensuring that scrolling over a party frame in combat immediately casts the configured spell instead of zooming the camera.
+
+---
+
 ## [v0.3.4-beta] - 2026-11-11
 
 ### 🇩🇪 Deutsch
