@@ -99,7 +99,8 @@ L["NORMAL_REZ_SPELL"] = "Normale Wiederbelebung (Out-of-Combat):"
 L["SPELL_PICKER_TITLE"] = "Heil- & Supportzauber"
 L["SPELL_MAX_RANK"] = "Höchster Rang"
 L["SPELL_CLEAR"] = "[Feld leeren]"
-L["TOOLTIP_SPELL_PICKER"] = "Klicken, um einen Zauber oder einen bestimmten Rang auszuwählen.\n\n|cff00ff00Tipp:|r Du kannst Zauber auch per Shift-Klick aus dem Zauberbuch direkt in das Eingabefeld einfügen."
+L["TOOLTIP_SPELL_PICKER"] = "Klicken, um einen Zauber oder einen bestimmten Rang auszuwählen.\n\n• |cffffff00Zauberränge:|r Ohne Rangangabe wirkt das Makro automatisch deinen |cff00ff00höchsten Rang|r.\n• |cffffff00Downranking:|r Wähle im Untermenü einen kleineren Rang (z. B. Rang 3), um gezielt Mana zu sparen.\n• |cff00ccffTipp:|r Zauber können auch per Shift-Klick aus dem Zauberbuch direkt in das Eingabefeld eingefügt werden."
+L["BINDINGS_HINT_TEXT"] = "|cff00ccffTipps & Hinweise:|r\n• |cffffff00Höchster Rang:|r Ohne Rangangabe wird automatisch dein |cff00ff00höchster Rang|r gewirkt.\n• |cffffff00Downranking:|r Wähle im Dropdown |cffffd100[▼]|r einen kleineren Rang (z. B. Rang 3) oder tippe ihn per Hand ein, um gezielt Mana zu sparen.\n• |cffffff00Modifikatoren:|r Wähle oben |cff00ff00[Standard]|r, |cff00ff00[STRG +]|r, |cff00ff00[SHIFT +]|r oder |cff00ff00[ALT +]|r für Tastenkombinationen."
 
 -- Tab 3: HoTs & Debuffs
 L["SHOW_HOTS_CB"] = "Eigene HoTs & Schilde auf Gruppenmitgliedern anzeigen (Nativ via Blizzard AuraContainer)"

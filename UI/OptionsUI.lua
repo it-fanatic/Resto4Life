@@ -847,12 +847,13 @@ function OUI:Initialize()
         titleKeys[i] = title
     end
 
-    -- Hinweistext unten rechts
-    local hintText = p2:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    hintText:SetPoint("TOPLEFT", p2, "TOPLEFT", 350, -282)
-    hintText:SetWidth(280)
+    -- Hinweistext unten rechts (Downranking, Höchster Rang, Modifikatoren)
+    local hintText = p2:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    hintText:SetPoint("TOPLEFT", p2, "TOPLEFT", 350, -280)
+    hintText:SetWidth(345)
     hintText:SetJustifyH("LEFT")
-    hintText:SetText("|cff00ccffTipp:|r Wähle oben |cff00ff00[Standard]|r, |cff00ff00[STRG +]|r, |cff00ff00[SHIFT +]|r oder |cff00ff00[ALT +]|r, um Tastenkombinationen zu belegen.")
+    hintText:SetSpacing(2)
+    hintText:SetText(L["BINDINGS_HINT_TEXT"] or "|cff00ccffTipps & Hinweise:|r\n• |cffffff00Höchster Rang:|r Ohne Rangangabe wird automatisch dein |cff00ff00höchster Rang|r gewirkt.\n• |cffffff00Downranking:|r Wähle im Dropdown |cffffd100[▼]|r einen kleineren Rang (z. B. Rang 3) oder tippe ihn per Hand ein, um gezielt Mana zu sparen.\n• |cffffff00Modifikatoren:|r Wähle oben |cff00ff00[Standard]|r, |cff00ff00[STRG +]|r, |cff00ff00[SHIFT +]|r oder |cff00ff00[ALT +]|r für Tastenkombinationen.")
 
     local function UpdateBindingsTab()
         -- Button-Zustände optisch hervorheben

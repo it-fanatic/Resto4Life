@@ -99,7 +99,8 @@ L["NORMAL_REZ_SPELL"] = "Normal Rez Spell (Out-of-Combat):"
 L["SPELL_PICKER_TITLE"] = "Healing & Support Spells"
 L["SPELL_MAX_RANK"] = "Highest Rank"
 L["SPELL_CLEAR"] = "[Clear Field]"
-L["TOOLTIP_SPELL_PICKER"] = "Click to select a spell or a specific rank.\n\n|cff00ff00Tip:|r You can also Shift-Click spells from your spellbook directly into the input field."
+L["TOOLTIP_SPELL_PICKER"] = "Click to select a spell or a specific rank.\n\n• |cffffff00Spell Ranks:|r Leaving out the rank automatically casts your |cff00ff00highest learned rank|r.\n• |cffffff00Downranking:|r Select a lower rank from the submenu (e.g. Rank 3) to conserve mana.\n• |cff00ccffTip:|r You can also Shift-Click spells from your spellbook directly into the input field."
+L["BINDINGS_HINT_TEXT"] = "|cff00ccffTips & Notes:|r\n• |cffffff00Highest Rank:|r Leaving out the rank automatically casts your |cff00ff00highest learned rank|r.\n• |cffffff00Downranking:|r Select a lower rank from the |cffffd100[▼]|r dropdown or enter it manually (e.g. Rank 3) to conserve mana.\n• |cffffff00Modifiers:|r Select |cff00ff00[Standard]|r, |cff00ff00[CTRL +]|r, |cff00ff00[SHIFT +]|r or |cff00ff00[ALT +]|r above for key combinations."
 
 -- Tab 3: HoTs & Debuffs
 L["SHOW_HOTS_CB"] = "Show own HoTs & shields on group members (Native via Blizzard AuraContainer)"
