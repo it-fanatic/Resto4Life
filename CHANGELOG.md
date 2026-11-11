@@ -4,6 +4,56 @@ All notable changes to **Resto4Life** are documented in this file.
 
 ---
 
+## [v0.3.3-beta] - 2026-11-11
+
+### 🇩🇪 Deutsch
+
+#### 🔧 Dringliche Fehlerbehebung: Zauberränge & Automatischer Höchster Rang
+* **Automatische Erkennung des höchsten Rangs:**
+  * Behebt das Problem in WoW Classic / WotLK / WoW Forever, bei dem Makros mit Ziel-Konditionen (`/cast [@party1] Zauber`) ohne Rangangabe standardmäßig auf **Rang 1** zurückfallen.
+  * Das Addon scannt nun beim Login, Zonenwechsel sowie bei jedem Erlernen neuer Ränge (`SPELLS_CHANGED`) automatisch das Zauberbuch und hängt bei allen Zaubern ohne explizite Rangangabe automatisch den **höchsten erlernten Rang** an (z. B. `/cast [@party1] Nachwachsen(Rang 5)`). Bestehende Tastenbelegungen funktionieren sofort ohne manuelle Anpassung mit maximaler Heilkraft!
+  * Auch Smart Battle Rez (`Wiedergeburt`, `Wiederbeleben`) nutzt nun automatisch den höchsten Rang.
+* **Unterstützung für manuelle Ränge (Downranking):**
+  * Spieler können nun gezielt mana-sparende Ränge eingeben oder auswählen, z. B. `Nachwachsen (Rang 3)` oder `Heilende Berührung (Rang 4)`.
+  * Leerzeichen vor Klammern werden für die WoW-Makro-Engine automatisch normalisiert (`Nachwachsen(Rang 3)`), sodass Makros immer fehlerfrei auslösen.
+
+#### ✨ Neue Funktion: Interaktives Zauberauswahl-Dropdown `[ ▼ ]`
+* **Dropdown-Button an jedem Belegungsfeld:**
+  * Neben jedem Eingabefeld für Mausklicks, Mausrad, Zifferntasten 1 bis 6 und Wiederbelebung befindet sich nun ein kompakter `[ ▼ ]`-Button.
+  * Ein Klick öffnet ein aufgeräumtes Menü mit allen relevanten **Heil-, Schild- und Support-Zaubern der eigenen Klasse**.
+  * **Rang-Untermenüs:** Besitzt ein Zauber im Zauberbuch mehrere Ränge, öffnet sich ein Untermenü mit:
+    * `★ [Höchster Rang]` (wählt den Zauber dynamisch auf Max-Rang)
+    * Allen erlernten Rängen einzeln (z. B. `Rang 1`, `Rang 2`, `Rang 3`...) zum gezielten Downranking.
+  * **Feld leeren:** Enthält am Ende eine praktische rote Option zum schnellen Löschen der Belegung.
+* **Automatisches Bereinigen von Zauberbuch-Links:**
+  * Wird ein Zauber per Shift-Klick aus dem Zauberbuch in das Textfeld eingefügt, werden WoW-Farb- und Hyperlink-Codes (`|Hspell:...`) automatisch herausgefiltert und der reine Zaubername gespeichert.
+
+---
+
+### 🇬🇧 English
+
+#### 🔧 Urgent Fix: Spell Ranks & Automatic Highest Rank Resolution
+* **Automatic Highest Rank Detection:**
+  * Fixes the WoW Classic / WotLK / WoW Forever engine behavior where conditional macros (`/cast [@party1] Spell`) default to **Rank 1** when no rank is specified.
+  * The addon now automatically scans the spellbook on login, zone changes, and spell learned events (`SPELLS_CHANGED`), dynamically appending the player's **highest known rank** (e.g. `/cast [@party1] Regrowth(Rank 5)`). Existing profiles immediately cast at max rank without needing re-configuration!
+  * Smart Battle Rez (`Rebirth`, `Revive`) now also automatically casts at highest rank.
+* **Downranking Support:**
+  * Players can explicitly specify ranks to conserve mana (e.g., `Regrowth (Rank 3)`).
+  * Automatically normalizes spaces before parentheses for WoW's macro parser (`Regrowth(Rank 3)`).
+
+#### ✨ New Feature: Interactive Spell Picker Dropdown `[ ▼ ]`
+* **Dropdown Button on Every Binding Field:**
+  * Every spell input box (Mouse Clicks, Mouse Wheel, Keys 1–6, Smart Rez) now features a compact `[ ▼ ]` button.
+  * Displays a curated list of all **healing, shielding, and support spells for the player's class**.
+  * **Rank Submenus:** Spells with multiple learned ranks expand into a submenu containing:
+    * `★ [Highest Rank]` (automatically casts max rank)
+    * Each learned rank (`Rank 1`, `Rank 2`...) for precise downranking.
+    * A quick `[Clear Field]` button to reset the binding.
+* **Spellbook Link Sanitizer:**
+  * Shift-clicking a spell from the spellbook into an input field automatically strips WoW hyperlink formatting (`|Hspell:...`) leaving only the clean spell name.
+
+---
+
 ## [v0.3.2-beta] - 2026-11-11
 
 ### 🇩🇪 Deutsch

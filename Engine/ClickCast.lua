@@ -8,6 +8,9 @@ local _, R4L = ...
 R4L.ClickCast = {}
 local CC = R4L.ClickCast
 
+-- Cache für bekannte Zauberränge aus dem Zauberbuch
+CC.spellRankCache = {}
+
 -- Löst Zaubernamen sicher auf (egal ob Spell-ID oder Name als String übergeben wurde)
 local function ResolveSpellName(spell)
     if not spell or spell == "" then return nil end
@@ -24,6 +27,142 @@ local function ResolveSpellName(spell)
     return tostring(spell)
 end
 CC.ResolveSpellName = ResolveSpellName
+
+-- Scannt das Zauberbuch des Spielers nach allen Zaubern und deren höchsten Rängen
+function CC:ScanSpellbookRanks()
+    local cache = {}
+    local spellBank = (BOOKTYPE_SPELL ~= nil) and BOOKTYPE_SPELL or "spell"
+    local getItemName = GetSpellBookItemName or GetSpellName
+    if not getItemName then return end
+
+    local numTabs = (GetNumSpellTabs and GetNumSpellTabs()) or 0
+
+    local function ProcessSlot(slot)
+        local ok, spellName, subName = pcall(getItemName, slot, spellBank)
+        if ok and spellName and spellName ~= "" then
+            local rankNum = nil
+            if subName and subName ~= "" then
+                local numStr = subName:match("(%d+)")
+                if numStr then rankNum = tonumber(numStr) end
+            end
+
+            local entry = cache[spellName]
+            if not entry then
+                entry = {
+                    baseName = spellName,
+                    highestSubName = (subName and subName ~= "") and subName or nil,
+                    highestRankNum = rankNum,
+                    ranks = {}
+                }
+                cache[spellName] = entry
+                cache[spellName:lower()] = entry
+            end
+
+            if subName and subName ~= "" then
+                table.insert(entry.ranks, {
+                    subName = subName,
+                    rankNum = rankNum or 0,
+                    slot = slot,
+                })
+                if rankNum and (not entry.highestRankNum or rankNum > entry.highestRankNum) then
+                    entry.highestRankNum = rankNum
+                    entry.highestSubName = subName
+                elseif not entry.highestSubName then
+                    entry.highestSubName = subName
+                end
+            end
+        end
+    end
+
+    if numTabs > 0 and GetSpellTabInfo then
+        for t = 1, numTabs do
+            local _, _, offset, numSpells = GetSpellTabInfo(t)
+            if offset and numSpells then
+                for s = offset + 1, offset + numSpells do
+                    ProcessSlot(s)
+                end
+            end
+        end
+    else
+        for s = 1, 300 do
+            ProcessSlot(s)
+        end
+    end
+
+    -- Ränge aufsteigend nach Rangnummer sortieren
+    for _, entry in pairs(cache) do
+        if entry.ranks and #entry.ranks > 1 then
+            table.sort(entry.ranks, function(a, b)
+                return (a.rankNum or 0) < (b.rankNum or 0)
+            end)
+        end
+    end
+
+    self.spellRankCache = cache
+end
+
+-- Gibt die erfassten Ränge für einen Zauber zurück
+function CC:GetSpellRanks(spellName)
+    if not spellName or spellName == "" then return nil end
+    local cleanName = spellName
+    local base = spellName:match("^(.-)%s*%(")
+    if base and base ~= "" then
+        cleanName = base:match("^%s*(.-)%s*$")
+    end
+    if not self.spellRankCache or not next(self.spellRankCache) then
+        self:ScanSpellbookRanks()
+    end
+    return self.spellRankCache[cleanName] or self.spellRankCache[cleanName:lower()]
+end
+
+-- Bereinigt Eingaben (z.B. Shift-Klick Links oder IDs)
+function CC:NormalizeSpellName(spellInput)
+    if not spellInput or spellInput == "" then return nil end
+    local str = tostring(spellInput)
+    -- WoW Link entfernen: |c...|Hspell:1234|h[Zaubername]|h|r
+    local linkName = str:match("%[(.-)%]")
+    if linkName and linkName ~= "" then
+        str = linkName
+    end
+    -- Numerische ID auflösen
+    local num = tonumber(str)
+    if num then
+        local resolved = ResolveSpellName(num)
+        if resolved and resolved ~= "" then
+            str = resolved
+        end
+    end
+    return str:match("^%s*(.-)%s*$")
+end
+
+-- Ermittelt den optimalen Zaubernamen für Makros (inkl. Rang-Unterstützung für WoW Classic / WotLK)
+function CC:GetSpellForMacro(spellInput)
+    local str = self:NormalizeSpellName(spellInput)
+    if not str or str == "" then return nil end
+
+    -- 1. Hat der Spieler explizit einen Rang oder Zusatz in Klammern angegeben? Z.B. "Nachwachsen (Rang 3)"
+    local base, paren = str:match("^(.-)%s*%((.-)%)$")
+    if base and paren then
+        base = base:match("^%s*(.-)%s*$")
+        paren = paren:match("^%s*(.-)%s*$")
+        local num = tonumber(base)
+        if num then
+            local r = ResolveSpellName(num)
+            if r and r ~= "" then base = r end
+        end
+        -- In WoW Makros darf kein Leerzeichen vor der Klammer sein: "Nachwachsen(Rang 3)"
+        return base .. "(" .. paren .. ")"
+    end
+
+    -- 2. Kein Rang angegeben: Im Zauberbuch nach dem höchsten gelernten Rang suchen
+    local cleanBase = str:match("^%s*(.-)%s*$")
+    local entry = self:GetSpellRanks(cleanBase)
+    if entry and entry.highestSubName and entry.highestSubName ~= "" then
+        return cleanBase .. "(" .. entry.highestSubName .. ")"
+    end
+
+    return cleanBase
+end
 
 -- Prüft sicher, ob ein Zauber im Zauberbuch des Spielers bekannt ist
 local function IsPlayerSpellKnown(spellId)
@@ -45,8 +184,7 @@ local function IsPlayerSpellKnown(spellId)
     return false
 end
 
-
--- Erstellt einen sicheren Macrotext unter Berücksichtigung von Smart Battle Rez
+-- Erstellt einen sicheren Macrotext unter Berücksichtigung von Smart Battle Rez und Zauberrängen
 function CC:BuildMacroText(unit, actionType, spellName, isLeftClick)
     local cfg = R4L.ProfileManager:GetConfig()
     local smartRez = cfg.smartRez or {}
@@ -63,7 +201,7 @@ function CC:BuildMacroText(unit, actionType, spellName, isLeftClick)
         return nil
     end
 
-    local actualSpell = ResolveSpellName(spellName)
+    local actualSpell = self:GetSpellForMacro(spellName)
     if not actualSpell or actualSpell == "" then
         return nil
     end
@@ -71,8 +209,8 @@ function CC:BuildMacroText(unit, actionType, spellName, isLeftClick)
     local castLine = ""
     -- Intelligentes Battle-Rez / Normal-Rez bei Linksklick auf tote Gruppenmitglieder
     if smartRez.enabled and isLeftClick then
-        local combatRez = ResolveSpellName(smartRez.combatRezSpell)
-        local normalRez = ResolveSpellName(smartRez.normalRezSpell)
+        local combatRez = smartRez.combatRezSpell and self:GetSpellForMacro(smartRez.combatRezSpell)
+        local normalRez = smartRez.normalRezSpell and self:GetSpellForMacro(smartRez.normalRezSpell)
 
         local rezParts = {}
         if combatRez and combatRez ~= "" then
@@ -477,14 +615,31 @@ function CC:ApplyAllBindings()
     end
 end
 
--- Selbstzauber-Einstellung bei Login und Zonenwechsel sicherstellen
+-- Selbstzauber-Einstellung und Zauberbuch-Ränge bei Login und Zonenwechsel sicherstellen
 R4L:RegisterEvent("PLAYER_LOGIN", function()
+    CC:ScanSpellbookRanks()
     CC:ApplySelfCastPreference()
 end)
 
 R4L:RegisterEvent("PLAYER_ENTERING_WORLD", function()
+    CC:ScanSpellbookRanks()
     CC:ApplySelfCastPreference()
 end)
+
+-- Zauberbuch-Änderungen (z.B. neue Ränge gelernt, Talente gewechselt) dynamisch erfassen
+local function OnSpellsChanged()
+    CC:ScanSpellbookRanks()
+    if not InCombatLockdown() then
+        CC:ApplyAllBindings()
+    else
+        R4L:QueueOutOfCombat(function()
+            CC:ApplyAllBindings()
+        end)
+    end
+end
+
+R4L:RegisterEvent("SPELLS_CHANGED", OnSpellsChanged)
+R4L:RegisterEvent("LEARNED_SPELL_IN_TAB", OnSpellsChanged)
 
 
 

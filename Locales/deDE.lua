@@ -96,6 +96,10 @@ L["SMART_REZ_HEADER"] = "|cffffff00Smart Battle Rez & Wiederbelebung:|r"
 L["SMART_REZ_ENABLE"] = "Smart Battle-Rez (Linksklick auf Tote)"
 L["COMBAT_REZ_SPELL"] = "Kampf-Wiederbelebung (In-Combat):"
 L["NORMAL_REZ_SPELL"] = "Normale Wiederbelebung (Out-of-Combat):"
+L["SPELL_PICKER_TITLE"] = "Heil- & Supportzauber"
+L["SPELL_MAX_RANK"] = "Höchster Rang"
+L["SPELL_CLEAR"] = "[Feld leeren]"
+L["TOOLTIP_SPELL_PICKER"] = "Klicken, um einen Zauber oder einen bestimmten Rang auszuwählen.\n\n|cff00ff00Tipp:|r Du kannst Zauber auch per Shift-Klick aus dem Zauberbuch direkt in das Eingabefeld einfügen."
 
 -- Tab 3: HoTs & Debuffs
 L["SHOW_HOTS_CB"] = "Eigene HoTs & Schilde auf Gruppenmitgliedern anzeigen (Nativ via Blizzard AuraContainer)"

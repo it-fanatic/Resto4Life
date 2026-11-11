@@ -34,15 +34,274 @@ local function CreateCheckbox(parent, label, x, y, onClick, tooltip)
     return cb
 end
 
--- Hilfsfunktion: Eingabefeld (EditBox) erstellen
-local function CreateEditBox(parent, label, x, y, width, onEnterPressed)
+-- Übersicht aller Heil- und Supportzauber je Klasse für die Zauberauswahl
+local CLASS_SPELL_LIST = {
+    DRUID = {
+        774,    -- Rejuvenation (Verjüngung)
+        8936,   -- Regrowth (Nachwachsen)
+        5185,   -- Healing Touch (Heilende Berührung)
+        33763,  -- Lifebloom (Blühendes Leben)
+        18562,  -- Swiftmend (Rasche Heilung)
+        48438,  -- Wild Growth (Wildwuchs)
+        50464,  -- Nourish (Pflege)
+        740,    -- Tranquility (Gelassenheit)
+        20484,  -- Rebirth (Wiedergeburt)
+        50769,  -- Revive (Wiederbeleben)
+        29166,  -- Innervate (Anregen)
+        2782,   -- Remove Curse (Fluch aufheben)
+        2893,   -- Abolish Poison (Vergiftung aufheben)
+        1126,   -- Mark of the Wild (Mal der Wildnis)
+        467,    -- Thorns (Dornen)
+    },
+    PRIEST = {
+        2050,   -- Lesser Heal (Geringes Heilen)
+        2054,   -- Heal (Heilen)
+        2060,   -- Greater Heal (Große Heilung)
+        2061,   -- Flash Heal (Blitzheilung)
+        139,    -- Renew (Erneuerung)
+        17,     -- Power Word: Shield (Machtwort: Schild)
+        596,    -- Prayer of Healing (Gebet des Heilens)
+        33076,  -- Prayer of Mending (Gebet der Besserung)
+        47540,  -- Penance (Sühne)
+        34861,  -- Circle of Healing (Kreis der Heilung)
+        32546,  -- Binding Heal (Verbindende Heilung)
+        33206,  -- Pain Suppression (Schmerzunterdrückung)
+        47788,  -- Guardian Spirit (Schutzgeist)
+        10060,  -- Power Infusion (Seele der Macht)
+        528,    -- Cure Disease (Krankheit heilen)
+        552,    -- Abolish Disease (Krankheit aufheben)
+        527,    -- Dispel Magic (Magiebannung)
+        2006,   -- Resurrection (Auferstehung)
+        1243,   -- Power Word: Fortitude (Machtwort: Seelenstärke)
+        14752,  -- Divine Spirit (Göttlicher Geist)
+        976,    -- Shadow Protection (Schattenschutz)
+        6346,   -- Fear Ward (Furchtschutz)
+    },
+    PALADIN = {
+        635,    -- Holy Light (Heiliges Licht)
+        19750,  -- Flash of Light (Lichtblitz)
+        20473,  -- Holy Shock (Heiliger Schock)
+        53563,  -- Beacon of Light (Flamme des Glaubens)
+        633,    -- Lay on Hands (Handauflegung)
+        1022,   -- Hand of Protection (Hand des Schutzes)
+        1044,   -- Hand of Freedom (Hand der Freiheit)
+        6940,   -- Hand of Sacrifice (Hand der Aufopferung)
+        1038,   -- Hand of Salvation (Hand der Erlösung)
+        4987,   -- Cleanse (Reinigung des Glaubens)
+        1152,   -- Purify (Läuterung)
+        7328,   -- Redemption (Erlösung)
+        19740,  -- Blessing of Might (Segen der Macht)
+        19742,  -- Blessing of Wisdom (Segen der Weisheit)
+        20217,  -- Blessing of Kings (Segen der Könige)
+        25898,  -- Greater Blessing of Might (Großer Segen der Macht)
+        25894,  -- Greater Blessing of Wisdom (Großer Segen der Weisheit)
+    },
+    SHAMAN = {
+        331,    -- Healing Wave (Welle der Heilung)
+        8004,   -- Lesser Healing Wave (Geringe Welle der Heilung)
+        1064,   -- Chain Heal (Kettenheilung)
+        61295,  -- Riptide (Springflut)
+        974,    -- Earth Shield (Erdschild)
+        52127,  -- Water Shield (Wasserschild)
+        16188,  -- Nature's Swiftness (Schnelligkeit der Natur)
+        16190,  -- Mana Tide Totem (Totem der Manaflut)
+        51886,  -- Cleanse Spirit (Geistreinigung)
+        526,    -- Cure Toxins (Gift heilen)
+        2870,   -- Cure Disease (Krankheit heilen)
+        20608,  -- Ancestral Spirit (Geist der Ahnen)
+        51994,  -- Earthliving Weapon (Waffe der Lebensgeister)
+    },
+    MONK = {
+        115175, -- Soothing Mist (Beruhigender Nebel)
+        124682, -- Enveloping Mist (Einhüllender Nebel)
+        116670, -- Vivify (Beleben)
+        115151, -- Renewing Mist (Erneuernder Nebel)
+        116849, -- Life Cocoon (Lebenskokon)
+        115310, -- Revival (Wiederbelebung)
+        218164, -- Detox (Entgiftung)
+        115178, -- Resuscitate (Wiederbeleben)
+    },
+    EVOKER = {
+        355936, -- Dream Breath (Traumatem)
+        361469, -- Living Flame (Lebendige Flamme)
+        364343, -- Echo (Echo)
+        366155, -- Reversion (Zurückdrehen)
+        382731, -- Spiritbloom (Geistblüte)
+        374251, -- Cauterizing Flame (Kauterisierende Flamme)
+        365585, -- Expunge (Austreiben)
+        361227, -- Return (Rückkehr)
+        370660, -- Emerald Communion (Smaragdgrüne Rast)
+    },
+    WARLOCK = {
+        20707,  -- Soulstone (Seelenstein)
+        5697,   -- Unending Breath (Unendlicher Atem)
+        132,    -- Detect Invisibility (Unsichtbarkeit entdecken)
+        698,    -- Ritual of Summoning (Ritual der Beschwörung)
+    },
+    MAGE = {
+        475,    -- Remove Curse (Fluch aufheben)
+        130,    -- Slow Fall (Langsamer Fall)
+        1008,   -- Amplify Magic (Magie verstärken)
+        604,    -- Dampen Magic (Magie dämpfen)
+        1459,   -- Arcane Intellect (Arkane Intelligenz)
+    },
+    HUNTER = {
+        34477,  -- Misdirection (Irreführung)
+        53271,  -- Master's Call (Ruf des Meisters)
+        136,    -- Mend Pet (Tier heilen)
+    },
+    ROGUE = {
+        57934,  -- Tricks of the Trade (Schurkenhandel)
+    },
+    DEATHKNIGHT = {
+        49016,  -- Hysteria (Hysterie)
+        61999,  -- Raise Ally (Verbündeten erwecken)
+    },
+    WARRIOR = {
+        3411,   -- Intervene (Einschreiten)
+        6673,   -- Battle Shout (Schlachtruf)
+        469,    -- Commanding Shout (Befehlsruf)
+    },
+}
+
+local spellDropdownFrame = nil
+
+-- Öffnet das Zauberauswahl-Menü für Heil- und Supportzauber inkl. Rang-Unterstützung
+function OUI:OpenSpellPicker(anchorBtn, onSelect)
+    if not spellDropdownFrame then
+        spellDropdownFrame = CreateFrame("Frame", "Resto4LifeSpellDropDown", UIParent, "UIDropDownMenuTemplate")
+    end
+
+    local _, playerClass = UnitClass("player")
+    local classSpells = CLASS_SPELL_LIST[playerClass] or {}
+
+    -- Sicherstellen, dass das Zauberbuch gescannt ist
+    if R4L.ClickCast and (not R4L.ClickCast.spellRankCache or not next(R4L.ClickCast.spellRankCache)) then
+        R4L.ClickCast:ScanSpellbookRanks()
+    end
+
+    -- Retail MenuUtil Support (11.0+)
+    if MenuUtil and MenuUtil.CreateContextMenu then
+        MenuUtil.CreateContextMenu(anchorBtn, function(ownerRegion, rootDescription)
+            rootDescription:CreateTitle(L["SPELL_PICKER_TITLE"] or "Heil- & Supportzauber")
+
+            for _, sId in ipairs(classSpells) do
+                local sName = R4L:GetSpellName(sId)
+                if sName and sName ~= "" then
+                    local rankInfo = R4L.ClickCast and R4L.ClickCast:GetSpellRanks(sName)
+                    if rankInfo and rankInfo.ranks and #rankInfo.ranks > 0 then
+                        local sub = rootDescription:CreateButton(sName)
+                        sub:CreateButton("★ " .. sName .. " [" .. (L["SPELL_MAX_RANK"] or "Höchster Rang") .. "]", function()
+                            onSelect(sName)
+                        end)
+                        for _, r in ipairs(rankInfo.ranks) do
+                            local rankText = sName .. " (" .. r.subName .. ")"
+                            sub:CreateButton("  " .. rankText, function()
+                                onSelect(rankText)
+                            end)
+                        end
+                    else
+                        rootDescription:CreateButton(sName, function()
+                            onSelect(sName)
+                        end)
+                    end
+                end
+            end
+
+            rootDescription:CreateDivider()
+            rootDescription:CreateButton("|cffff2020" .. (L["SPELL_CLEAR"] or "[Feld leeren]") .. "|r", function()
+                onSelect("")
+            end)
+        end)
+        return
+    end
+
+    -- Classic / WotLK 3.3.5 EasyMenu Support
+    local menuList = {
+        {
+            text = L["SPELL_PICKER_TITLE"] or "Heil- & Supportzauber",
+            isTitle = true,
+            notCheckable = true,
+        }
+    }
+
+    for _, sId in ipairs(classSpells) do
+        local sName = R4L:GetSpellName(sId)
+        if sName and sName ~= "" then
+            local rankInfo = R4L.ClickCast and R4L.ClickCast:GetSpellRanks(sName)
+            if rankInfo and rankInfo.ranks and #rankInfo.ranks > 0 then
+                local subList = {
+                    {
+                        text = "★ " .. sName .. " [" .. (L["SPELL_MAX_RANK"] or "Höchster Rang") .. "]",
+                        notCheckable = true,
+                        func = function()
+                            onSelect(sName)
+                            CloseDropDownMenus()
+                        end,
+                    }
+                }
+                for _, r in ipairs(rankInfo.ranks) do
+                    local rankText = sName .. " (" .. r.subName .. ")"
+                    table.insert(subList, {
+                        text = "  " .. rankText,
+                        notCheckable = true,
+                        func = function()
+                            onSelect(rankText)
+                            CloseDropDownMenus()
+                        end,
+                    })
+                end
+                table.insert(menuList, {
+                    text = sName,
+                    notCheckable = true,
+                    hasArrow = true,
+                    value = subList,
+                    menuList = subList,
+                })
+            else
+                table.insert(menuList, {
+                    text = sName,
+                    notCheckable = true,
+                    func = function()
+                        onSelect(sName)
+                        CloseDropDownMenus()
+                    end,
+                })
+            end
+        end
+    end
+
+    table.insert(menuList, {
+        text = "",
+        disabled = true,
+        notCheckable = true,
+    })
+
+    table.insert(menuList, {
+        text = "|cffff2020" .. (L["SPELL_CLEAR"] or "[Feld leeren]") .. "|r",
+        notCheckable = true,
+        func = function()
+            onSelect("")
+            CloseDropDownMenus()
+        end,
+    })
+
+    EasyMenu(menuList, spellDropdownFrame, anchorBtn, 0, 0, "MENU")
+end
+
+-- Hilfsfunktion: Eingabefeld (EditBox) mit integriertem Zauberauswahl-Dropdown erstellen
+local function CreateEditBox(parent, label, x, y, width, onEnterPressed, hasSpellPicker)
+    if hasSpellPicker == nil then hasSpellPicker = true end
+    local totalWidth = width or 250
+    local ebWidth = hasSpellPicker and (totalWidth - 28) or totalWidth
+
     local title = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     title:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
     title:SetText(label)
 
     local eb = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
     eb:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 4, -4)
-    eb:SetSize(width or 160, 22)
+    eb:SetSize(ebWidth, 22)
     eb:SetAutoFocus(false)
     eb:SetScript("OnEnterPressed", function(self)
         self:ClearFocus()
@@ -52,7 +311,49 @@ local function CreateEditBox(parent, label, x, y, width, onEnterPressed)
         if onEnterPressed then onEnterPressed(self:GetText()) end
     end)
 
-    return eb, title
+    -- Automatische Bereinigung bei Shift-Klick aus dem Zauberbuch
+    eb:SetScript("OnTextChanged", function(self, userInput)
+        if userInput then
+            local text = self:GetText()
+            if text and text:find("|Hspell:") then
+                local clean = text:match("%[(.-)%]")
+                if clean and clean ~= "" then
+                    self:SetText(clean)
+                    self:SetCursorPosition(#clean)
+                    if onEnterPressed then onEnterPressed(clean) end
+                end
+            end
+        end
+    end)
+
+    local dropBtn = nil
+    if hasSpellPicker then
+        dropBtn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+        dropBtn:SetSize(24, 22)
+        dropBtn:SetPoint("LEFT", eb, "RIGHT", 4, 0)
+        dropBtn:SetText("|cffffd100▼|r")
+
+        dropBtn:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(L["SPELL_PICKER_TITLE"] or "Heil- & Supportzauber", 1, 0.82, 0)
+            GameTooltip:AddLine(L["TOOLTIP_SPELL_PICKER"] or "Klicken, um einen Zauber oder einen bestimmten Rang auszuwählen.", 1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        dropBtn:SetScript("OnLeave", function(self)
+            GameTooltip:Hide()
+        end)
+
+        dropBtn:SetScript("OnClick", function(self)
+            OUI:OpenSpellPicker(self, function(selectedSpell)
+                eb:SetText(selectedSpell)
+                if onEnterPressed then
+                    onEnterPressed(selectedSpell)
+                end
+            end)
+        end)
+    end
+
+    return eb, title, dropBtn
 end
 
 function OUI:Initialize()
@@ -494,7 +795,15 @@ function OUI:Initialize()
 
     local function GetSpell(baseKey)
         local key = GetBindingKey(baseKey)
-        return (cfg.bindings[key] and cfg.bindings[key].spell) or ""
+        local raw = (cfg.bindings[key] and cfg.bindings[key].spell) or ""
+        if raw and raw ~= "" then
+            local num = tonumber(raw)
+            if num then
+                local name = R4L:GetSpellName(num)
+                if name and name ~= "" then return name end
+            end
+        end
+        return raw
     end
 
     -- Linke Spalte (Mausaktionen): Linksklick, Rechtsklick, Mittlere Maustaste, Maus 4, Maus 5, Mausrad Hoch, Mausrad Runter
@@ -649,8 +958,17 @@ function OUI:Initialize()
     p2:SetScript("OnShow", function()
         UpdateBindingsTab()
         cbSmartRez:SetChecked(cfg.smartRez.enabled)
-        ebBattleRez:SetText(cfg.smartRez.combatRezSpell or "")
-        ebNormalRez:SetText(cfg.smartRez.normalRezSpell or "")
+        local function SafeRezText(val)
+            if not val or val == "" then return "" end
+            local num = tonumber(val)
+            if num then
+                local n = R4L:GetSpellName(num)
+                if n and n ~= "" then return n end
+            end
+            return val
+        end
+        ebBattleRez:SetText(SafeRezText(cfg.smartRez.combatRezSpell))
+        ebNormalRez:SetText(SafeRezText(cfg.smartRez.normalRezSpell))
         cbDisableSelfCast:SetChecked(cfg.general and cfg.general.disableSelfCastKey ~= false)
     end)
 

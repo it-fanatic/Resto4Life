@@ -96,6 +96,10 @@ L["SMART_REZ_HEADER"] = "|cffffff00Smart Battle Rez & Resurrection:|r"
 L["SMART_REZ_ENABLE"] = "Smart Battle-Rez (Left-click on dead)"
 L["COMBAT_REZ_SPELL"] = "Combat Rez Spell (In-Combat):"
 L["NORMAL_REZ_SPELL"] = "Normal Rez Spell (Out-of-Combat):"
+L["SPELL_PICKER_TITLE"] = "Healing & Support Spells"
+L["SPELL_MAX_RANK"] = "Highest Rank"
+L["SPELL_CLEAR"] = "[Clear Field]"
+L["TOOLTIP_SPELL_PICKER"] = "Click to select a spell or a specific rank.\n\n|cff00ff00Tip:|r You can also Shift-Click spells from your spellbook directly into the input field."
 
 -- Tab 3: HoTs & Debuffs
 L["SHOW_HOTS_CB"] = "Show own HoTs & shields on group members (Native via Blizzard AuraContainer)"
